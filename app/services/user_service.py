@@ -58,7 +58,6 @@ async def update_user_service(user_id: str, data: UserUpdate) -> UserResponse:
             raise HTTPException(status_code=400, detail=DUPLICATE_EMAIL)
     
     if data.password:
-        # In a real app, you might want to handle this differently
         user.hashed_password = hash_password(data.password)
         
     updated_user = await update_user(user, data)
