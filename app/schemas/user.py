@@ -1,35 +1,30 @@
-from beanie import PydanticObjectId
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
 from datetime import datetime
-from typing import Annotated
-from pydantic import BeforeValidator
-
-PyObjectId = Annotated[str, BeforeValidator(str)]
-
+from beanie import PydanticObjectId
 
 class UserBase(BaseModel):
     full_name: str
     email: EmailStr
-    is_active: bool = True
-
+    timezone: Optional[str] = "Europe/Istanbul"
+    language: Optional[str] = "Turkish"
+    subscription_plan: Optional[str] = "Free"
 
 class UserCreate(UserBase):
     password: str
 
-
 class UserUpdate(BaseModel):
-    full_name: str | None = None
-    email: EmailStr | None = None
-    password: str | None = None
-    is_active: bool | None = None
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    timezone: Optional[str] = None
+    language: Optional[str] = None
+    subscription_plan: Optional[str] = None
+    password: Optional[str] = None
 
-
-class UserResponse(UserBase):
-    id: PyObjectId = Field(alias="_id")
-    is_superuser: bool
+class UserOut(UserBase):
+    id: PydanticObjectId = Field(alias="_id")
     created_at: datetime
+    is_deleted: bool
 
-    model_config = ConfigDict(
-        from_attributes=True,
-        populate_by_name=True,
-    )
+    class Config:
+        populate_by_name = True
