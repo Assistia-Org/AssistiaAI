@@ -1,5 +1,5 @@
 from fastapi import APIRouter, status
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserCreate, UserOut, UserUpdate
 from app.services.user_service import (
     create_user_service,
     delete_user_service,
@@ -11,26 +11,26 @@ from app.services.user_service import (
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(data: UserCreate) -> UserResponse:
+@router.post("/", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+async def create_user(data: UserCreate) -> UserOut:
     """Create a new user."""
     return await create_user_service(data)
 
 
-@router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
-async def get_user(user_id: str) -> UserResponse:
+@router.get("/{user_id}", response_model=UserOut, status_code=status.HTTP_200_OK)
+async def get_user(user_id: str) -> UserOut:
     """Get a user by ID."""
     return await get_user_service(user_id)
 
 
-@router.get("/", response_model=list[UserResponse], status_code=status.HTTP_200_OK)
-async def list_users() -> list[UserResponse]:
+@router.get("/", response_model=list[UserOut], status_code=status.HTTP_200_OK)
+async def list_users() -> list[UserOut]:
     """List all users."""
     return await list_users_service()
 
 
-@router.patch("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
-async def update_user(user_id: str, data: UserUpdate) -> UserResponse:
+@router.patch("/{user_id}", response_model=UserOut, status_code=status.HTTP_200_OK)
+async def update_user(user_id: str, data: UserUpdate) -> UserOut:
     """Update user details."""
     return await update_user_service(user_id, data)
 
