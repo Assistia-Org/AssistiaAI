@@ -1,3 +1,7 @@
 USER_NOT_FOUND = "User not found."
 ASSISTANT_NOT_FOUND = "Assistant not found."
 DUPLICATE_EMAIL = "Email already exists."
+MEETING_NOT_FOUND = "Meeting not found."
+COMMAND_NOT_FOUND = "Command not found."
+CONVERSATION_NOT_FOUND = "Conversation not found."
+INTEGRATION_NOT_FOUND = "Integration not found."
