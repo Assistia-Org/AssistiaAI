@@ -1,6 +1,6 @@
 from beanie import PydanticObjectId
 from app.models.reservation import Reservation
-from app.schemas.task import ReservationCreate, ReservationUpdate
+from app.schemas.reservation import ReservationCreate, ReservationUpdate
 
 async def create_reservation(data: ReservationCreate)-> Reservation:
     reservation = Reservation(**data.model_dump())
