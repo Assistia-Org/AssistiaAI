@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="b1e746fd-60fa-43da-a068-d157edff8136" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/backend/Dockerfile" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/app/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/app/models/task.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/app/repositories/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/app/services/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/backend/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.vscode/settings.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/.vscode/settings.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/dependencies/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/dependencies/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/command_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/command_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/conversation_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/conversation_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/integration_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/integration_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/meeting_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/meeting_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/notification_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/notification_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/reservation_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/reservation_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/task_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/task_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/trip_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/trip_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/user_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/user_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/api/routes/user_preference_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/api/routes/user_preference_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/core/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/messages/error_message.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/core/messages/error_message.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/core/messages/success_message.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/core/messages/success_message.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/base.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/base.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/command.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/command.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/conversation.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/conversation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/integration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/meeting.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/meeting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/notification.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/notification.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/reservation.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/reservation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/task.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/trip.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/trip.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/models/user_preference.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/models/user_preference.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/command.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/command.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/conversation.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/conversation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/integration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/meeting.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/meeting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/notificaton.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/notificaton.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/reservation.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/reservation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/task.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/task.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/trip.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/trip.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/repositories/user_preference.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/repositories/user_preference.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/command.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/command.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/conversation.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/conversation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/integration.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/integration.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/meeting.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/meeting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/notification.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/notification.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/reservation.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/reservation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/task.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/task.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/trip.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/trip.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/user.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/user.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/schemas/user_preference.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/schemas/user_preference.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/command_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/command_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/conversation_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/conversation_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/integration_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/integration_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/meeting_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/meeting_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/notification_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/notification_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/reservation_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/reservation_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/task_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/task_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/trip_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/trip_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/user_preference_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/user_preference_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/services/user_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app/services/user_service.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dockerfile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/backend/requirements.txt" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3
+}</component>
+  <component name="ProjectId" id="3AstpSF9dVvwNApSj9CCqfE9BZk" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "origin/ASS-10",
+    "last_opened_file_path": "C:/Users/kerem/Desktop/github projects/AsisstiaAi/AssistiaAI"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\alper\Downloads\Projects\AssistiaAI\backend" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-af26db0dccfe-c546a90a8094-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-242.26775.22" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="b1e746fd-60fa-43da-a068-d157edff8136" name="Changes" comment="" />
+      <created>1773393288968</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1773393288968</updated>
+    </task>
+    <servers />
+  </component>
+</project>
