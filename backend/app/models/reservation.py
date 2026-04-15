@@ -1,24 +1,16 @@
-from beanie import Document, PydanticObjectId
-from pydantic import Field
-from typing import Optional, Dict, Any
-from datetime import datetime
-from enum import Enum
-from .base import SoftDeleteMixin
+from typing import Any, Dict
+from pydantic import BaseModel, Field
+from beanie import Document
 
-class ReservationType(str, Enum):
-    flight = "flight"
-    hotel = "hotel"
-    restaurant = "restaurant"
-    event = "event"
-
-class Reservation(Document, SoftDeleteMixin):
-    user_id: PydanticObjectId
-    trip_id: PydanticObjectId
-    type: ReservationType
-    provider: str
-    reservation_details: Dict[str, Any] = Field(default_factory=dict)
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+class Reservation(Document):
+    id: str = Field(alias="_id")
+    user_id: str
+    community_id: str
+    category: str
+    title: str
+    details: Dict[str, Any]
+    is_shared: bool = False
+    status: str
 
     class Settings:
         name = "reservations"

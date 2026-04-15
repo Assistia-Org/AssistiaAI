@@ -1,32 +1,27 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
-from datetime import datetime
-from beanie import PydanticObjectId
-from backend.app.models.reservation import ReservationType
+from typing import Any, Dict, Optional
+from pydantic import BaseModel
 
 class ReservationBase(BaseModel):
-    type: ReservationType
-    provider: str
-    reservation_details: Dict[str, Any] = Field(default_factory=dict)
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    user_id: str
+    community_id: str
+    category: str
+    title: str
+    details: Dict[str, Any]
+    is_shared: bool = False
+    status: str
 
 class ReservationCreate(ReservationBase):
-    user_id: PydanticObjectId
-    trip_id: PydanticObjectId
+    id: str
 
 class ReservationUpdate(BaseModel):
-    type: Optional[ReservationType] = None
-    provider: Optional[str] = None
-    reservation_details: Optional[Dict[str, Any]] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    title: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    is_shared: Optional[bool] = None
+    status: Optional[str] = None
 
-class ReservationOut(ReservationBase):
-    id: PydanticObjectId = Field(alias="_id")
-    user_id: PydanticObjectId
-    trip_id: PydanticObjectId
-    is_deleted: bool
+class ReservationResponse(ReservationBase):
+    id: str
 
     class Config:
+        from_attributes = True
         populate_by_name = True
