@@ -1,30 +1,28 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
-from datetime import datetime
-from beanie import PydanticObjectId
+from typing import List, Optional
+from pydantic import BaseModel, EmailStr
+from app.models.user import CommunityRoleModel, PersonalSettingsModel
+from app.schemas.base import BaseSchema
 
 class UserBase(BaseModel):
-    full_name: str
+    username: str
+    display_name: str
     email: EmailStr
-    timezone: Optional[str] = "Europe/Istanbul"
-    language: Optional[str] = "Turkish"
-    subscription_plan: Optional[str] = "Free"
+    avatar_url: Optional[str] = None
+    joined_communities: List[CommunityRoleModel] = []
+    personal_settings: Optional[PersonalSettingsModel] = None
 
 class UserCreate(UserBase):
+    id: str
     password: str
 
 class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    timezone: Optional[str] = None
-    language: Optional[str] = None
-    subscription_plan: Optional[str] = None
-    password: Optional[str] = None
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    personal_settings: Optional[PersonalSettingsModel] = None
 
-class UserOut(UserBase):
-    id: PydanticObjectId = Field(alias="_id")
-    created_at: datetime
-    is_deleted: bool
+class UserResponse(UserBase, BaseSchema):
+    id: str
 
     class Config:
+        from_attributes = True
         populate_by_name = True

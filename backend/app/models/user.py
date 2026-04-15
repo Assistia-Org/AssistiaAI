@@ -1,17 +1,25 @@
-from beanie import Document, Indexed
-from pydantic import EmailStr, Field
-from datetime import datetime
-from typing import Optional
-from .base import SoftDeleteMixin
+from typing import List, Optional
+from pydantic import BaseModel, Field, EmailStr
+from app.models.base import BaseDocument
 
-class User(Document, SoftDeleteMixin):
-    full_name: str
-    email: Indexed(EmailStr, unique=True)
-    password_hash: str
-    timezone: Optional[str] = "Europe/Istanbul"
-    language: Optional[str] = "Turkish"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    subscription_plan: Optional[str] = "Free"
+class CommunityRoleModel(BaseModel):
+    community_id: str
+    role: str
+    type: str
+
+class PersonalSettingsModel(BaseModel):
+    theme: str = "light"
+    notifications: bool = True
+    language: str = "tr"
+
+class User(BaseDocument):
+    id: str = Field(alias="_id")
+    username: str
+    display_name: str
+    email: EmailStr
+    avatar_url: Optional[str] = None
+    joined_communities: List[CommunityRoleModel] = Field(default_factory=list)
+    personal_settings: PersonalSettingsModel = Field(default_factory=PersonalSettingsModel)
 
     class Settings:
         name = "users"

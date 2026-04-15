@@ -1,10 +1,9 @@
 from datetime import datetime, timezone
 from typing import Optional
-from pydantic import Field
-from beanie import Document
+from pydantic import BaseModel
 
-class BaseDocument(Document):
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+class BaseSchema(BaseModel):
+    created_at: datetime
     created_by: Optional[str] = None
     updated_at: Optional[datetime] = None
     updated_by: Optional[str] = None

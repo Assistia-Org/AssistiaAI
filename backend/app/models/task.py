@@ -1,28 +1,19 @@
-from beanie import Document, PydanticObjectId
-from pydantic import Field
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
-from enum import Enum
-from .base import SoftDeleteMixin
+from pydantic import Field
+from app.models.base import BaseDocument
 
-class TaskStatus(str, Enum):
-    pending = "pending" # değişecek
-    in_progress = "in_progress" # değişecek
-    completed = "completed"
-
-class TaskPriority(str, Enum):
-    low = "low"
-    medium = "medium"
-    high = "high"
-    urgent = "urgent"
-
-class Task(Document, SoftDeleteMixin):
-    user_id: PydanticObjectId # değişecek
+class Task(BaseDocument):
+    id: str = Field(alias="_id")
+    creator_id: str
+    assigned_to: List[str] = Field(default_factory=list)
+    community_id: Optional[str] = None
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
-    status: TaskStatus = TaskStatus.pending
-    priority: TaskPriority = TaskPriority.medium
+    priority: str = "medium"
+    status: str = "pending"
+    tags: List[str] = Field(default_factory=list)
 
     class Settings:
         name = "tasks"

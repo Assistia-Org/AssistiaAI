@@ -1,30 +1,34 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
-from beanie import PydanticObjectId
-from backend.app.models.task import TaskStatus, TaskPriority
+from pydantic import BaseModel
+from app.schemas.base import BaseSchema
 
 class TaskBase(BaseModel):
+    creator_id: str
+    assigned_to: List[str] = []
+    community_id: Optional[str] = None
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
-    status: TaskStatus = TaskStatus.pending
-    priority: TaskPriority = TaskPriority.medium
+    priority: str = "medium"
+    status: str = "pending"
+    tags: List[str] = []
 
 class TaskCreate(TaskBase):
-    user_id: PydanticObjectId
+    id: str
 
 class TaskUpdate(BaseModel):
+    assigned_to: Optional[List[str]] = None
     title: Optional[str] = None
     description: Optional[str] = None
     due_date: Optional[datetime] = None
-    status: Optional[TaskStatus] = None
-    priority: Optional[TaskPriority] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    tags: Optional[List[str]] = None
 
-class TaskOut(TaskBase):
-    id: PydanticObjectId = Field(alias="_id")
-    user_id: PydanticObjectId
-    is_deleted: bool
+class TaskResponse(TaskBase, BaseSchema):
+    id: str
 
     class Config:
+        from_attributes = True
         populate_by_name = True
