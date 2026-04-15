@@ -1,9 +1,9 @@
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
-from beanie import Document
+from pydantic import Field
+from app.models.base import BaseDocument
 
-class Task(Document):
+class Task(BaseDocument):
     id: str = Field(alias="_id")
     creator_id: str
     assigned_to: List[str] = Field(default_factory=list)

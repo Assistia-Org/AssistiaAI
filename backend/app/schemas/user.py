@@ -1,6 +1,7 @@
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr
 from app.models.user import CommunityRoleModel, PersonalSettingsModel
+from app.schemas.base import BaseSchema
 
 class UserBase(BaseModel):
     username: str
@@ -19,7 +20,7 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
     personal_settings: Optional[PersonalSettingsModel] = None
 
-class UserResponse(UserBase):
+class UserResponse(UserBase, BaseSchema):
     id: str
 
     class Config:

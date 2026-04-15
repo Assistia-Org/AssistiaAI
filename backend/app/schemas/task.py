@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
+from app.schemas.base import BaseSchema
 
 class TaskBase(BaseModel):
     creator_id: str
@@ -25,7 +26,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     tags: Optional[List[str]] = None
 
-class TaskResponse(TaskBase):
+class TaskResponse(TaskBase, BaseSchema):
     id: str
 
     class Config:

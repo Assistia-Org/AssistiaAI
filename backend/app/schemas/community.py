@@ -1,7 +1,7 @@
 from typing import List, Optional
-from datetime import datetime
 from pydantic import BaseModel
 from app.models.community import CommunityMember
+from app.schemas.base import BaseSchema
 
 class CommunityBase(BaseModel):
     name: str
@@ -17,9 +17,8 @@ class CommunityUpdate(BaseModel):
     type: Optional[str] = None
     members: Optional[List[CommunityMember]] = None
 
-class CommunityResponse(CommunityBase):
+class CommunityResponse(CommunityBase, BaseSchema):
     id: str
-    created_at: datetime
 
     class Config:
         from_attributes = True

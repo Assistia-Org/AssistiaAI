@@ -1,6 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr
-from beanie import Document
+from app.models.base import BaseDocument
 
 class CommunityRoleModel(BaseModel):
     community_id: str
@@ -12,7 +12,7 @@ class PersonalSettingsModel(BaseModel):
     notifications: bool = True
     language: str = "tr"
 
-class User(Document):
+class User(BaseDocument):
     id: str = Field(alias="_id")
     username: str
     display_name: str

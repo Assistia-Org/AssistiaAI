@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 from pydantic import BaseModel
+from app.schemas.base import BaseSchema
 
 class ReservationBase(BaseModel):
     user_id: str
@@ -19,7 +20,7 @@ class ReservationUpdate(BaseModel):
     is_shared: Optional[bool] = None
     status: Optional[str] = None
 
-class ReservationResponse(ReservationBase):
+class ReservationResponse(ReservationBase, BaseSchema):
     id: str
 
     class Config:

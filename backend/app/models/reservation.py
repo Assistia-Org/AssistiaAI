@@ -1,8 +1,8 @@
 from typing import Any, Dict
-from pydantic import BaseModel, Field
-from beanie import Document
+from pydantic import Field
+from app.models.base import BaseDocument
 
-class Reservation(Document):
+class Reservation(BaseDocument):
     id: str = Field(alias="_id")
     user_id: str
     community_id: str
