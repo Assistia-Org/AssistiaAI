@@ -1,123 +1,79 @@
 from typing import List, Optional
 from datetime import datetime
-from app.models.task import Task
-from app.db import get_database
+from backend.app.models.task import Task
 
+async def create_task(task_data: dict) -> Task:
+    """Create a new task and return the inserted document."""
+    task = Task(**task_data)
+    return await task.insert()
 
-class TaskRepository:
-    def __init__(self):
-        self.db = get_database()
-        self.collection = self.db["tasks"]
+async def get_task_by_id(task_id: str) -> Optional[Task]:
+    """Return task by ID or None if not found."""
+    return await Task.find_one(Task.id == task_id)
 
-    # CREATE
-    async def create(self, task: Task) -> Task:
-        data = task.dict(by_alias=True)
-        await self.collection.insert_one(data)
-        return task
+async def list_tasks() -> List[Task]:
+    """Return all tasks."""
+    return await Task.find_all().to_list()
 
-    # GET BY ID
-    async def get_by_id(self, task_id: str) -> Optional[Task]:
-        doc = await self.collection.find_one({"_id": task_id})
-        if doc:
-            return Task(**doc)
-        return None
+async def get_tasks_by_creator(creator_id: str) -> List[Task]:
+    """Return tasks created by a specific user."""
+    return await Task.find(Task.creator_id == creator_id).to_list()
 
-    # LIST ALL
-    async def list(self) -> List[Task]:
-        tasks = []
-        cursor = self.collection.find()
+async def get_tasks_by_user_id(user_id: str) -> List[Task]:
+    """Return tasks assigned to a specific user."""
+    # Maps to get_tasks_by_user_id used in task_service.py
+    return await Task.find(Task.assigned_to == user_id).to_list()
 
-        async for doc in cursor:
-            tasks.append(Task(**doc))
+async def list_tasks_by_community(community_id: str) -> List[Task]:
+    """Return tasks for a specific community."""
+    return await Task.find(Task.community_id == community_id).to_list()
 
-        return tasks
+async def update_status(task_id: str, status: str) -> bool:
+    """Update task status."""
+    task = await get_task_by_id(task_id)
+    if not task:
+        return False
+    task.status = status
+    await task.save()
+    return True
 
-    # LIST BY CREATOR
-    async def list_by_creator(self, creator_id: str) -> List[Task]:
-        tasks = []
-        cursor = self.collection.find({"creator_id": creator_id})
+async def update_priority(task_id: str, priority: str) -> bool:
+    """Update task priority."""
+    task = await get_task_by_id(task_id)
+    if not task:
+        return False
+    task.priority = priority
+    await task.save()
+    return True
 
-        async for doc in cursor:
-            tasks.append(Task(**doc))
+async def assign_user(task_id: str, user_id: str) -> bool:
+    """Assign a user to a task."""
+    task = await get_task_by_id(task_id)
+    if not task:
+        return False
+    if user_id not in task.assigned_to:
+        task.assigned_to.append(user_id)
+        await task.save()
+    return True
 
-        return tasks
+async def unassign_user(task_id: str, user_id: str) -> bool:
+    """Unassign a user from a task."""
+    task = await get_task_by_id(task_id)
+    if not task:
+        return False
+    if user_id in task.assigned_to:
+        task.assigned_to.remove(user_id)
+        await task.save()
+    return True
 
-    # LIST BY ASSIGNED USER
-    async def list_by_assigned_user(self, user_id: str) -> List[Task]:
-        tasks = []
-        cursor = self.collection.find({"assigned_to": user_id})
+async def update_task(task: Task, data: dict) -> Task:
+    """Update task document with provided data."""
+    for key, value in data.items():
+        if hasattr(task, key):
+            setattr(task, key, value)
+    return await task.save()
 
-        async for doc in cursor:
-            tasks.append(Task(**doc))
-
-        return tasks
-
-    # LIST BY COMMUNITY
-    async def list_by_community(self, community_id: str) -> List[Task]:
-        tasks = []
-        cursor = self.collection.find({"community_id": community_id})
-
-        async for doc in cursor:
-            tasks.append(Task(**doc))
-
-        return tasks
-
-    # UPDATE STATUS
-    async def update_status(self, task_id: str, status: str) -> bool:
-        result = await self.collection.update_one(
-            {"_id": task_id},
-            {"$set": {"status": status}}
-        )
-        return result.modified_count > 0
-
-    # UPDATE PRIORITY
-    async def update_priority(self, task_id: str, priority: str) -> bool:
-        result = await self.collection.update_one(
-            {"_id": task_id},
-            {"$set": {"priority": priority}}
-        )
-        return result.modified_count > 0
-
-    # ASSIGN USER
-    async def assign_user(self, task_id: str, user_id: str) -> bool:
-        result = await self.collection.update_one(
-            {"_id": task_id},
-            {"$addToSet": {"assigned_to": user_id}}
-        )
-        return result.modified_count > 0
-
-    # UNASSIGN USER
-    async def unassign_user(self, task_id: str, user_id: str) -> bool:
-        result = await self.collection.update_one(
-            {"_id": task_id},
-            {"$pull": {"assigned_to": user_id}}
-        )
-        return result.modified_count > 0
-
-    # UPDATE TAGS
-    async def add_tag(self, task_id: str, tag: str) -> bool:
-        result = await self.collection.update_one(
-            {"_id": task_id},
-            {"$addToSet": {"tags": tag}}
-        )
-        return result.modified_count > 0
-
-    async def remove_tag(self, task_id: str, tag: str) -> bool:
-        result = await self.collection.update_one(
-            {"_id": task_id},
-            {"$pull": {"tags": tag}}
-        )
-        return result.modified_count > 0
-
-    # UPDATE DUE DATE
-    async def update_due_date(self, task_id: str, due_date: Optional[datetime]) -> bool:
-        result = await self.collection.update_one(
-            {"_id": task_id},
-            {"$set": {"due_date": due_date}}
-        )
-        return result.modified_count > 0
-
-    # DELETE
-    async def delete(self, task_id: str) -> bool:
-        result = await self.collection.delete_one({"_id": task_id})
-        return result.deleted_count > 0
+async def delete_task(task: Task) -> bool:
+    """Delete a task document."""
+    await task.delete()
+    return True

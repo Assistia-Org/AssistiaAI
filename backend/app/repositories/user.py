@@ -1,102 +1,85 @@
 from typing import List, Optional
-from app.models.user import User, CommunityRoleModel, PersonalSettingsModel
-from app.db import get_database
+from backend.app.models.user import User, CommunityRoleModel, PersonalSettingsModel
 
+async def create_user(user_data: dict) -> User:
+    """Create a new user and return the inserted document."""
+    user = User(**user_data)
+    return await user.insert()
 
-class UserRepository:
-    def __init__(self):
-        self.db = get_database()
-        self.collection = self.db["users"]
+async def get_user_by_id(user_id: str) -> Optional[User]:
+    """Return user by ID or None if not found."""
+    return await User.find_one(User.id == user_id)
 
-    # CREATE
-    async def create(self, user: User) -> User:
-        data = user.dict(by_alias=True)
-        await self.collection.insert_one(data)
-        return user
+async def get_user_by_email(email: str) -> Optional[User]:
+    """Return user by email or None if not found."""
+    return await User.find_one(User.email == email)
 
-    # GET BY ID
-    async def get_by_id(self, user_id: str) -> Optional[User]:
-        doc = await self.collection.find_one({"_id": user_id})
-        if doc:
-            return User(**doc)
-        return None
+async def get_user_by_username(username: str) -> Optional[User]:
+    """Return user by username or None if not found."""
+    return await User.find_one(User.username == username)
 
-    # GET BY EMAIL
-    async def get_by_email(self, email: str) -> Optional[User]:
-        doc = await self.collection.find_one({"email": email})
-        if doc:
-            return User(**doc)
-        return None
+async def list_users() -> List[User]:
+    """Return all users."""
+    return await User.find_all().to_list()
 
-    # GET BY USERNAME
-    async def get_by_username(self, username: str) -> Optional[User]:
-        doc = await self.collection.find_one({"username": username})
-        if doc:
-            return User(**doc)
-        return None
+async def add_community_role(user_id: str, role_data: CommunityRoleModel) -> bool:
+    """Add a community role to a user's joined_communities list."""
+    user = await get_user_by_id(user_id)
+    if not user:
+        return False
+    user.joined_communities.append(role_data)
+    await user.save()
+    return True
 
-    # LIST ALL
-    async def list(self) -> List[User]:
-        users = []
-        cursor = self.collection.find()
+async def remove_community_role(user_id: str, community_id: str) -> bool:
+    """Remove a community role from a user."""
+    user = await get_user_by_id(user_id)
+    if not user:
+        return False
+    user.joined_communities = [c for c in user.joined_communities if c.community_id != community_id]
+    await user.save()
+    return True
 
-        async for doc in cursor:
-            users.append(User(**doc))
+async def update_community_role(user_id: str, community_id: str, new_role: str) -> bool:
+    """Update role for a specific community for a user."""
+    user = await get_user_by_id(user_id)
+    if not user:
+        return False
+    for c in user.joined_communities:
+        if c.community_id == community_id:
+            c.role = new_role
+            break
+    await user.save()
+    return True
 
-        return users
+async def update_personal_settings(user_id: str, settings: PersonalSettingsModel) -> bool:
+    """Update user's personal settings."""
+    user = await get_user_by_id(user_id)
+    if not user:
+        return False
+    user.personal_settings = settings
+    await user.save()
+    return True
 
-    # ADD COMMUNITY ROLE
-    async def add_community_role(self, user_id: str, role_data: CommunityRoleModel) -> bool:
-        result = await self.collection.update_one(
-            {"_id": user_id},
-            {"$push": {"joined_communities": role_data.dict()}}
-        )
-        return result.modified_count > 0
+async def update_avatar(user_id: str, avatar_url: Optional[str]) -> bool:
+    """Update user's avatar URL."""
+    user = await get_user_by_id(user_id)
+    if not user:
+        return False
+    user.avatar_url = avatar_url
+    await user.save()
+    return True
 
-    # REMOVE COMMUNITY ROLE
-    async def remove_community_role(self, user_id: str, community_id: str) -> bool:
-        result = await self.collection.update_one(
-            {"_id": user_id},
-            {"$pull": {"joined_communities": {"community_id": community_id}}}
-        )
-        return result.modified_count > 0
+async def update_user(user: User, data: dict) -> User:
+    """Update user document with provided data."""
+    # This is used in user_service.py: update_user(user, data)
+    # Beanie supports updating the object directly then saving
+    for key, value in data.items():
+        if hasattr(user, key):
+            setattr(user, key, value)
+    return await user.save()
 
-    # UPDATE COMMUNITY ROLE
-    async def update_community_role(self, user_id: str, community_id: str, new_role: str) -> bool:
-        result = await self.collection.update_one(
-            {
-                "_id": user_id,
-                "joined_communities.community_id": community_id
-            },
-            {
-                "$set": {
-                    "joined_communities.$.role": new_role
-                }
-            }
-        )
-        return result.modified_count > 0
-
-    # UPDATE PERSONAL SETTINGS
-    async def update_personal_settings(
-        self,
-        user_id: str,
-        settings: PersonalSettingsModel
-    ) -> bool:
-        result = await self.collection.update_one(
-            {"_id": user_id},
-            {"$set": {"personal_settings": settings.dict()}}
-        )
-        return result.modified_count > 0
-
-    # UPDATE AVATAR
-    async def update_avatar(self, user_id: str, avatar_url: Optional[str]) -> bool:
-        result = await self.collection.update_one(
-            {"_id": user_id},
-            {"$set": {"avatar_url": avatar_url}}
-        )
-        return result.modified_count > 0
-
-    # DELETE
-    async def delete(self, user_id: str) -> bool:
-        result = await self.collection.delete_one({"_id": user_id})
-        return result.deleted_count > 0
+async def delete_user(user: User) -> bool:
+    """Delete the user document."""
+    await user.delete()
+    return True
