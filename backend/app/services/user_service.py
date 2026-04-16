@@ -13,11 +13,9 @@ from backend.app.schemas.user import UserCreate, UserOut, UserUpdate
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
 def hash_password(password: str) -> str:
     """Hash a password."""
     return pwd_context.hash(password)
-
 
 async def create_user_service(data: UserCreate) -> UserOut:
     """Orchestrate user creation with duplicate check and hashing."""
@@ -26,11 +24,10 @@ async def create_user_service(data: UserCreate) -> UserOut:
         raise HTTPException(status_code=400, detail=DUPLICATE_EMAIL)
     
     user_data = data.model_dump()
-    user_data["hashed_password"] = hash_password(user_data.pop("password"))
+    user_data["hashed_password"] = hash_password(user_data.pop("password", ""))
     
     user = await create_user(user_data)
     return UserOut.model_validate(user)
-
 
 async def get_user_service(user_id: str) -> UserOut:
     """Orchestrate user retrieval."""
@@ -39,12 +36,10 @@ async def get_user_service(user_id: str) -> UserOut:
         raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
     return UserOut.model_validate(user)
 
-
 async def list_users_service() -> list[UserOut]:
     """Orchestrate user listing."""
     users = await list_users()
     return [UserOut.model_validate(u) for u in users]
-
 
 async def update_user_service(user_id: str, data: UserUpdate) -> UserOut:
     """Orchestrate user update."""
@@ -57,12 +52,12 @@ async def update_user_service(user_id: str, data: UserUpdate) -> UserOut:
         if existing_user and str(existing_user.id) != str(user.id):
             raise HTTPException(status_code=400, detail=DUPLICATE_EMAIL)
     
-    if data.password:
-        user.hashed_password = hash_password(data.password)
+    update_data = data.model_dump(exclude_unset=True)
+    if "password" in update_data:
+        update_data["hashed_password"] = hash_password(update_data.pop("password"))
         
-    updated_user = await update_user(user, data)
+    updated_user = await update_user(user, update_data)
     return UserOut.model_validate(updated_user)
-
 
 async def delete_user_service(user_id: str) -> None:
     """Orchestrate user deletion."""

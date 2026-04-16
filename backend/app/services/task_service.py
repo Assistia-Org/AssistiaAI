@@ -13,7 +13,7 @@ from backend.app.schemas.task import TaskCreate, TaskUpdate, TaskOut
 
 async def create_task_service(data: TaskCreate) -> TaskOut:
     """Orchestrate task creation."""
-    task = await create_task(data)
+    task = await create_task(data.model_dump())
     return TaskOut.model_validate(task)
 
 
@@ -43,7 +43,7 @@ async def update_task_service(task_id: str, data: TaskUpdate) -> TaskOut:
     if not task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
     
-    updated_task = await update_task(task, data)
+    updated_task = await update_task(task, data.model_dump(exclude_unset=True))
     return TaskOut.model_validate(updated_task)
 
 

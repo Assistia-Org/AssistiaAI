@@ -13,7 +13,7 @@ from backend.app.schemas.reservation import ReservationCreate, ReservationUpdate
 
 async def create_reservation_service(data: ReservationCreate) -> ReservationOut:
     """Orchestrate reservation creation."""
-    reservation = await create_reservation(data)
+    reservation = await create_reservation(data.model_dump())
     return ReservationOut.model_validate(reservation)
 
 
@@ -43,7 +43,7 @@ async def update_reservation_service(reservation_id: str, data: ReservationUpdat
     if not reservation:
         raise HTTPException(status_code=404, detail=RESERVATION_NOT_FOUND)
     
-    updated_reservation = await update_reservation(reservation, data)
+    updated_reservation = await update_reservation(reservation, data.model_dump(exclude_unset=True))
     return ReservationOut.model_validate(updated_reservation)
 
 
