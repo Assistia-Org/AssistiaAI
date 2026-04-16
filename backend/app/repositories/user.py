@@ -1,41 +1,102 @@
-from beanie import PydanticObjectId
-from backend.app.models.user import User
-from backend.app.schemas.user import UserUpdate
+from typing import List, Optional
+from app.models.user import User, CommunityRoleModel, PersonalSettingsModel
+from app.db import get_database
 
 
-async def create_user(data: dict) -> User:
-    """Create a new user in the database."""
-    user = User(**data)
-    return await user.insert()
+class UserRepository:
+    def __init__(self):
+        self.db = get_database()
+        self.collection = self.db["users"]
 
+    # CREATE
+    async def create(self, user: User) -> User:
+        data = user.dict(by_alias=True)
+        await self.collection.insert_one(data)
+        return user
 
-async def get_user_by_id(user_id: str) -> User | None:
-    """Retrieve a user by its ID."""
-    return await User.get(PydanticObjectId(user_id))
+    # GET BY ID
+    async def get_by_id(self, user_id: str) -> Optional[User]:
+        doc = await self.collection.find_one({"_id": user_id})
+        if doc:
+            return User(**doc)
+        return None
 
+    # GET BY EMAIL
+    async def get_by_email(self, email: str) -> Optional[User]:
+        doc = await self.collection.find_one({"email": email})
+        if doc:
+            return User(**doc)
+        return None
 
-async def get_user_by_email(email: str) -> User | None:
-    """Retrieve a user by its email."""
-    return await User.find_one(User.email == email)
+    # GET BY USERNAME
+    async def get_by_username(self, username: str) -> Optional[User]:
+        doc = await self.collection.find_one({"username": username})
+        if doc:
+            return User(**doc)
+        return None
 
+    # LIST ALL
+    async def list(self) -> List[User]:
+        users = []
+        cursor = self.collection.find()
 
-async def list_users() -> list[User]:
-    """List all users."""
-    return await User.find_all().to_list()
+        async for doc in cursor:
+            users.append(User(**doc))
 
+        return users
 
-async def update_user(user: User, data: UserUpdate) -> User:
-    """Update a user's fields."""
-    update_data = data.model_dump(exclude_unset=True)
-    if "password" in update_data:
-        # Note: Password hashing should be handled in service layer
-        # But for repository, we just map what we get.
-        pass
-    for key, value in update_data.items():
-        setattr(user, key, value)
-    return await user.save()
+    # ADD COMMUNITY ROLE
+    async def add_community_role(self, user_id: str, role_data: CommunityRoleModel) -> bool:
+        result = await self.collection.update_one(
+            {"_id": user_id},
+            {"$push": {"joined_communities": role_data.dict()}}
+        )
+        return result.modified_count > 0
 
+    # REMOVE COMMUNITY ROLE
+    async def remove_community_role(self, user_id: str, community_id: str) -> bool:
+        result = await self.collection.update_one(
+            {"_id": user_id},
+            {"$pull": {"joined_communities": {"community_id": community_id}}}
+        )
+        return result.modified_count > 0
 
-async def delete_user(user: User) -> None:
-    """Delete a user."""
-    await user.delete()
+    # UPDATE COMMUNITY ROLE
+    async def update_community_role(self, user_id: str, community_id: str, new_role: str) -> bool:
+        result = await self.collection.update_one(
+            {
+                "_id": user_id,
+                "joined_communities.community_id": community_id
+            },
+            {
+                "$set": {
+                    "joined_communities.$.role": new_role
+                }
+            }
+        )
+        return result.modified_count > 0
+
+    # UPDATE PERSONAL SETTINGS
+    async def update_personal_settings(
+        self,
+        user_id: str,
+        settings: PersonalSettingsModel
+    ) -> bool:
+        result = await self.collection.update_one(
+            {"_id": user_id},
+            {"$set": {"personal_settings": settings.dict()}}
+        )
+        return result.modified_count > 0
+
+    # UPDATE AVATAR
+    async def update_avatar(self, user_id: str, avatar_url: Optional[str]) -> bool:
+        result = await self.collection.update_one(
+            {"_id": user_id},
+            {"$set": {"avatar_url": avatar_url}}
+        )
+        return result.modified_count > 0
+
+    # DELETE
+    async def delete(self, user_id: str) -> bool:
+        result = await self.collection.delete_one({"_id": user_id})
+        return result.deleted_count > 0

@@ -1,31 +1,62 @@
-from beanie import PydanticObjectId
-from backend.app.models.reservation import Reservation
-from backend.app.schemas.reservation import ReservationCreate, ReservationUpdate
+from typing import List, Optional
+from app.models.reservation import Reservation
+from app.db import get_database
 
-async def create_reservation(data: ReservationCreate)-> Reservation:
-    reservation = Reservation(**data.model_dump())
-    return await reservation.insert()
+class ReservationRepository:
+    def __init__(self):
+        self.db = get_database()
+        self.collection = self.db["reservations"]
 
-async def get_reservation_by_id(reservation_id:str) -> Reservation | None:
-    return await Reservation.get(PydanticObjectId(reservation_id))
+    # CREATE
+    async def create(self, reservation: Reservation) -> Reservation:
+        data = reservation.dict(by_alias=True)
+        await self.collection.insert_one(data)
+        return reservation
 
-async def get_reservation_by_user_id(user_id:str) -> list[Reservation]:
-    return await Reservation.find(
-        Reservation.user_id == PydanticObjectId(user_id)
-    ).to_list()
+    # GET BY ID
+    async def get_by_id(self, reservation_id: str) -> Optional[Reservation]:
+        doc = await self.collection.find_one({"_id": reservation_id})
+        if doc:
+            return Reservation(**doc)
+        return None
 
-async def get_reservation_by_trip_id(trip_id:str) -> list[Reservation]:
-    return await Reservation.find(
-        Reservation.trip_id == PydanticObjectId(trip_id)
-    ).to_list()
+    # LIST ALL
+    async def list(self) -> List[Reservation]:
+        reservations = []
+        cursor = self.collection.find()
 
-async def update_reservation( reservation: Reservation, data: ReservationUpdate)-> Reservation:
-    update_data = data.model_dump(exclude_unset = True)
+        async for doc in cursor:
+            reservations.append(Reservation(**doc))
 
-    for key,value in update_data.items():
-        setattr(reservation,key,value)
-    
-    return await reservation.save()
+        return reservations
 
-async def delete_reservation(reservation: Reservation) -> None:
-    await reservation.delete()
+    # LIST BY USER
+    async def list_by_user(self, user_id: str) -> List[Reservation]:
+        reservations = []
+        cursor = self.collection.find({"user_id": user_id})
+
+        async for doc in cursor:
+            reservations.append(Reservation(**doc))
+
+        return reservations
+
+    # LIST BY COMMUNITY
+    async def list_by_community(self, community_id: str) -> List[Reservation]:
+        reservations = []
+        cursor = self.collection.find({"community_id": community_id})
+
+        async for doc in cursor:
+            reservations.append(Reservation(**doc))
+
+        return reservations
+
+    # UPDATE STATUS
+    async def update_status(self, reservation_id: str, status: str):
+        await self.collection.update_one(
+            {"_id": reservation_id},
+            {"$set": {"status": status}}
+        )
+
+    # DELETE
+    async def delete(self, reservation_id: str):
+        await self.collection.delete_one({"_id": reservation_id})
