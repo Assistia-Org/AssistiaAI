@@ -1,5 +1,5 @@
 from typing import List, Optional
-from backend.app.models.community import Community, CommunityMember
+from app.models.community import Community, CommunityMember
 
 async def create_community(community_data: dict) -> Community:
     """Create a new community and return the inserted document."""

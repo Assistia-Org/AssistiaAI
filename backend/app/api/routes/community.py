@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, Depends
-from backend.app.schemas.community import CommunityCreate, CommunityUpdate, CommunityResponse
-from backend.app.services.community_service import (
+from app.schemas.community import CommunityCreate, CommunityUpdate, CommunityResponse
+from app.services.community_service import (
     create_community_service,
     delete_community_service,
     get_community_service,

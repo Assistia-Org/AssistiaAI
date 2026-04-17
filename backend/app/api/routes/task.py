@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status
-from backend.app.schemas.task import TaskCreate, TaskOut, TaskUpdate
-from backend.app.services.task_service import (
+from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
+from app.services.task_service import (
     create_task_service,
     delete_task_service,
     get_task_service,
@@ -12,8 +12,8 @@ from backend.app.services.task_service import (
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-@router.post("/", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
-async def create_task(data: TaskCreate) -> TaskOut:
+@router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+async def create_task(data: TaskCreate) -> TaskResponse:
     """
     Görev oluşturma endpoint'i.
     Kullanıcı üzerinde yeni bir yapılacak iş (task) kaydı ekler.
@@ -21,8 +21,8 @@ async def create_task(data: TaskCreate) -> TaskOut:
     return await create_task_service(data)
 
 
-@router.get("/{task_id}", response_model=TaskOut, status_code=status.HTTP_200_OK)
-async def get_task(task_id: str) -> TaskOut:
+@router.get("/{task_id}", response_model=TaskResponse, status_code=status.HTTP_200_OK)
+async def get_task(task_id: str) -> TaskResponse:
     """
     Görev detay getirme endpoint'i.
     Görev durumu (status), önceliği (priority) ve son tarihini (due_date) döner.
@@ -30,8 +30,8 @@ async def get_task(task_id: str) -> TaskOut:
     return await get_task_service(task_id)
 
 
-@router.get("/user/{user_id}", response_model=list[TaskOut], status_code=status.HTTP_200_OK)
-async def list_user_tasks(user_id: str) -> list[TaskOut]:
+@router.get("/user/{user_id}", response_model=list[TaskResponse], status_code=status.HTTP_200_OK)
+async def list_user_tasks(user_id: str) -> list[TaskResponse]:
     """
     Kullanıcıya ait görevleri listeleme endpoint'i.
     İlgili kullanıcının tamamlanmış veya bekleyen tüm işlerini getirir.
@@ -39,8 +39,8 @@ async def list_user_tasks(user_id: str) -> list[TaskOut]:
     return await list_tasks_by_user_service(user_id)
 
 
-@router.get("/", response_model=list[TaskOut], status_code=status.HTTP_200_OK)
-async def list_all_tasks() -> list[TaskOut]:
+@router.get("/", response_model=list[TaskResponse], status_code=status.HTTP_200_OK)
+async def list_all_tasks() -> list[TaskResponse]:
     """
     Sistemdeki tüm görevleri listeleme endpoint'i.
     Genelde admin/raporlama amacıyla kullanılan genelleştirilmiş görevleri getirir.
@@ -48,8 +48,8 @@ async def list_all_tasks() -> list[TaskOut]:
     return await list_all_tasks_service()
 
 
-@router.patch("/{task_id}", response_model=TaskOut, status_code=status.HTTP_200_OK)
-async def update_task(task_id: str, data: TaskUpdate) -> TaskOut:
+@router.patch("/{task_id}", response_model=TaskResponse, status_code=status.HTTP_200_OK)
+async def update_task(task_id: str, data: TaskUpdate) -> TaskResponse:
     """
     Görev güncelleme endpoint'i.
     Görev durumunu tamamlandı (completed) veya iptal olarak değiştirmek için biçilmiş kaftandır.

@@ -1,6 +1,6 @@
 from fastapi import HTTPException
-from backend.app.core.messages.error_message import RESERVATION_NOT_FOUND
-from backend.app.repositories.reservation import (
+from app.core.messages.error_message import RESERVATION_NOT_FOUND
+from app.repositories.reservation import (
     create_reservation,
     get_reservation_by_id,
     get_reservation_by_user_id,
@@ -8,43 +8,43 @@ from backend.app.repositories.reservation import (
     update_reservation,
     delete_reservation,
 )
-from backend.app.schemas.reservation import ReservationCreate, ReservationUpdate, ReservationOut
+from app.schemas.reservation import ReservationCreate, ReservationUpdate, ReservationResponse
 
 
-async def create_reservation_service(data: ReservationCreate) -> ReservationOut:
+async def create_reservation_service(data: ReservationCreate) -> ReservationResponse:
     """Orchestrate reservation creation."""
     reservation = await create_reservation(data.model_dump())
-    return ReservationOut.model_validate(reservation)
+    return ReservationResponse.model_validate(reservation)
 
 
-async def get_reservation_service(reservation_id: str) -> ReservationOut:
+async def get_reservation_service(reservation_id: str) -> ReservationResponse:
     """Orchestrate reservation retrieval."""
     reservation = await get_reservation_by_id(reservation_id)
     if not reservation:
         raise HTTPException(status_code=404, detail=RESERVATION_NOT_FOUND)
-    return ReservationOut.model_validate(reservation)
+    return ReservationResponse.model_validate(reservation)
 
 
-async def list_reservations_by_user_service(user_id: str) -> list[ReservationOut]:
+async def list_reservations_by_user_service(user_id: str) -> list[ReservationResponse]:
     """Orchestrate listing reservations for a user."""
     reservations = await get_reservation_by_user_id(user_id)
-    return [ReservationOut.model_validate(r) for r in reservations]
+    return [ReservationResponse.model_validate(r) for r in reservations]
 
 
-async def list_reservations_by_trip_service(trip_id: str) -> list[ReservationOut]:
+async def list_reservations_by_trip_service(trip_id: str) -> list[ReservationResponse]:
     """Orchestrate listing reservations for a trip."""
     reservations = await get_reservation_by_trip_id(trip_id)
-    return [ReservationOut.model_validate(r) for r in reservations]
+    return [ReservationResponse.model_validate(r) for r in reservations]
 
 
-async def update_reservation_service(reservation_id: str, data: ReservationUpdate) -> ReservationOut:
+async def update_reservation_service(reservation_id: str, data: ReservationUpdate) -> ReservationResponse:
     """Orchestrate reservation update."""
     reservation = await get_reservation_by_id(reservation_id)
     if not reservation:
         raise HTTPException(status_code=404, detail=RESERVATION_NOT_FOUND)
     
     updated_reservation = await update_reservation(reservation, data.model_dump(exclude_unset=True))
-    return ReservationOut.model_validate(updated_reservation)
+    return ReservationResponse.model_validate(updated_reservation)
 
 
 async def delete_reservation_service(reservation_id: str) -> None:
