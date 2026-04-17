@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     # JWT Settings
     SECRET_KEY: str = "your-complex-secret-key-for-development"  # In production, use env
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 1 week
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # 1 week
 
     model_config = SettingsConfigDict(
         env_file=".env", 
