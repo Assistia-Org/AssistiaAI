@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from pydantic import ValidationError
 
@@ -13,15 +13,14 @@ from app.repositories.user import get_user_by_id
 from app.schemas.auth import TokenPayload
 from app.models.user import User
 
-reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/login/swagger"
-)
+security = HTTPBearer()
 
 
 async def get_current_user(
-    token: str = Depends(reusable_oauth2)
+    auth: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
     """Validate and return the current user based on JWT token."""
+    token = auth.credentials
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]

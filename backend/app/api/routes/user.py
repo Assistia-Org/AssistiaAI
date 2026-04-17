@@ -21,7 +21,10 @@ async def get_me(current_user: User = Depends(get_current_user)) -> UserResponse
 
 
 @router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
-async def get_user(user_id: str) -> UserResponse:
+async def get_user(
+    user_id: str, 
+    current_user: User = Depends(get_current_user)
+) -> UserResponse:
     """
     Kullanıcı detay getirme endpoint'i.
     Belirtilen ID'ye sahip kullanıcı bilgilerini döndürür.
@@ -30,7 +33,9 @@ async def get_user(user_id: str) -> UserResponse:
 
 
 @router.get("/", response_model=list[UserResponse], status_code=status.HTTP_200_OK)
-async def list_users() -> list[UserResponse]:
+async def list_users(
+    current_user: User = Depends(get_current_user)
+) -> list[UserResponse]:
     """
     Kullanıcı listeleme endpoint'i.
     Sistemdeki tüm kullanıcıları liste halinde döndürür.
@@ -39,7 +44,11 @@ async def list_users() -> list[UserResponse]:
 
 
 @router.patch("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
-async def update_user(user_id: str, data: UserUpdate) -> UserResponse:
+async def update_user(
+    user_id: str, 
+    data: UserUpdate, 
+    current_user: User = Depends(get_current_user)
+) -> UserResponse:
     """
     Kullanıcı güncelleme endpoint'i.
     Belirtilen kullanıcıya ait bilgileri (şifre, email vb.) günceller.
@@ -48,7 +57,10 @@ async def update_user(user_id: str, data: UserUpdate) -> UserResponse:
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: str) -> None:
+async def delete_user(
+    user_id: str, 
+    current_user: User = Depends(get_current_user)
+) -> None:
     """
     Kullanıcı silme endpoint'i.
     Belirtilen ID'ye sahip kullanıcıyı sistemden siler.
