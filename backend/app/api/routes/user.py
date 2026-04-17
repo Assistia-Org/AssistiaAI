@@ -1,23 +1,23 @@
-from fastapi import APIRouter, status
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from fastapi import APIRouter, status, Depends
+from app.schemas.user import UserResponse, UserUpdate
 from app.services.user_service import (
-    create_user_service,
     delete_user_service,
     get_user_service,
     list_users_service,
     update_user_service,
 )
+from app.api.dependencies.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def create_user(data: UserCreate) -> UserResponse:
+@router.get("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def get_me(current_user: User = Depends(get_current_user)) -> UserResponse:
     """
-    Kullanıcı oluşturma endpoint'i.
-    Gelen verilerle yeni bir kullanıcı hesabı açar.
+    Get current authenticated user profile.
     """
-    return await create_user_service(data)
+    return UserResponse.model_validate(current_user)
 
 
 @router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
