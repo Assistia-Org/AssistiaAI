@@ -1,6 +1,11 @@
-# UseCases (Kullanım Durumları)
-Uygulamanın yapabileceği spesifik bir tekil görevi yerine getiren sınıf veya fonksiyonlardır. Sadece ilgili işlevin iş mantığını barındırır. Presentation (Bloc vb.) katmanı sadece bu UseCase yapılarıyla iletişim kurar.
+# Use Cases (Kullanım Senaryoları / İş Mantığı)
 
-**Örnek Sınıflar:**
-- `login_usecase.dart` -> Sadece giriş yapma görevini yönetir.
-- `get_user_profile_usecase.dart` -> Profil getirmeyi yönetir.
+Bu klasör, uygulamanın özel kullanım senaryolarını (Use Cases) barındırır.
+Use case'ler, domain repositories interfacelerini kullanarak uygulamanın iş mantığını yürütür.
+
+Örnek: `LoginUserUseCase`, `GetProductsUseCase`, `CreateOrderUseCase`.
+
+Kurallar:
+- Her sınıf genellikle tek bir işi (Single Responsibility) yapar (örn: sadece giriş yapma işlemi).
+- Sadece `domain/repositories` içindeki interfacelerle konuşur.
+- UI (Presentation) katmanındaki State Management (Provider, BLoC vs) yapıları doğrudan `UseCases` ile iletişim kurar.

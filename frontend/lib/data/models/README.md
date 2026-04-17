@@ -1,5 +1,11 @@
-# Models (Veri Modelleri / DTO)
-Domain katmanındaki Entities nesnelerinden türetilip (extends/implements) onlara yardımcı olan, API veya lokal DB'den gelen ham verileri (Örn: JSON) Dart objesine çeviren/ayrıştıran yapıdır.
+# Models (Veri Modelleri)
 
-**Örnek Sınıflar:**
-- `user_model.dart` (İçerisinde `fromJson` ve `toJson` metodlarını barındırır)
+Bu klasör, dış kaynaklardan (API, Veritabanı vb.) gelen ham verilerin Dart nesnelerine dönüştürüleceği sınıfları barındırır.
+Domain katmanındaki `Entities` sınıflarından farklı olarak, serialization (serileştirme - ek: JSON to Object) mantığı BURADA yer alır.
+
+Örnek: `UserModel`, `ProductModel`.
+
+Kurallar:
+- Genellikle Domain katmanındaki `Entities` (Örn: `User`) sınıflarını `extends` eder (genişletir).
+- `fromJson`, `toJson` gibi veriyi dönüştüren metodlar buradadır.
+- (Opsiyonel) 'json_serializable' ve 'freezed' gibi paketler kullanıldığında generate edilen dökümanlar burada olabilir.

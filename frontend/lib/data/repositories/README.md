@@ -1,5 +1,11 @@
-# Repositories (İmplementasyonlar)
-Domain katmanındaki Repository (Sözleşme) bildiriminin asıl kod ile doldurulduğu yerdir. DataSources vasıtasıyla gelen veriyi alır, onu Models'dan Entities objelerine dönüştürerek işler.
+# Repositories (Somut Veri Erişim Katmanı)
 
-**Örnek Sınıflar:**
-- `auth_repository_impl.dart` (Domain'deki `AuthRepository` interface'ini uygular)
+Bu klasör, **Domain** katmanında (domain/repositories) tanımlanan arayüzlerin (interface) gerçek implementasyonlarını barındırır.
+Görevi, `Data Sources` (Veri kaynakları -> Local/Remote) klasöründeki sınıfları koordine ederek veriyi hazırlamak ve ihtiyaç anında Local veya Remote kaynaktan hangisine gidileceğine karar vermektir (Örn: Caching mantığı).
+
+Örnek: `UserRepositoryImpl` extends/implements `UserRepository` (domain'den).
+
+Kurallar:
+- Domain katmanındaki interfacelere STRICTLY (kesin) bağımlıdır.
+- Data kaynaklarındaki (`datasources`) DTO/Modelleri, Domain'in anladığı `Entities` nesnelerine dönüştürüp üst katmana (Use Cases vs) öyle yollar.
+- Hata yönetimi (Exceptions to Failures mapping) burada yapılır.

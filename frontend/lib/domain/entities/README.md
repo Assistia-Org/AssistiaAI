@@ -1,11 +1,10 @@
 # Entities (Varlıklar)
-Uygulamanın en temel, başka hiçbir kütüphaneye (Flutter vs.) bağımlı olmayan nesneleridir. Sadece dart sınıflarını (class) içerir, JSON çevirme kodları barındırmazlar.
 
-**Örnek Sınıflar:**
-```dart
-class User {
-  final String id;
-  final String name;
-  User({required this.id, required this.name});
-}
-```
+Bu klasör, uygulamanın temel iş nesnelerini (Business Objects/Entities) barındırır.
+Entities, uygulamanın temel data yapılarıdır ve genellikle frameworks, veritabanları veya UI bağımlılığı içermeyen saf Dart sınıflarıdır.
+
+Örnek: `User`, `Product`, `Order` gibi.
+
+Kurallar:
+- JSON serileştirme (@JsonSerializable vb.) kodları İÇERMEMELİDİR. Bunlar Data layer'ındaki Model'lerde olur.
+- Sadece iş mantığını temsil eden alanlar ve metodlar içerir.
