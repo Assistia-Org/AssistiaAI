@@ -1,5 +1,5 @@
 from typing import List, Optional
-from backend.app.models.user import User, CommunityRoleModel, PersonalSettingsModel
+from app.models.user import User, CommunityRoleModel, PersonalSettingsModel
 
 async def create_user(user_data: dict) -> User:
     """Create a new user and return the inserted document."""

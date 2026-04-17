@@ -1,13 +1,13 @@
 from fastapi import HTTPException
-from backend.app.core.messages.error_message import COMMUNITY_NOT_FOUND, COMMUNITY_ALREADY_EXISTS
-from backend.app.repositories.community import (
+from app.core.messages.error_message import COMMUNITY_NOT_FOUND, COMMUNITY_ALREADY_EXISTS
+from app.repositories.community import (
     create_community,
     get_community_by_id,
     list_communities,
     update_community,
     delete_community,
 )
-from backend.app.schemas.community import CommunityCreate, CommunityUpdate, CommunityResponse
+from app.schemas.community import CommunityCreate, CommunityUpdate, CommunityResponse
 
 
 async def create_community_service(data: CommunityCreate) -> CommunityResponse:

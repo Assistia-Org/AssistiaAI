@@ -1,5 +1,5 @@
 from typing import List, Optional
-from backend.app.models.reservation import Reservation
+from app.models.reservation import Reservation
 
 async def create_reservation(reservation_data: dict) -> Reservation:
     """Create a new reservation and return the inserted document."""
