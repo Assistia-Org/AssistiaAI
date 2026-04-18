@@ -90,19 +90,32 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
   }
 
   void _register() async {
-    ref.read(authLoadingProvider.notifier).setLoading(true);
-    // Simulate network request
-    await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      ref.read(authLoadingProvider.notifier).setLoading(false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration Successful!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
+    try {
+      await ref.read(authControllerProvider).register(
+        _nameController.text,
+        _emailController.text,
+        _passwordController.text,
       );
-      _navigateToLogin();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration Successful!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _navigateToLogin();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration Failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
