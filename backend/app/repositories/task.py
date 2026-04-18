@@ -77,3 +77,15 @@ async def delete_task(task: Task) -> bool:
     """Delete a task document."""
     await task.delete()
     return True
+
+async def get_my_tasks(user_id: str, status: TaskStatus | None = None) -> list[Task]:
+        try:
+            obj_id = PydanticObjectId(user_id)
+        except Exception:
+            return []
+
+        query = {"user_id": obj_id, "is_deleted": False}
+        if status:
+            query["status"] = status
+
+        return await Task.find(query).to_list()
