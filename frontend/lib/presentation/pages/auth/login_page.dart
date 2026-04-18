@@ -57,18 +57,30 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   void _login() async {
     if (_formKey.currentState!.validate()) {
-      ref.read(authLoadingProvider.notifier).setLoading(true);
-      // Simulate network request
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        ref.read(authLoadingProvider.notifier).setLoading(false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login Successful!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
+      try {
+        await ref.read(authControllerProvider).login(
+          _emailController.text,
+          _passwordController.text,
         );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Login Successful!'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Login Failed: ${e.toString()}'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }

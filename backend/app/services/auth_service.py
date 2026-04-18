@@ -25,7 +25,7 @@ async def register_user_service(data: UserCreate) -> UserResponse:
             detail=DUPLICATE_EMAIL
         )
     
-    user_data = data.model_dump()
+    user_data = data.model_dump(exclude_none=True)
     # Replace plain password with hashed version
     user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
     
