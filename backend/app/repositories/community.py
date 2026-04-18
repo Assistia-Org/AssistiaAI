@@ -43,3 +43,14 @@ async def delete_community(community: Community) -> bool:
     """Delete a community document."""
     await community.delete()
     return True
+
+async def get_my_communities(user_id: str) -> list[Community]:
+        try:
+            obj_id = PydanticObjectId(user_id)
+        except Exception:
+            return []
+
+        return await Community.find(
+            Community.user_id == obj_id,
+            Community.is_deleted == False
+        ).to_list()
