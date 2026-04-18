@@ -60,3 +60,15 @@ class ReservationRepository:
     # DELETE
     async def delete(self, reservation_id: str):
         await self.collection.delete_one({"_id": reservation_id})
+
+    async def get_my_reservations(user_id: str, res_type: str | None = None) -> list[Reservation]:
+        try:
+            obj_id = PydanticObjectId(user_id)
+        except Exception:
+            return []
+
+        query = {"user_id": obj_id, "is_deleted": False}
+        if res_type:
+            query["type"] = res_type
+
+        return await Reservation.find(query).sort(-Reservation.start_time).to_list()

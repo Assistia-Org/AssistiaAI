@@ -121,3 +121,15 @@ class TaskRepository:
     async def delete(self, task_id: str) -> bool:
         result = await self.collection.delete_one({"_id": task_id})
         return result.deleted_count > 0
+    
+    async def get_my_tasks(user_id: str, status: TaskStatus | None = None) -> list[Task]:
+        try:
+            obj_id = PydanticObjectId(user_id)
+        except Exception:
+            return []
+
+        query = {"user_id": obj_id, "is_deleted": False}
+        if status:
+            query["status"] = status
+
+        return await Task.find(query).to_list()

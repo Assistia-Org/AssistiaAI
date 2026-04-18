@@ -47,3 +47,14 @@ class CommunityRepository:
     # DELETE
     async def delete(self, community_id: str):
         await self.collection.delete_one({"_id": community_id})
+
+    async def get_my_communities(user_id: str) -> list[Community]:
+        try:
+            obj_id = PydanticObjectId(user_id)
+        except Exception:
+            return []
+
+        return await Community.find(
+            Community.user_id == obj_id,
+            Community.is_deleted == False
+        ).to_list()
