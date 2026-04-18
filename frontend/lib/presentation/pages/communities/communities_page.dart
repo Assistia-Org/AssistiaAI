@@ -16,7 +16,7 @@ class CommunitiesPage extends StatelessWidget {
             left: 0,
             right: 0,
             height: 400,
-            child: Container(color: const Color(0xFF141414)),
+            child: Container(color: const Color(0xFF1B232A)),
           ),
           // Scrollable Content
           SingleChildScrollView(
@@ -84,7 +84,7 @@ class CommunitiesPage extends StatelessWidget {
     return Container(
       // Ultra-compact top/bottom padding
       padding: const EdgeInsets.only(top: 40, left: 25, right: 25, bottom: 50),
-      color: const Color(0xFF141414),
+      color: const Color(0xFF1B232A),
       child: Row(
         children: [
           // Horizontal Search Bar

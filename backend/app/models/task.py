@@ -11,6 +11,8 @@ class Task(BaseDocument):
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     priority: str = "medium"
     status: str = "pending"
     tags: List[str] = Field(default_factory=list)

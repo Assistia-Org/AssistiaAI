@@ -13,6 +13,7 @@ class _ProgramPageState extends State<ProgramPage> {
   late DateTime _firstDayOfCurrentWeek;
   String _monthYearText = "";
   final PageController _pageController = PageController(initialPage: 500); // Large number for "infinite" scroll
+  String? _expandedId; // ID of the currently expanded event card
 
   @override
   void initState() {
@@ -38,6 +39,12 @@ class _ProgramPageState extends State<ProgramPage> {
     });
   }
 
+  void _toggleExpand(String id) {
+    setState(() {
+      _expandedId = (_expandedId == id ? null : id);
+    });
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -56,7 +63,7 @@ class _ProgramPageState extends State<ProgramPage> {
             left: 0,
             right: 0,
             height: 200,
-            child: Container(color: const Color(0xFF141414)),
+            child: Container(color: const Color(0xFF1B232A)),
           ),
           // Scrollable Content
           SingleChildScrollView(
@@ -85,32 +92,40 @@ class _ProgramPageState extends State<ProgramPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Title and Action Buttons Row (Fitted to avoid overflow)
                         Padding(
-                          padding: const EdgeInsets.only(left: 30, top: 20 ,bottom: 20),
-                          child: Text(
-                            "Günlük Program",
-                            style: GoogleFonts.inter(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
+                          padding: const EdgeInsets.only(left: 20, top: 20, right: 15, bottom: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Günlük Program",
+                                style: GoogleFonts.inter(
+                                  fontSize: 20, // Reduced from 22
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              // Single "Etkinlik Ekle" Button with Popup Menu
+                              PopupMenuButton<String>(
+                                offset: const Offset(0, 45),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                color: const Color(0xFF1B232A),
+                                onSelected: (value) {
+                                  // Action logic will go here
+                                },
+                                itemBuilder: (context) => [
+                                  _buildPopupMenuItem("Rezerve", Icons.add_location_alt_rounded),
+                                  _buildPopupMenuItem("Görev", Icons.add_task_rounded),
+                                  _buildPopupMenuItem("Toplantı", Icons.video_camera_front_rounded),
+                                ],
+                                child: _buildAddEventButton(),
+                              ),
+                            ],
                           ),
                         ),
                         const Divider(height: 1),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                          itemCount: 6,
-                          itemBuilder: (context, index) {
-                            return _buildTimelineItem(
-                              '${08 + index}:00',
-                              'Görev Başlığı ${index + 1}',
-                              'Bu görev için açıklama metni buraya gelecek.',
-                              index % 3 == 0 ? Colors.blueAccent : index % 3 == 1 ? Colors.orange : Colors.green,
-                            );
-                          },
-                        ),
+                        _buildChronologicalTimeline(),
                         const SizedBox(height: 50),
                       ],
                     ),
@@ -129,7 +144,7 @@ class _ProgramPageState extends State<ProgramPage> {
       // Further reduced top/bottom padding
       padding: const EdgeInsets.only(top: 30, bottom: 45),
       width: double.infinity,
-      color: const Color(0xFF141414),
+      color: const Color(0xFF1B232A),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -222,6 +237,813 @@ class _ProgramPageState extends State<ProgramPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAddEventButton() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B232A),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.add_rounded, color: Colors.cyanAccent, size: 20),
+          const SizedBox(width: 6),
+          Text(
+            "Etkinlik Ekle",
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildPopupMenuItem(String title, IconData icon) {
+    return PopupMenuItem<String>(
+      value: title,
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.cyanAccent, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Multi-day Dummy Data Library
+  final Map<String, dynamic> _dummyPrograms = {
+    '2026-04-18': {
+      'tarih': '2026-04-18',
+      'kullanici_id': 'user_123',
+      'ozet': {'task_sayisi': 3, 'etkinlik_sayisi': 2},
+      'items': {
+        'tasks': [
+          {
+            'id': 'task_1',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Görev',
+            'title': 'Akşam Hazırlığı',
+            'description': 'Eşyaların düzenlenmesi ve valiz hazırlığı',
+            'start_date': '16:00',
+            'end_date': '17:00',
+            'priority': 'medium',
+            'status': 'pending',
+            'tags': ['hazırlık', 'seyahat']
+          },
+          {
+            'id': 'task_2',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Toplantı',
+            'title': 'Gece Senkronu',
+            'description': 'Otel Lobby / Google Meet üzerinden katılım',
+            'start_date': '21:30',
+            'end_date': '22:15',
+            'priority': 'high',
+            'status': 'pending',
+            'tags': ['iş', 'senkronize']
+          },
+          {
+            'id': 'task_3',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Görev',
+            'title': 'Rapor İnceleme',
+            'description': 'Günün son kontrolleri ve rapor onayı',
+            'start_date': '22:45',
+            'end_date': '23:30',
+            'priority': 'low',
+            'status': 'pending',
+            'tags': ['rapor', 'kontrol']
+          },
+        ],
+        'etkinlikler': [
+          {
+            'id': 'res_1',
+            'user_id': 'user_123',
+            'community_id': 'comm_1',
+            'category': 'Uçuş',
+            'type': 'Uçuş',
+            'title': 'IST - AYT Uçuşu',
+            'details': {'gate': 'A12', 'seat': '14B'},
+            'is_shared': false,
+            'start_date': '09:00',
+            'end_date': '11:00',
+            'status': 'confirmed'
+          },
+          {
+            'id': 'res_2',
+            'user_id': 'user_123',
+            'community_id': 'comm_1',
+            'category': 'Otel',
+            'type': 'Otel',
+            'title': 'Sea View Resort',
+            'details': {'room': '404', 'board': 'All Inclusive'},
+            'is_shared': false,
+            'start_date': '21:00',
+            'end_date': '00:00',
+            'status': 'checked-in'
+          },
+        ]
+      }
+    },
+    '2026-04-19': {
+      'tarih': '2026-04-19',
+      'kullanici_id': 'user_123',
+      'ozet': {'task_sayisi': 2, 'etkinlik_sayisi': 1},
+      'items': {
+        'tasks': [
+          {
+            'id': 'task_sun_1',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Görev',
+            'title': 'Pazar Kahvaltısı',
+            'description': 'Sahil restoranında açık büfe brunch seansı',
+            'start_date': '10:00',
+            'end_date': '12:00',
+            'priority': 'low',
+            'status': 'pending',
+            'tags': ['keyif', 'brunch']
+          },
+          {
+            'id': 'task_sun_2',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Görev',
+            'title': 'Sahil Yürüyüşü',
+            'description': 'Lara sahil bandında akşamüstü yürüyüşü',
+            'start_date': '17:00',
+            'end_date': '18:30',
+            'priority': 'low',
+            'status': 'pending',
+            'tags': ['sağlık', 'huzur']
+          },
+        ],
+        'etkinlikler': [
+          {
+            'id': 'res_sun_1',
+            'user_id': 'user_123',
+            'community_id': 'comm_1',
+            'category': 'Uçuş',
+            'type': 'Uçuş',
+            'title': 'AYT - IST Uçuşu',
+            'details': {'gate': 'C04', 'seat': '02A (Business)'},
+            'is_shared': false,
+            'start_date': '21:00',
+            'end_date': '23:00',
+            'status': 'scheduled'
+          },
+        ]
+      }
+    }
+  };
+
+  // Default Icon & Color Mappings based on Type
+  IconData _getEventIcon(String type) {
+    switch (type) {
+      case 'Uçuş': return Icons.flight_takeoff_rounded;
+      case 'Otel': return Icons.hotel_rounded;
+      case 'Toplantı': return Icons.video_camera_front_rounded;
+      case 'Görev': return Icons.task_alt_rounded;
+      default: return Icons.event_note_rounded;
+    }
+  }
+
+  Color _getEventColor(String type) {
+    switch (type) {
+      case 'Uçuş': return const Color(0xFF0EA5E9); // Vivid Sky Blue
+      case 'Otel': return const Color(0xFF1E293B); // Premium Slate Navy
+      case 'Toplantı': return const Color(0xFF8B5CF6); // Modern Violet
+      case 'Görev': return const Color(0xFF10B981); // Emerald Green
+      default: return const Color(0xFF64748B); // Cool Slate Gray
+    }
+  }
+
+  Widget _buildChronologicalTimeline() {
+    // 1. Fetch the program for the selected date from our multi-day library
+    final String selectedDateStr = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+    final Map<String, dynamic>? currentProgram = _dummyPrograms[selectedDateStr];
+
+    if (currentProgram == null) {
+      return _buildEmptyState();
+    }
+
+    // 2. Process and merge tasks and reservations from the fetched program
+    final List<Map<String, dynamic>> allReservations = (currentProgram['items']['etkinlikler'] as List)
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    final List<Map<String, dynamic>> allTasks = (currentProgram['items']['tasks'] as List)
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    
+    // Sort reservations by start time
+    allReservations.sort((a, b) => a['start_date'].compareTo(b['start_date']));
+    
+    // Identify which tasks are sub-tasks of which reservations
+    List<Map<String, dynamic>> rootItems = [];
+    Set<int> assignedTaskIndices = {};
+
+    for (var res in allReservations) {
+      List<Map<String, dynamic>> subTasks = [];
+      for (int i = 0; i < allTasks.length; i++) {
+        var task = allTasks[i];
+        
+        // Robust time comparison
+        String tStart = task['start_date'];
+        String rStart = res['start_date'];
+        String rEnd = res['end_date'] == '00:00' ? '24:00' : res['end_date']; // Midnight fix
+
+        if (tStart.compareTo(rStart) >= 0 && tStart.compareTo(rEnd) <= 0) {
+          subTasks.add(task);
+          assignedTaskIndices.add(i);
+        }
+      }
+      res['subTasks'] = subTasks;
+      rootItems.add(res);
+    }
+
+    // Add remaining tasks that are NOT sub-tasks as root items
+    for (int i = 0; i < allTasks.length; i++) {
+      if (!assignedTaskIndices.contains(i)) {
+        rootItems.add({...allTasks[i], 'subTasks': []});
+      }
+    }
+
+    // Final sort of all root blocks
+    rootItems.sort((a, b) => a['start_date'].compareTo(b['start_date']));
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      itemCount: rootItems.length,
+      itemBuilder: (context, index) {
+        return _buildTimelineBlock(rootItems[index]);
+      },
+    );
+  }
+
+  Widget _buildTimelineBlock(Map<String, dynamic> event) {
+    bool hasSubTasks = event['subTasks'] != null && (event['subTasks'] as List).isNotEmpty;
+    List subTasks = event['subTasks'] ?? [];
+    
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Unified Left Rail
+          SizedBox(
+            width: 55,
+            child: Column(
+              children: [
+                Text(
+                  event['start_date'],
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      color: _getEventColor(event['type']),
+                      borderRadius: BorderRadius.circular(2),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          _getEventColor(event['type']),
+                          _getEventColor(event['type']).withValues(alpha: 0.3)
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  event['end_date'],
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                const SizedBox(height: 20), // Bottom margin
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Content Column
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const NeverScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildEventCard(
+                    event: event,
+                    isMain: true,
+                  ),
+                  if (hasSubTasks)
+                    ...subTasks.map((sub) => Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: _buildSubTaskRow(sub, _getEventColor(event['type'])),
+                    )),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B232A).withValues(alpha: 0.05),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.calendar_today_outlined,
+              size: 48,
+              color: const Color(0xFF1B232A).withValues(alpha: 0.3),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            "Henüz Bir Plan Yok",
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF1B232A),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Seçtiğiniz tarih için planlanmış bir etkinlik veya görev bulunamadı.",
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: Colors.grey[600],
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () {
+              // Action to add event
+            },
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text("Plan Ekle"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B232A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubTaskRow(Map<String, dynamic> sub, Color parentColor) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sub-task Time and Indented Line
+          Container(
+            width: 50,
+            margin: const EdgeInsets.only(top: 10),
+            child: Column(
+              children: [
+                Text(
+                  sub['start_date'],
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: _getEventColor(sub['type']),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: Container(
+                    width: 1.5,
+                    decoration: BoxDecoration(
+                      color: _getEventColor(sub['type']).withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Sub-task Card
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: _buildEventCard(
+                event: sub,
+                isMain: false,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventCard({
+    required Map<String, dynamic> event,
+    bool isMain = true,
+  }) {
+    final String id = event['id'] ?? "";
+    final String type = event['type'];
+    final String title = event['title'];
+    final String subtitle = event['description'] ?? (event['details'] != null ? "${event['category']} - ${event['status']}" : "");
+    final Color color = _getEventColor(type);
+    final IconData icon = _getEventIcon(type);
+    final bool isExpanded = _expandedId == id;
+
+    return GestureDetector(
+      onTap: () => _toggleExpand(id),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: isExpanded ? color.withValues(alpha: 0.5) : (isMain ? Colors.black.withValues(alpha: 0.05) : color.withValues(alpha: 0.15)),
+            width: isExpanded ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isExpanded ? color.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.02),
+              blurRadius: isExpanded ? 15 : 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isMain ? type.toUpperCase() : "SÜREÇ DAHİLİNDE",
+                            style: GoogleFonts.inter(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                          Icon(
+                            isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                            size: 14,
+                            color: Colors.grey[400],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                      if (!isExpanded)
+                        Text(
+                          subtitle,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            color: Colors.grey[500],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // Expanded Content
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: isExpanded
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(height: 1),
+                        ),
+                        if (event['description'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              event['description'],
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: Colors.black87,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        if (event['details'] != null)
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              children: (event['details'] as Map<String, dynamic>).entries.map((entry) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        entry.key.toUpperCase(),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: color.withValues(alpha: 0.7),
+                                        ),
+                                      ),
+                                      Text(
+                                        entry.value.toString(),
+                                        style: GoogleFonts.inter(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        if (event['tags'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: (event['tags'] as List).map((tag) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    "#$tag",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        if (event['priority'] != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: Row(
+                              children: [
+                                Icon(Icons.flag_rounded, size: 12, color: color),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "${event['priority'].toString().toUpperCase()} PRIORITELI",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: color,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+  Widget _buildEnhancedTimelineItem({
+    required String type,
+    required String startTime,
+    required String endTime,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required IconData icon,
+    bool isChild = false,
+    bool hasSubTasks = false,
+    Color? parentColor,
+  }) {
+    double calculateHeight(String start, String end) {
+      try {
+        var s = start.split(':');
+        var e = end.split(':');
+        double diff = (int.parse(e[0]) + int.parse(e[1])/60.0) - 
+                      (int.parse(s[0]) + int.parse(s[1])/60.0);
+        if (diff < 0) diff += 24; // Handle midnight overlap
+        return diff * 60 + 20;
+      } catch (_) {
+        return 80;
+      }
+    }
+
+    double lineHeight = calculateHeight(startTime, endTime);
+
+    return Padding(
+      padding: EdgeInsets.only(left: isChild ? 45 : 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Time Column
+          SizedBox(
+            width: 55,
+            child: Column(
+              children: [
+                Text(
+                  startTime,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Indicator Line
+                Container(
+                  width: 3,
+                  height: hasSubTasks ? 120 : (isChild ? 40 : 45),
+                  decoration: BoxDecoration(
+                    color: isChild ? parentColor?.withValues(alpha: 0.5) : color,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  endTime,
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Content Card
+          Expanded(
+            child: Container(
+              margin: EdgeInsets.only(bottom: hasSubTasks ? 10 : 20),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: isChild ? color.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.05),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(icon, color: color, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isChild)
+                          Text(
+                            "SÜREÇ DAHİLİNDE",
+                            style: GoogleFonts.inter(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        Text(
+                          title,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          subtitle,
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            color: Colors.grey[500],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

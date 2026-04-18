@@ -16,7 +16,7 @@ class ProfilePage extends StatelessWidget {
             left: 0,
             right: 0,
             height: 200,
-            child: Container(color: const Color(0xFF141414)),
+            child: Container(color: const Color(0xFF1B232A)),
           ),
           // Scrollable Content
           SingleChildScrollView(
@@ -84,7 +84,7 @@ class ProfilePage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(top: 50, bottom: 40),
       width: double.infinity,
-      color: const Color(0xFF141414),
+      color: const Color(0xFF1B232A),
       child: Center(
         child: Text(
           'Profil',
@@ -215,10 +215,10 @@ class ProfilePage extends StatelessWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: (color ?? const Color(0xFF141414)).withValues(alpha: 0.05),
+            color: (color ?? const Color(0xFF1B232A)).withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: color ?? const Color(0xFF141414), size: 22),
+          child: Icon(icon, color: color ?? const Color(0xFF1B232A), size: 22),
         ),
         title: Text(
           title,

@@ -7,7 +7,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FA), // Professional light background to make cards pop
       body: Stack(
         children: [
           // Top Background Filler (Dark)
@@ -16,7 +16,7 @@ class HomePage extends StatelessWidget {
             left: 0,
             right: 0,
             height: 400,
-            child: Container(color: const Color(0xFF141414)),
+            child: Container(color: const Color(0xFF1B232A)),
           ),
           // Scrollable Content
           SingleChildScrollView(
@@ -33,7 +33,7 @@ class HomePage extends StatelessWidget {
                   child: Container(
                     width: double.infinity,
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: Color(0xFFF8F9FA), // Changed from white to match scaffold for card contrast
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(40),
                         topRight: Radius.circular(40),
@@ -52,16 +52,44 @@ class HomePage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 25),
-                        Text(
-                          "Günün Özetleri",
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                        // Daily Summaries Card (Beautified with premium look)
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: [
+                              // Layered shadows for a more realistic float effect
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 40,
+                                offset: const Offset(0, 15),
+                              ),
+                              BoxShadow(
+                                color: const Color(0xFF1B232A).withValues(alpha: 0.02),
+                                blurRadius: 10,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Günün Özetleri",
+                                style: GoogleFonts.inter(
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.5,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              const SizedBox(height: 25),
+                              _buildDailySummaries(),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 15),
-                        _buildDailySummaries(),
                         
                         const SizedBox(height: 35),
                         _buildSectionHeader("Rezervasyonlarım"),
@@ -111,7 +139,7 @@ class HomePage extends StatelessWidget {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.only(top: 40, left: 20, right: 20, bottom: 50),
-      color: const Color(0xFF141414),
+      color: const Color(0xFF1B232A),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -141,11 +169,7 @@ class HomePage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(20),
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
+                borderRadius: BorderRadius.circular(20), // Fully rounded like the image
               ),
               child: Text(
                 'Bu bir örnek yapay zeka mesajı örneğidir',
@@ -185,42 +209,56 @@ class HomePage extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Container(
-          width: 55,
-          height: 55,
+          width: 60,
+          height: 60,
           decoration: BoxDecoration(
-            color: isLast ? Colors.transparent : const Color(0xFFE8F3F3),
-            borderRadius: BorderRadius.circular(15),
+            gradient: isLast ? null : LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isGray 
+                ? [Colors.grey[50]!, Colors.grey[100]!]
+                : [const Color(0xFFE0F2F1), const Color(0xFFB2DFDB).withValues(alpha: 0.5)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: isLast ? null : Border.all(color: Colors.white, width: 1.5), // Glassy edge
+            boxShadow: isLast ? null : [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Icon(
             data['icon'],
-            color: isLast ? Colors.grey[300] : const Color(0xFF4A9090),
-            size: 26,
+            color: isLast ? Colors.grey[300] : (isGray ? Colors.black87 : const Color(0xFF4A9090)),
+            size: 24,
           ),
         ),
         if (!isLast && !isGray)
           Positioned(
-            top: -2,
-            right: -2,
+            top: -4,
+            right: -4,
             child: Container(
-              padding: const EdgeInsets.all(2),
+              padding: const EdgeInsets.all(3),
               decoration: const BoxDecoration(
                 color: Color(0xFF4A9090),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check, size: 12, color: Colors.white),
+              child: const Icon(Icons.check, size: 10, color: Colors.white),
             ),
           ),
         if (isGray)
           Positioned(
-            top: -2,
-            right: -2,
+            top: -4,
+            right: -4,
             child: Container(
-              padding: const EdgeInsets.all(2),
+              padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: Colors.grey[400],
+                color: Colors.grey[500],
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check, size: 12, color: Colors.white),
+              child: const Icon(Icons.check, size: 10, color: Colors.white),
             ),
           ),
       ],
@@ -334,10 +372,12 @@ class HomePage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.12), width: 1.2), // Even sharper border
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 15,
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 20,
+            spreadRadius: 1,
             offset: const Offset(0, 10),
           ),
         ],

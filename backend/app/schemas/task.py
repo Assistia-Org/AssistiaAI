@@ -10,6 +10,8 @@ class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     priority: str = "medium"
     status: str = "pending"
     tags: List[str] = []
@@ -22,6 +24,8 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     due_date: Optional[datetime] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
     priority: Optional[str] = None
     status: Optional[str] = None
     tags: Optional[List[str]] = None
