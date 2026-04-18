@@ -44,3 +44,18 @@ async def delete_daily_program(program: DailyProgram) -> None:
     Delete a DailyProgram document.
     """
     await program.delete()
+
+async def get_my_daily_programs(
+    user_id: str,
+    search_date: Optional[date] = None
+) -> List[DailyProgram]:
+    """
+    Get the user's daily programs for a specific date.
+    If no date is provided, today's date is used.
+    """
+    target_date = search_date or date.today()
+
+    return await DailyProgram.find(
+        DailyProgram.kullanici_id == user_id,
+        DailyProgram.tarih == target_date
+    ).to_list()

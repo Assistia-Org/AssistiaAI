@@ -47,3 +47,15 @@ async def delete_reservation(reservation: Reservation) -> bool:
     """Delete a reservation document."""
     await reservation.delete()
     return True
+
+async def get_my_reservations(user_id: str, res_type: str | None = None) -> list[Reservation]:
+        try:
+            obj_id = PydanticObjectId(user_id)
+        except Exception:
+            return []
+
+        query = {"user_id": obj_id, "is_deleted": False}
+        if res_type:
+            query["type"] = res_type
+
+        return await Reservation.find(query).sort(-Reservation.start_time).to_list()
