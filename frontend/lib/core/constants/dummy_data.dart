@@ -1,0 +1,237 @@
+import 'package:flutter/material.dart';
+
+class DummyData {
+  static const String today = '2026-04-18';
+  static const String mockNow = '16:30'; // Simulated current time
+  
+  static final Map<String, dynamic> programs = {
+    '2026-04-18': {
+      'tarih': '2026-04-18',
+      'kullanici_id': 'user_123',
+      'ozet': {'task_sayisi': 3, 'etkinlik_sayisi': 2},
+      'items': {
+        'tasks': [
+          {
+            'id': 'task_1',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Görev',
+            'title': 'Akşam Hazırlığı',
+            'description': 'Eşyaların düzenlenmesi ve valiz hazırlığı',
+            'start_date': '16:00',
+            'end_date': '17:00',
+            'priority': 'medium',
+            'status': 'pending', // Testing "In-Progress" logic
+            'tags': ['hazırlık', 'seyahat']
+          },
+          {
+            'id': 'task_2',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Toplantı',
+            'title': 'Gece Senkronu',
+            'description': 'Otel Lobby / Google Meet üzerinden katılım',
+            'start_date': '21:30',
+            'end_date': '22:15',
+            'priority': 'high',
+            'status': 'pending', 
+            'tags': ['iş', 'senkronize']
+          },
+          {
+            'id': 'task_3',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Görev',
+            'title': 'Rapor İnceleme',
+            'description': 'Günün son kontrolleri ve rapor onayı',
+            'start_date': '22:45',
+            'end_date': '23:30',
+            'priority': 'low',
+            'status': 'pending',
+            'tags': ['rapor', 'kontrol']
+          },
+        ],
+        'etkinlikler': [
+          {
+            'id': 'res_1',
+            'user_id': 'user_123',
+            'community_id': 'comm_1',
+            'category': 'Uçuş',
+            'type': 'Uçuş',
+            'title': 'IST - AYT Uçuşu',
+            'details': {'gate': 'A12', 'seat': '14B'},
+            'is_shared': false,
+            'start_date': '09:00',
+            'end_date': '11:00',
+            'status': 'confirmed' 
+          },
+          {
+            'id': 'res_2',
+            'user_id': 'user_123',
+            'community_id': 'comm_1',
+            'category': 'Otel',
+            'type': 'Otel',
+            'title': 'Sea View Resort',
+            'details': {'room': '404', 'board': 'All Inclusive'},
+            'is_shared': false,
+            'start_date': '21:00',
+            'end_date': '00:00',
+            'status': 'confirmed'
+          },
+        ]
+      }
+    },
+    '2026-04-19': {
+      'tarih': '2026-04-19',
+      'kullanici_id': 'user_123',
+      'ozet': {'task_sayisi': 2, 'etkinlik_sayisi': 1},
+      'items': {
+        'tasks': [
+          {
+            'id': 'task_sun_1',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Görev',
+            'title': 'Pazar Kahvaltısı',
+            'description': 'Sahil restoranında açık büfe brunch seansı',
+            'start_date': '10:00',
+            'end_date': '12:00',
+            'priority': 'low',
+            'status': 'pending', 
+            'tags': ['keyif', 'brunch']
+          },
+          {
+            'id': 'task_sun_2',
+            'creator_id': 'user_123',
+            'assigned_to': ['user_123'],
+            'community_id': 'comm_1',
+            'type': 'Görev',
+            'title': 'Sahil Yürüyüşü',
+            'description': 'Lara sahil bandında akşamüstü yürüyüşü',
+            'start_date': '17:00',
+            'end_date': '18:30',
+            'priority': 'low',
+            'status': 'pending',
+            'tags': ['sağlık', 'huzur']
+          },
+        ],
+        'etkinlikler': [
+          {
+            'id': 'res_sun_1',
+            'user_id': 'user_123',
+            'community_id': 'comm_1',
+            'category': 'Uçuş',
+            'type': 'Uçuş',
+            'title': 'AYT - IST Uçuşu',
+            'details': {'gate': 'C04', 'seat': '02A (Business)'},
+            'is_shared': false,
+            'start_date': '21:00',
+            'end_date': '23:00',
+            'status': 'scheduled'
+          },
+        ]
+      }
+    }
+  };
+
+  // Communities (Aligned with Backend Schema)
+  static const List<Map<String, dynamic>> communities = [
+    {
+      'id': 'comm_1',
+      'name': 'Çetin Ailesi',
+      'type': 'Aile',
+      'owner_id': 'user_1',
+      'members': [
+        {'user_id': 'user_1', 'role': 'Kurucu', 'avatar': 'https://i.pravatar.cc/100?u=1'},
+        {'user_id': 'user_2', 'role': 'Yönetici', 'avatar': 'https://i.pravatar.cc/100?u=2'},
+        {'user_id': 'user_3', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=3'},
+        {'user_id': 'user_4', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=4'},
+        {'user_id': 'user_5', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=5'},
+      ],
+    },
+    {
+      'id': 'comm_2',
+      'name': 'Tech Innovators',
+      'type': 'Teknoloji',
+      'owner_id': 'user_2',
+      'members': [
+        {'user_id': 'user_2', 'role': 'Kurucu', 'avatar': 'https://i.pravatar.cc/100?u=2'},
+        {'user_id': 'user_1', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=1'},
+        {'user_id': 'user_6', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=6'},
+      ],
+    },
+    {
+      'id': 'comm_3',
+      'name': 'Global Travel Hub',
+      'type': 'Seyahat',
+      'owner_id': 'user_3',
+      'members': [
+        {'user_id': 'user_3', 'role': 'Kurucu', 'avatar': 'https://i.pravatar.cc/100?u=3'},
+        {'user_id': 'user_7', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=7'},
+        {'user_id': 'user_8', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=8'},
+        {'user_id': 'user_9', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=9'},
+      ],
+    },
+  ];
+
+  static String getCalculatedStatus(Map<String, dynamic> item) {
+    if (item['status'] == 'completed') return 'TAMAMLANDI';
+    
+    try {
+      final String start = item['start_date'] ?? '';
+      final String end = item['end_date'] ?? '';
+      
+      if (start.isEmpty || end.isEmpty) return 'BEKLİYOR';
+
+      int timeToMinutes(String time) {
+        final parts = time.split(':');
+        int h = int.parse(parts[0]);
+        int m = int.parse(parts[1]);
+        return h * 60 + m;
+      }
+
+      final int startMin = timeToMinutes(start);
+      int endMin = timeToMinutes(end);
+      final int nowMin = timeToMinutes(mockNow);
+
+      // Handle midnight wrap (e.g., 21:00 to 00:00)
+      if (endMin <= startMin) {
+        endMin += 1440; // Add 24 hours in minutes
+      }
+
+      if (nowMin >= startMin && nowMin < endMin) {
+        return 'İŞLEMDE';
+      } else if (nowMin < startMin) {
+        return 'BEKLİYOR';
+      } else if (nowMin >= endMin) {
+        return 'GEÇTİ';
+      }
+    } catch (_) {}
+
+    return 'BEKLİYOR';
+  }
+
+  static Color getEventColor(String type) {
+    switch (type) {
+      case 'Uçuş': return const Color(0xFF0EA5E9);
+      case 'Otel': return const Color(0xFF1E293B);
+      case 'Toplantı': return const Color(0xFF8B5CF6);
+      case 'Görev': return const Color(0xFF10B981);
+      default: return const Color(0xFF64748B);
+    }
+  }
+
+  static IconData getEventIcon(String type) {
+    switch (type) {
+      case 'Uçuş': return Icons.flight_takeoff_rounded;
+      case 'Otel': return Icons.hotel_rounded;
+      case 'Toplantı': return Icons.video_camera_front_rounded;
+      case 'Görev': return Icons.task_alt_rounded;
+      default: return Icons.event_note_rounded;
+    }
+  }
+}
