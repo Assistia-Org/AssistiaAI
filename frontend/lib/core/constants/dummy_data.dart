@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class DummyData {
   static const String today = '2026-04-18';
+  static const String mockNow = '16:30'; // Simulated current time
   
   static final Map<String, dynamic> programs = {
     '2026-04-18': {
@@ -21,7 +22,7 @@ class DummyData {
             'start_date': '16:00',
             'end_date': '17:00',
             'priority': 'medium',
-            'status': 'completed',
+            'status': 'pending', // Testing "In-Progress" logic
             'tags': ['hazırlık', 'seyahat']
           },
           {
@@ -35,7 +36,7 @@ class DummyData {
             'start_date': '21:30',
             'end_date': '22:15',
             'priority': 'high',
-            'status': 'completed',
+            'status': 'pending', 
             'tags': ['iş', 'senkronize']
           },
           {
@@ -49,7 +50,7 @@ class DummyData {
             'start_date': '22:45',
             'end_date': '23:30',
             'priority': 'low',
-            'status': 'completed',
+            'status': 'pending',
             'tags': ['rapor', 'kontrol']
           },
         ],
@@ -65,7 +66,7 @@ class DummyData {
             'is_shared': false,
             'start_date': '09:00',
             'end_date': '11:00',
-            'status': 'confirmed' // Not completed
+            'status': 'confirmed' 
           },
           {
             'id': 'res_2',
@@ -78,7 +79,7 @@ class DummyData {
             'is_shared': false,
             'start_date': '21:00',
             'end_date': '00:00',
-            'status': 'checked-in'
+            'status': 'confirmed'
           },
         ]
       }
@@ -176,6 +177,43 @@ class DummyData {
       ],
     },
   ];
+
+  static String getCalculatedStatus(Map<String, dynamic> item) {
+    if (item['status'] == 'completed') return 'TAMAMLANDI';
+    
+    try {
+      final String start = item['start_date'] ?? '';
+      final String end = item['end_date'] ?? '';
+      
+      if (start.isEmpty || end.isEmpty) return 'BEKLİYOR';
+
+      int timeToMinutes(String time) {
+        final parts = time.split(':');
+        int h = int.parse(parts[0]);
+        int m = int.parse(parts[1]);
+        return h * 60 + m;
+      }
+
+      final int startMin = timeToMinutes(start);
+      int endMin = timeToMinutes(end);
+      final int nowMin = timeToMinutes(mockNow);
+
+      // Handle midnight wrap (e.g., 21:00 to 00:00)
+      if (endMin <= startMin) {
+        endMin += 1440; // Add 24 hours in minutes
+      }
+
+      if (nowMin >= startMin && nowMin < endMin) {
+        return 'İŞLEMDE';
+      } else if (nowMin < startMin) {
+        return 'BEKLİYOR';
+      } else if (nowMin >= endMin) {
+        return 'GEÇTİ';
+      }
+    } catch (_) {}
+
+    return 'BEKLİYOR';
+  }
 
   static Color getEventColor(String type) {
     switch (type) {
