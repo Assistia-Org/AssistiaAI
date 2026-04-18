@@ -137,6 +137,46 @@ class DummyData {
     }
   };
 
+  // Communities (Aligned with Backend Schema)
+  static const List<Map<String, dynamic>> communities = [
+    {
+      'id': 'comm_1',
+      'name': 'Çetin Ailesi',
+      'type': 'Aile',
+      'owner_id': 'user_1',
+      'members': [
+        {'user_id': 'user_1', 'role': 'Kurucu', 'avatar': 'https://i.pravatar.cc/100?u=1'},
+        {'user_id': 'user_2', 'role': 'Yönetici', 'avatar': 'https://i.pravatar.cc/100?u=2'},
+        {'user_id': 'user_3', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=3'},
+        {'user_id': 'user_4', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=4'},
+        {'user_id': 'user_5', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=5'},
+      ],
+    },
+    {
+      'id': 'comm_2',
+      'name': 'Tech Innovators',
+      'type': 'Teknoloji',
+      'owner_id': 'user_2',
+      'members': [
+        {'user_id': 'user_2', 'role': 'Kurucu', 'avatar': 'https://i.pravatar.cc/100?u=2'},
+        {'user_id': 'user_1', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=1'},
+        {'user_id': 'user_6', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=6'},
+      ],
+    },
+    {
+      'id': 'comm_3',
+      'name': 'Global Travel Hub',
+      'type': 'Seyahat',
+      'owner_id': 'user_3',
+      'members': [
+        {'user_id': 'user_3', 'role': 'Kurucu', 'avatar': 'https://i.pravatar.cc/100?u=3'},
+        {'user_id': 'user_7', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=7'},
+        {'user_id': 'user_8', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=8'},
+        {'user_id': 'user_9', 'role': 'Üye', 'avatar': 'https://i.pravatar.cc/100?u=9'},
+      ],
+    },
+  ];
+
   static Color getEventColor(String type) {
     switch (type) {
       case 'Uçuş': return const Color(0xFF0EA5E9);
