@@ -8,6 +8,7 @@ class Task(BaseDocument):
     creator_id: str
     assigned_to: List[str] = Field(default_factory=list)
     community_id: Optional[str] = None
+    type: str = "Görev"
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None

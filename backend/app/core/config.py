@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     MONGO_ROOT_USER: str
     MONGO_ROOT_PASSWORD: str
+    OPENROUTER_API_KEY: str = ""
 
     # JWT Settings
     SECRET_KEY: str = "your-complex-secret-key-for-development"  # In production, use env

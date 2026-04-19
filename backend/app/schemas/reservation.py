@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from app.schemas.base import BaseSchema
 
 class ReservationBase(BaseModel):
-    user_id: str
-    community_id: str
+    user_id: Optional[str] = None
+    community_id: Optional[str] = None
     category: str
     title: str
     details: Dict[str, Any]
