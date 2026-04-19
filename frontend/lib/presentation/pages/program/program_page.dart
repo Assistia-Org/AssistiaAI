@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/dummy_data.dart';
+import 'package:intl/intl.dart';
+import '../../../core/utils/event_mapper.dart';
+import '../../../data/models/daily_program_model.dart';
+import '../../../data/models/reservation_model.dart';
+import '../../../data/models/task_model.dart';
+import '../../providers/daily_program_provider.dart';
+import 'add_manual_task_page.dart';
+import 'add_flight_reservation_page.dart';
+import 'add_bus_reservation_page.dart';
+import 'add_manual_hotel_page.dart';
 
-class ProgramPage extends StatefulWidget {
+class ProgramPage extends ConsumerStatefulWidget {
   const ProgramPage({super.key});
 
   @override
-  State<ProgramPage> createState() => _ProgramPageState();
+  ConsumerState<ProgramPage> createState() => _ProgramPageState();
 }
 
-class _ProgramPageState extends State<ProgramPage> {
+class _ProgramPageState extends ConsumerState<ProgramPage> {
   late DateTime _selectedDate;
   late DateTime _firstDayOfCurrentWeek;
-  String _monthYearText = "";
-  final PageController _pageController = PageController(initialPage: 500); // Large number for "infinite" scroll
-  String? _expandedId; // ID of the currently expanded event card
+  String _monthYearText = '';
+  final PageController _pageController = PageController(initialPage: 500);
+  String? _expandedId;
 
   @override
   void initState() {
@@ -24,110 +34,132 @@ class _ProgramPageState extends State<ProgramPage> {
     _updateMonthYearText(_firstDayOfCurrentWeek);
   }
 
-  DateTime _getStartOfWeek(DateTime date) {
-    // Week starts on Monday (1) to Sunday (7)
-    int daysToSubtract = date.weekday - 1;
-    return DateTime(date.year, date.month, date.day).subtract(Duration(days: daysToSubtract));
-  }
-
-  void _updateMonthYearText(DateTime date) {
-    final months = [
-      '01', '02', '03', '04', '05', '06', 
-      '07', '08', '09', '10', '11', '12'
-    ];
-    setState(() {
-      _monthYearText = "${months[date.month - 1]} / ${date.year}";
-    });
-  }
-
-  void _toggleExpand(String id) {
-    setState(() {
-      _expandedId = (_expandedId == id ? null : id);
-    });
-  }
-
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
   }
 
+  DateTime _getStartOfWeek(DateTime date) {
+    final int daysToSubtract = date.weekday - 1;
+    return DateTime(date.year, date.month, date.day)
+        .subtract(Duration(days: daysToSubtract));
+  }
+
+  void _updateMonthYearText(DateTime date) {
+    setState(() {
+      _monthYearText = DateFormat('MM / yyyy').format(date);
+    });
+  }
+
+  void _toggleExpand(String id) {
+    setState(() {
+      _expandedId = (_expandedId == id) ? null : id;
+    });
+  }
+
+  String _formatTime(DateTime? dt) {
+    if (dt == null) return '';
+    return DateFormat('HH:mm').format(dt);
+  }
+
+  DateTime? _parseTimeFromDetails(Map<String, dynamic> details, bool isEnd) {
+    final key = isEnd ? 'arrival_time' : 'departure_time';
+    final raw = details[key]?.toString();
+    if (raw == null || !raw.contains(':')) return null;
+    try {
+      final parts = raw.split(':');
+      return DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  DateTime _effectiveTime(dynamic data, bool isTask, {bool isEnd = false}) {
+    DateTime? dt;
+    if (isTask) {
+      final task = data as TaskModel;
+      dt = isEnd ? task.endDate : task.startDate;
+    } else {
+      final res = data as ReservationModel;
+      dt = isEnd ? res.endDate : res.startDate;
+      if (dt == null) {
+        dt = _parseTimeFromDetails(res.details, isEnd);
+      }
+    }
+
+    if (dt == null) {
+      return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    }
+
+    final startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1)); // Next day 00:00
+
+    if (dt.isBefore(startOfDay)) {
+      return startOfDay;
+    }
+    if (dt.isAfter(endOfDay)) {
+      return endOfDay;
+    }
+
+    return dt;
+  }
+
+  // ─── BUILD ────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final programAsync = ref.watch(dailyProgramByDateProvider(dateStr));
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // Top Background Filler (Dark)
+          // Dark top area
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: 200,
+            height: 210,
             child: Container(color: const Color(0xFF1B232A)),
           ),
-          // Scrollable Content
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            clipBehavior: Clip.none,
+          SafeArea(
             child: Column(
               children: [
-                // Header with Dynamic Month/Year and Weekly PageView
-                _buildHeaderWithWeeklyDates(),
-
-                // White Body Section with Overlap
-                Transform.translate(
-                  offset: const Offset(0, -30),
+                _buildHeader(),
+                Expanded(
                   child: Container(
-                    width: double.infinity,
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height - 0,
-                    ),
                     decoration: const BoxDecoration(
-                      color: Colors.white,
+                      color: Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(40),
-                        topRight: Radius.circular(40),
+                        topLeft: Radius.circular(32),
+                        topRight: Radius.circular(32),
                       ),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title and Action Buttons Row (Fitted to avoid overflow)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 20, top: 20, right: 15, bottom: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Günlük Program",
-                                style: GoogleFonts.inter(
-                                  fontSize: 20, // Reduced from 22
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
+                        _buildTitleBar(),
+                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                        Expanded(
+                          child: programAsync.when(
+                            data: (program) =>
+                                _buildTimeline(program),
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF0EA5E9),
+                                strokeWidth: 2,
                               ),
-                              // Single "Etkinlik Ekle" Button with Popup Menu
-                              PopupMenuButton<String>(
-                                offset: const Offset(0, 45),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                                color: const Color(0xFF1B232A),
-                                onSelected: (value) {
-                                  // Action logic will go here
-                                },
-                                itemBuilder: (context) => [
-                                  _buildPopupMenuItem("Rezerve", Icons.add_location_alt_rounded),
-                                  _buildPopupMenuItem("Görev", Icons.add_task_rounded),
-                                  _buildPopupMenuItem("Toplantı", Icons.video_camera_front_rounded),
-                                ],
-                                child: _buildAddEventButton(),
-                              ),
-                            ],
+                            ),
+                            error: (_, __) => _buildEmptyState(),
                           ),
                         ),
-                        const Divider(height: 1),
-                        _buildChronologicalTimeline(),
-                        const SizedBox(height: 50),
                       ],
                     ),
                   ),
@@ -140,54 +172,50 @@ class _ProgramPageState extends State<ProgramPage> {
     );
   }
 
-  Widget _buildHeaderWithWeeklyDates() {
-    return Container(
-      // Further reduced top/bottom padding
-      padding: const EdgeInsets.only(top: 30, bottom: 45),
-      width: double.infinity,
-      color: const Color(0xFF1B232A),
+  // ─── HEADER ────────────────────────────────────────────────────────────────
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Month / Year Display (Top Right)
           Padding(
-            padding: const EdgeInsets.only(right: 30, bottom: 5),
+            padding: const EdgeInsets.only(right: 24, bottom: 10),
             child: Text(
               _monthYearText,
               style: GoogleFonts.inter(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Colors.white70,
-                letterSpacing: 1.2,
+                letterSpacing: 1.0,
               ),
             ),
           ),
-          // Weekly Date selection PageView
           SizedBox(
-            height: 55, // Further reduced to 55 for micro compact look
+            height: 60,
             child: PageView.builder(
               controller: _pageController,
               onPageChanged: (index) {
-                // Calculate month for the first day of the new week
-                int weekOffset = index - 500;
-                DateTime weekStart = _firstDayOfCurrentWeek.add(Duration(days: weekOffset * 7));
+                final offset = index - 500;
+                final weekStart = _firstDayOfCurrentWeek
+                    .add(Duration(days: offset * 7));
                 _updateMonthYearText(weekStart);
               },
-              itemBuilder: (context, weekIndex) {
-                int weekOffset = weekIndex - 500;
-                DateTime weekStart = _firstDayOfCurrentWeek.add(Duration(days: weekOffset * 7));
-                
+              itemBuilder: (_, weekIndex) {
+                final offset = weekIndex - 500;
+                final weekStart = _firstDayOfCurrentWeek
+                    .add(Duration(days: offset * 7));
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(7, (dayIndex) {
-                      DateTime date = weekStart.add(Duration(days: dayIndex));
-                      bool isSelected = date.day == _selectedDate.day && 
-                                      date.month == _selectedDate.month && 
-                                      date.year == _selectedDate.year;
-                      
-                      return _buildDateCard(date, isSelected);
+                    children: List.generate(7, (i) {
+                      final date = weekStart.add(Duration(days: i));
+                      final isSelected = date.year == _selectedDate.year &&
+                          date.month == _selectedDate.month &&
+                          date.day == _selectedDate.day;
+                      return _buildDayChip(date, isSelected);
                     }),
                   ),
                 );
@@ -199,39 +227,41 @@ class _ProgramPageState extends State<ProgramPage> {
     );
   }
 
-  Widget _buildDateCard(DateTime date, bool isSelected) {
-    const dayLabels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-    String dayLabel = dayLabels[date.weekday - 1];
-
+  Widget _buildDayChip(DateTime date, bool isSelected) {
+    const labels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedDate = date;
-        });
-        _updateMonthYearText(date); // Update header when a specific day is clicked
+        setState(() => _selectedDate = date);
+        _updateMonthYearText(date);
       },
-      child: Container(
-        width: 48, // Slightly tighter to fit 7 days comfortably
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 44,
         decoration: BoxDecoration(
-          color: isSelected ? Colors.cyanAccent : Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(15),
+          color: isSelected
+              ? Colors.cyanAccent
+              : Colors.white.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              dayLabel,
+              labels[date.weekday - 1],
               style: GoogleFonts.inter(
-                fontSize: 10, // Smaller day label
-                color: isSelected ? Colors.black87 : Colors.white60,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 10,
+                color:
+                    isSelected ? Colors.black87 : Colors.white60,
+                fontWeight: isSelected
+                    ? FontWeight.bold
+                    : FontWeight.normal,
               ),
             ),
-            const SizedBox(height: 2), // Tighter spacing
+            const SizedBox(height: 2),
             Text(
               '${date.day}',
               style: GoogleFonts.inter(
-                fontSize: 14, // Micro font for date number
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: isSelected ? Colors.black : Colors.white,
               ),
@@ -242,195 +272,53 @@ class _ProgramPageState extends State<ProgramPage> {
     );
   }
 
-  Widget _buildAddEventButton() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B232A),
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+  // ─── TITLE BAR ─────────────────────────────────────────────────────────────
+
+  Widget _buildTitleBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Icon(Icons.add_rounded, color: Colors.cyanAccent, size: 20),
-          const SizedBox(width: 6),
           Text(
-            "Etkinlik Ekle",
+            'Günlük Program',
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: const Color(0xFF0F172A),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _buildPopupMenuItem(String title, IconData icon) {
-    return PopupMenuItem<String>(
-      value: title,
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.cyanAccent, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _getEventColor(String type) => DummyData.getEventColor(type);
-  IconData _getEventIcon(String type) => DummyData.getEventIcon(type);
-
-  Widget _buildChronologicalTimeline() {
-    // 1. Fetch the program for the selected date from our shared library
-    final String selectedDateStr = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
-    final Map<String, dynamic>? currentProgram = DummyData.programs[selectedDateStr];
-
-    if (currentProgram == null) {
-      return _buildEmptyState();
-    }
-
-    // 2. Process and merge tasks and reservations from the fetched program
-    final List<Map<String, dynamic>> allReservations = (currentProgram['items']['etkinlikler'] as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
-    final List<Map<String, dynamic>> allTasks = (currentProgram['items']['tasks'] as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
-    
-    // Sort reservations by start time
-    allReservations.sort((a, b) => a['start_date'].compareTo(b['start_date']));
-    
-    // Identify which tasks are sub-tasks of which reservations
-    List<Map<String, dynamic>> rootItems = [];
-    Set<int> assignedTaskIndices = {};
-
-    for (var res in allReservations) {
-      List<Map<String, dynamic>> subTasks = [];
-      for (int i = 0; i < allTasks.length; i++) {
-        var task = allTasks[i];
-        
-        // Robust time comparison
-        String tStart = task['start_date'];
-        String rStart = res['start_date'];
-        String rEnd = res['end_date'] == '00:00' ? '24:00' : res['end_date']; // Midnight fix
-
-        if (tStart.compareTo(rStart) >= 0 && tStart.compareTo(rEnd) <= 0) {
-          subTasks.add(task);
-          assignedTaskIndices.add(i);
-        }
-      }
-      res['subTasks'] = subTasks;
-      rootItems.add(res);
-    }
-
-    // Add remaining tasks that are NOT sub-tasks as root items
-    for (int i = 0; i < allTasks.length; i++) {
-      if (!assignedTaskIndices.contains(i)) {
-        rootItems.add({...allTasks[i], 'subTasks': []});
-      }
-    }
-
-    // Final sort of all root blocks
-    rootItems.sort((a, b) => a['start_date'].compareTo(b['start_date']));
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      itemCount: rootItems.length,
-      itemBuilder: (context, index) {
-        return _buildTimelineBlock(rootItems[index]);
-      },
-    );
-  }
-
-  Widget _buildTimelineBlock(Map<String, dynamic> event) {
-    bool hasSubTasks = event['subTasks'] != null && (event['subTasks'] as List).isNotEmpty;
-    List subTasks = event['subTasks'] ?? [];
-    
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Unified Left Rail
-          SizedBox(
-            width: 55,
-            child: Column(
-              children: [
-                Text(
-                  event['start_date'],
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Expanded(
-                  child: Container(
-                    width: 3,
-                    decoration: BoxDecoration(
-                      color: _getEventColor(event['type']),
-                      borderRadius: BorderRadius.circular(2),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          _getEventColor(event['type']),
-                          _getEventColor(event['type']).withValues(alpha: 0.3)
-                        ],
-                      ),
+          PopupMenuButton<String>(
+            offset: const Offset(0, 48),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            color: const Color(0xFF1B232A),
+            onSelected: _onMenuSelected,
+            itemBuilder: (_) => [
+              _menuItem('Rezerve', Icons.add_location_alt_rounded),
+              _menuItem('Görev', Icons.add_task_rounded),
+            ],
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B232A),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add_rounded,
+                      color: Colors.cyanAccent, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Ekle',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  event['end_date'],
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[500],
-                  ),
-                ),
-                const SizedBox(height: 20), // Bottom margin
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Content Column
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const NeverScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildEventCard(
-                    event: event,
-                    isMain: true,
-                  ),
-                  if (hasSubTasks)
-                    ...subTasks.map((sub) => Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: _buildSubTaskRow(sub, _getEventColor(event['type'])),
-                    )),
-                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -440,104 +328,215 @@ class _ProgramPageState extends State<ProgramPage> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 80, horizontal: 40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  PopupMenuItem<String> _menuItem(String label, IconData icon) {
+    return PopupMenuItem<String>(
+      value: label,
+      child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B232A).withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.calendar_today_outlined,
-              size: 48,
-              color: const Color(0xFF1B232A).withValues(alpha: 0.3),
-            ),
-          ),
-          const SizedBox(height: 24),
+          Icon(icon, color: Colors.cyanAccent, size: 18),
+          const SizedBox(width: 12),
           Text(
-            "Henüz Bir Plan Yok",
+            label,
             style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF1B232A),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Seçtiğiniz tarih için planlanmış bir etkinlik veya görev bulunamadı.",
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: Colors.grey[600],
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () {
-              // Action to add event
-            },
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text("Plan Ekle"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B232A),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-            ),
+                color: Colors.white, fontSize: 14),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSubTaskRow(Map<String, dynamic> sub, Color parentColor) {
+  void _onMenuSelected(String value) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    if (value == 'Rezerve') {
+      _showReservationPicker();
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => AddManualTaskPage(initialDate: _selectedDate)),
+      ).then((_) {
+        // Re-fetch the program for the selected date after returning
+        ref.invalidate(dailyProgramByDateProvider(dateStr));
+      });
+    }
+  }
+
+  // ─── TIMELINE ──────────────────────────────────────────────────────────────
+
+  Widget _buildTimeline(DailyProgramModel program) {
+    // Flatten all items with timing metadata
+    final List<Map<String, dynamic>> allItems = [];
+
+    for (final res in program.items.etkinlikler) {
+      DateTime start = _effectiveTime(res, false);
+      DateTime end = _effectiveTime(res, false, isEnd: true);
+      if (!end.isAfter(start)) end = start.add(const Duration(hours: 1));
+      allItems.add({
+        'data': res,
+        'isTask': false,
+        'start': start,
+        'end': end,
+      });
+    }
+
+    for (final task in program.items.tasks) {
+      DateTime start = _effectiveTime(task, true);
+      DateTime end = _effectiveTime(task, true, isEnd: true);
+      if (!end.isAfter(start)) end = start.add(const Duration(hours: 1));
+      allItems.add({
+        'data': task,
+        'isTask': true,
+        'start': start,
+        'end': end,
+      });
+    }
+
+    // Sort: by start time ASC, then by duration DESC (longer = parent)
+    allItems.sort((a, b) {
+      final cmp = (a['start'] as DateTime)
+          .compareTo(b['start'] as DateTime);
+      if (cmp != 0) return cmp;
+      final aDur = (a['end'] as DateTime)
+          .difference(a['start'] as DateTime);
+      final bDur = (b['end'] as DateTime)
+          .difference(b['start'] as DateTime);
+      return bDur.compareTo(aDur); // longer first
+    });
+
+    // Greedy grouping
+    final List<Map<String, dynamic>> roots = [];
+    final Set<int> claimed = {};
+
+    for (int i = 0; i < allItems.length; i++) {
+      if (claimed.contains(i)) continue;
+      final parent = allItems[i];
+      final pEnd = parent['end'] as DateTime;
+      final pStart = parent['start'] as DateTime;
+      final List<Map<String, dynamic>> children = [];
+
+      for (int j = i + 1; j < allItems.length; j++) {
+        if (claimed.contains(j)) continue;
+        final child = allItems[j];
+        final cStart = child['start'] as DateTime;
+        // Child overlaps parent window
+        if (cStart.isAfter(
+                pStart.subtract(const Duration(seconds: 1))) &&
+            cStart.isBefore(pEnd)) {
+          children.add(child);
+          claimed.add(j);
+        }
+      }
+
+      roots.add({
+        'data': parent['data'],
+        'isTask': parent['isTask'],
+        'start': pStart,
+        'end': pEnd,
+        'children': children,
+      });
+      claimed.add(i);
+    }
+
+    if (roots.isEmpty) return _buildEmptyState();
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+      itemCount: roots.length,
+      itemBuilder: (_, i) => _buildBlock(roots[i]),
+    );
+  }
+
+  // ─── TIMELINE BLOCK ────────────────────────────────────────────────────────
+
+  Widget _buildBlock(Map<String, dynamic> root) {
+    final bool isTask = root['isTask'] as bool;
+    final dynamic data = root['data'];
+    final List<Map<String, dynamic>> children =
+        root['children'] as List<Map<String, dynamic>>;
+
+    final String type =
+        isTask ? (data as TaskModel).type : (data as ReservationModel).category;
+    final Color color = EventMapper.getColor(type);
+    final String startTime = _formatTime(root['start'] as DateTime?);
+    final String endTime = _formatTime(root['end'] as DateTime?);
+    final bool hasChildren = children.isNotEmpty;
+
     return IntrinsicHeight(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Sub-task Time and Indented Line
-          Container(
-            width: 50,
-            margin: const EdgeInsets.only(top: 10),
+          // ── Left Rail ──
+          SizedBox(
+            width: 68,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                const SizedBox(height: 14),
                 Text(
-                  sub['start_date'],
+                  startTime,
                   style: GoogleFonts.inter(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: _getEventColor(sub['type']),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF0F172A),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Expanded(
-                  child: Container(
-                    width: 1.5,
-                    decoration: BoxDecoration(
-                      color: _getEventColor(sub['type']).withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(1),
+                  child: Center(
+                    child: Container(
+                      width: 3,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            color,
+                            color.withOpacity(hasChildren ? 1.0 : 0.15),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  endTime,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+                const SizedBox(height: 14),
               ],
             ),
           ),
-          // Sub-task Card
+          const SizedBox(width: 10),
+          // ── Cards ──
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: _buildEventCard(
-                event: sub,
-                isMain: false,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                _buildEventCard(
+                  data: data,
+                  isTask: isTask,
+                  isSub: false,
+                ),
+                if (hasChildren)
+                  ...children.map((child) {
+                    final bool childIsTask = child['isTask'] as bool;
+                    final dynamic childData = child['data'];
+                    final String childStart =
+                        _formatTime(child['start'] as DateTime?);
+                    final String childEnd =
+                        _formatTime(child['end'] as DateTime?);
+                    return _buildChildRow(
+                        childData, childIsTask, childStart, childEnd, color);
+                  }),
+                const SizedBox(height: 8),
+              ],
             ),
           ),
         ],
@@ -545,287 +544,44 @@ class _ProgramPageState extends State<ProgramPage> {
     );
   }
 
-  Widget _buildEventCard({
-    required Map<String, dynamic> event,
-    bool isMain = true,
-  }) {
-    final String id = event['id'] ?? "";
-    final String type = event['type'];
-    final String title = event['title'];
-    final String subtitle = event['description'] ?? (event['details'] != null ? "${event['category']} - ${event['status']}" : "");
-    final Color color = _getEventColor(type);
-    final IconData icon = _getEventIcon(type);
-    final bool isExpanded = _expandedId == id;
-
-    return GestureDetector(
-      onTap: () => _toggleExpand(id),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: isExpanded ? color.withValues(alpha: 0.5) : (isMain ? Colors.black.withValues(alpha: 0.05) : color.withValues(alpha: 0.15)),
-            width: isExpanded ? 2 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isExpanded ? color.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.02),
-              blurRadius: isExpanded ? 15 : 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            isMain ? type.toUpperCase() : "SÜREÇ DAHİLİNDE",
-                            style: GoogleFonts.inter(
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                          Icon(
-                            isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                            size: 14,
-                            color: Colors.grey[400],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        title,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                        ),
-                      ),
-                      if (!isExpanded)
-                        Text(
-                          subtitle,
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            color: Colors.grey[500],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            // Expanded Content
-            AnimatedSize(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              child: isExpanded
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Divider(height: 1),
-                        ),
-                        if (event['description'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              event['description'],
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: Colors.black87,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        if (event['details'] != null)
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              children: (event['details'] as Map<String, dynamic>).entries.map((entry) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 2),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        entry.key.toUpperCase(),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: color.withValues(alpha: 0.7),
-                                        ),
-                                      ),
-                                      Text(
-                                        entry.value.toString(),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        if (event['tags'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: (event['tags'] as List).map((tag) {
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    "#$tag",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 9,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        if (event['end_date'] != null && !isMain)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              children: [
-                                Icon(Icons.access_time_filled_rounded, size: 12, color: color),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "BİTİŞ: ${event['end_date']}",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: color,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        if (event['priority'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 10),
-                            child: Row(
-                              children: [
-                                Icon(Icons.flag_rounded, size: 12, color: color),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "${event['priority'].toString().toUpperCase()} PRIORITELI",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: color,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-  Widget _buildEnhancedTimelineItem({
-    required String type,
-    required String startTime,
-    required String endTime,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required IconData icon,
-    bool isChild = false,
-    bool hasSubTasks = false,
-    Color? parentColor,
-  }) {
-    double calculateHeight(String start, String end) {
-      try {
-        var s = start.split(':');
-        var e = end.split(':');
-        double diff = (int.parse(e[0]) + int.parse(e[1])/60.0) - 
-                      (int.parse(s[0]) + int.parse(s[1])/60.0);
-        if (diff < 0) diff += 24; // Handle midnight overlap
-        return diff * 60 + 20;
-      } catch (_) {
-        return 80;
-      }
-    }
-
-    double lineHeight = calculateHeight(startTime, endTime);
-
-    return Padding(
-      padding: EdgeInsets.only(left: isChild ? 45 : 0),
+  Widget _buildChildRow(
+    dynamic data,
+    bool isTask,
+    String startTime,
+    String endTime,
+    Color parentLineColor,
+  ) {
+    return IntrinsicHeight(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Time Column
+          // Sub-rail
           SizedBox(
-            width: 55,
+            width: 58,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                const SizedBox(height: 12),
                 Text(
                   startTime,
                   style: GoogleFonts.inter(
                     fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontWeight: FontWeight.w700,
+                    color: EventMapper.getColor(isTask
+                        ? (data as TaskModel).type
+                        : (data as ReservationModel).category),
                   ),
                 ),
                 const SizedBox(height: 4),
-                // Indicator Line
-                Container(
-                  width: 3,
-                  height: hasSubTasks ? 120 : (isChild ? 40 : 45),
-                  decoration: BoxDecoration(
-                    color: isChild ? parentColor?.withValues(alpha: 0.5) : color,
-                    borderRadius: BorderRadius.circular(2),
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      width: 2,
+                      decoration: BoxDecoration(
+                        color: parentLineColor.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -834,78 +590,21 @@ class _ProgramPageState extends State<ProgramPage> {
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[500],
+                    color: const Color(0xFF94A3B8),
                   ),
                 ),
+                const SizedBox(height: 12),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          // Content Card
           Expanded(
-            child: Container(
-              margin: EdgeInsets.only(bottom: hasSubTasks ? 10 : 20),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: isChild ? color.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.05),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, color: color, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (isChild)
-                          Text(
-                            "SÜREÇ DAHİLİNDE",
-                            style: GoogleFonts.inter(
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              color: color,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        Text(
-                          title,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          subtitle,
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            color: Colors.grey[500],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 4),
+              child: _buildEventCard(
+                data: data,
+                isTask: isTask,
+                isSub: true,
               ),
             ),
           ),
@@ -914,67 +613,896 @@ class _ProgramPageState extends State<ProgramPage> {
     );
   }
 
-  Widget _buildTimelineItem(String time, String title, String subtitle, Color color) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 45,
-          child: Column(
-            children: [
-              Text(
-                time,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[600],
+  // ─── EVENT CARD ────────────────────────────────────────────────────────────
+
+  Widget _buildEventCard({
+    required dynamic data,
+    required bool isTask,
+    required bool isSub,
+  }) {
+    // Resolve fields
+    final String id =
+        isTask ? (data as TaskModel).id : (data as ReservationModel).id;
+    final String type =
+        isTask ? (data as TaskModel).type : (data as ReservationModel).category;
+    final String title =
+        isTask ? (data as TaskModel).title : (data as ReservationModel).title;
+    final String subtitle = isTask
+        ? ((data as TaskModel).description ?? '')
+        : '${(data as ReservationModel).category} - ${(data as ReservationModel).status}';
+
+    final Color color = EventMapper.getColor(type);
+    final IconData icon = EventMapper.getIcon(type);
+    final String label =
+        isSub ? 'SÜREÇ DAHİLİNDE' : EventMapper.getLabel(type);
+    final bool isExpanded = _expandedId == id;
+
+    return GestureDetector(
+      onTap: () => _toggleExpand(id),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isExpanded
+                ? color.withOpacity(0.25)
+                : const Color(0xFFE2E8F0),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Icon Container
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(width: 14),
+                // Text area
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: color,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: color, // colored title like photo
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF94A3B8),
+                          fontWeight: FontWeight.w400,
+                        ),
+                        maxLines: isExpanded ? null : 1,
+                        overflow: isExpanded
+                            ? TextOverflow.visible
+                            : TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: const Color(0xFFCBD5E1),
+                ),
+              ],
+            ),
+            // Expanded detail section
+            if (isExpanded) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: Color(0xFFF1F5F9)),
+              const SizedBox(height: 12),
+              if (isTask) ...[
+                if ((data as TaskModel).description != null &&
+                    data.description!.isNotEmpty)
+                  _detailRow('AÇIKLAMA', data.description!, color),
+                _detailRow('TİP', data.type, color),
+                _detailRow('ÖNCELİK', data.priority, color),
+                _detailRow('DURUM', data.status, color),
+              ] else ...[
+                _detailRow(
+                    'KATEGORİ', (data as ReservationModel).category, color),
+                _detailRow('DURUM', data.status, color),
+                if (data.details['pnr'] != null)
+                  _detailRow('PNR', data.details['pnr'].toString(), color),
+              ],
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: GestureDetector(
+                  onTap: () => _showDetailSheet(
+                    context: context,
+                    data: data,
+                    isTask: isTask,
+                    color: color,
+                    icon: icon,
+                    title: title,
+                    label: label,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: color.withOpacity(0.2), width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Detaylar',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded,
+                            size: 14, color: color),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color.withOpacity(0.6),
+              letterSpacing: 0.8,
+            ),
+          ),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF334155),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── DETAIL BOTTOM SHEET ────────────────────────────────────────────────────
+
+  void _showDetailSheet({
+    required BuildContext context,
+    required dynamic data,
+    required bool isTask,
+    required Color color,
+    required IconData icon,
+    required String title,
+    required String label,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.88,
+        expand: false,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              // ── Handle bar
               Container(
-                width: 2,
-                height: 60,
-                color: Colors.grey[100],
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // ── Header Row
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(icon, color: color, size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: color,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            title,
+                            style: GoogleFonts.inter(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(height: 1, color: const Color(0xFFE2E8F0)),
+              // ── Scrollable body
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 36),
+                  child: isTask
+                      ? _buildTaskDetails(data as TaskModel, color)
+                      : _buildReservationDetails(data as ReservationModel, color),
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 25),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: color.withValues(alpha: 0.1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+      ),
+    );
+  }
+
+  Widget _buildTaskDetails(TaskModel task, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Status + Priority chips row
+        Row(
+          children: [
+            _statusChip(task.status, color),
+            const SizedBox(width: 8),
+            _priorityChip(task.priority),
+            const SizedBox(width: 8),
+            _infoChip(task.type, Icons.category_outlined, const Color(0xFF64748B)),
+          ],
+        ),
+        // Time section
+        if (task.startDate != null || task.endDate != null) ...[
+          const SizedBox(height: 16),
+          _sectionCard(
+            color: color,
+            title: 'ZAMANLAMA',
+            child: Row(
               children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: color,
+                if (task.startDate != null)
+                  Expanded(
+                    child: _gridCell(
+                      'Başlangıç',
+                      DateFormat('dd MMM').format(task.startDate!),
+                      sub: DateFormat('HH:mm').format(task.startDate!),
+                      color: color,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: Colors.black54,
-                    height: 1.4,
+                if (task.startDate != null && task.endDate != null)
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: const Color(0xFFE2E8F0),
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
                   ),
-                ),
+                if (task.endDate != null)
+                  Expanded(
+                    child: _gridCell(
+                      'Bitiş',
+                      DateFormat('dd MMM').format(task.endDate!),
+                      sub: DateFormat('HH:mm').format(task.endDate!),
+                      color: color,
+                    ),
+                  ),
               ],
             ),
           ),
-        ),
+        ],
+        // Description
+        if (task.description != null && task.description!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _sectionCard(
+            color: color,
+            title: 'AÇIKLAMA',
+            child: Text(
+              task.description!,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: const Color(0xFF334155),
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildReservationDetails(ReservationModel res, Color color) {
+    final details = res.details;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Status chip
+        _statusChip(res.status, color),
+        // Time range card
+        if (res.startDate != null || res.endDate != null) ...[
+          const SizedBox(height: 14),
+          _sectionCard(
+            color: color,
+            title: 'TARİH & SAAT',
+            child: Row(
+              children: [
+                if (res.startDate != null)
+                  Expanded(
+                    child: _gridCell(
+                      res.category.toLowerCase().contains('hotel') ||
+                              res.category.toLowerCase().contains('otel')
+                          ? 'Giriş'
+                          : 'Kalkış',
+                      DateFormat('dd MMM yy').format(res.startDate!),
+                      sub: DateFormat('HH:mm').format(res.startDate!),
+                      color: color,
+                    ),
+                  ),
+                if (res.startDate != null && res.endDate != null)
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: const Color(0xFFE2E8F0),
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                if (res.endDate != null)
+                  Expanded(
+                    child: _gridCell(
+                      res.category.toLowerCase().contains('hotel') ||
+                              res.category.toLowerCase().contains('otel')
+                          ? 'Çıkış'
+                          : 'Varış',
+                      DateFormat('dd MMM yy').format(res.endDate!),
+                      sub: DateFormat('HH:mm').format(res.endDate!),
+                      color: color,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        // Flight detail card (2-col grid)
+        if (details.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _sectionCard(
+            color: color,
+            title: 'DETAYLAR',
+            child: Wrap(
+              spacing: 0,
+              runSpacing: 0,
+              children: _buildDetailGridCells(details, color),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _buildDetailGridCells(
+      Map<String, dynamic> details, Color color) {
+    // Keys that should span full width (long text)
+    const fullWidthKeys = {'passenger', 'guest_name', 'location'};
+    final entries = details.entries
+        .where((e) => e.value != null && e.value.toString().isNotEmpty)
+        .toList();
+
+    final List<Widget> widgets = [];
+    int i = 0;
+    while (i < entries.length) {
+      final e = entries[i];
+      final isFullWidth = fullWidthKeys.contains(e.key);
+      if (isFullWidth) {
+        if (widgets.isNotEmpty) widgets.add(const SizedBox(height: 2));
+        widgets.add(SizedBox(
+          width: double.infinity,
+          child: _gridCell(
+            _formatDetailKey(e.key),
+            e.value.toString(),
+            color: color,
+          ),
+        ));
+        i++;
+      } else {
+        // Pair two cells side by side
+        final eNext = (i + 1 < entries.length &&
+                !fullWidthKeys.contains(entries[i + 1].key))
+            ? entries[i + 1]
+            : null;
+        widgets.add(IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: _gridCell(
+                  _formatDetailKey(e.key),
+                  e.value.toString(),
+                  color: color,
+                ),
+              ),
+              if (eNext != null) ...[
+                Container(
+                  width: 1,
+                  color: const Color(0xFFE2E8F0),
+                  margin: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                Expanded(
+                  child: _gridCell(
+                    _formatDetailKey(eNext.key),
+                    eNext.value.toString(),
+                    color: color,
+                  ),
+                ),
+              ] else
+                const Expanded(child: SizedBox()),
+            ],
+          ),
+        ));
+        widgets.add(const Divider(height: 1, color: Color(0xFFF1F5F9)));
+        i += eNext != null ? 2 : 1;
+      }
+    }
+    return widgets;
+  }
+
+  Widget _sectionCard({
+    required Color color,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: color.withOpacity(0.6),
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _gridCell(String label, String value, {String? sub, required Color color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF94A3B8),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          if (sub != null)
+            Text(
+              sub,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _priorityChip(String priority) {
+    final Color c = priority == 'high'
+        ? const Color(0xFFF43F5E)
+        : priority == 'medium'
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF10B981);
+    final String label = priority == 'high'
+        ? 'Yüksek'
+        : priority == 'medium'
+            ? 'Orta'
+            : 'Düşük';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.withOpacity(0.25)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+            fontSize: 12, fontWeight: FontWeight.w700, color: c),
+      ),
+    );
+  }
+
+  Widget _infoChip(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: GoogleFonts.inter(
+                fontSize: 12, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDetailKey(String key) {
+    const map = {
+      'pnr': 'PNR',
+      'airline': 'Havayolu',
+      'flight_no': 'Uçuş No',
+      'departure': 'Kalkış',
+      'arrival': 'Varış',
+      'date': 'Tarih',
+      'departure_time': 'Kalkış',
+      'arrival_time': 'Varış',
+      'status': 'Durum',
+      'passenger': 'Yolcu',
+      'hotel_name': 'Otel',
+      'location': 'Konum',
+      'check_in': 'Giriş',
+      'check_out': 'Çıkış',
+      'check_in_time': 'Giriş Saati',
+      'check_out_time': 'Çıkış Saati',
+      'room_type': 'Oda',
+      'guest_name': 'Misafir',
+      'confirmation_no': 'Onay No',
+    };
+    return map[key] ??
+        key
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map((w) =>
+                w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
+            .join(' ');
+  }
+
+  // ─── EMPTY STATE ───────────────────────────────────────────────────────────
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.calendar_today_outlined,
+                size: 44,
+                color: Color(0xFFCBD5E1),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Henüz Bir Plan Yok',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Seçilen tarih için planlanmış etkinlik veya görev bulunamadı.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: const Color(0xFF94A3B8),
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── RESERVATION PICKER ────────────────────────────────────────────────────
+
+  void _showReservationPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 36),
+        decoration: const BoxDecoration(
+          color: Color(0xFF1B232A),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'Rezervasyon Türü',
+              style: GoogleFonts.inter(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Eklemek istediğiniz türü seçin.',
+              style: GoogleFonts.inter(
+                  fontSize: 14, color: Colors.white54),
+            ),
+            const SizedBox(height: 28),
+            _resOption(
+              title: 'Uçak Rezervasyonu',
+              subtitle: 'Uçuş planları ve bilet bilgileri',
+              icon: Icons.flight_takeoff_rounded,
+              color: const Color(0xFF0EA5E9),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          const AddFlightReservationPage()),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            _resOption(
+              title: 'Otel Konaklama',
+              subtitle: 'Konaklama ve reservasyon bilgileri',
+              icon: Icons.hotel_rounded,
+              color: const Color(0xFF6366F1),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddManualHotelPage(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            _resOption(
+              title: 'Otobüs Yolculuğu',
+              subtitle: 'Şehirler arası seyahat planı',
+              icon: Icons.directions_bus_rounded,
+              color: const Color(0xFFF59E0B),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddBusReservationPage(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _resOption({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: Colors.white.withOpacity(0.08), width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                        fontSize: 12, color: Colors.white54),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded,
+                color: Colors.white.withOpacity(0.2)),
+          ],
+        ),
+      ),
     );
   }
 }

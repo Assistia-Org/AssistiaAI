@@ -39,26 +39,24 @@ async def get_program(
     """
     return await get_daily_program_service(program_id)
 
-@router.get("/user/{user_id}/date/{program_date}", response_model=DailyProgramResponse, status_code=status.HTTP_200_OK)
+@router.get("/date/{program_date}", response_model=DailyProgramResponse, status_code=status.HTTP_200_OK)
 async def get_program_by_date(
-    user_id: str, 
     program_date: date,
     current_user: User = Depends(get_current_user)
 ) -> DailyProgramResponse:
     """
-    Get daily program for a specific user and date.
+    Get daily program for the authenticated user and a specific date.
     """
-    return await get_program_by_date_service(user_id, program_date)
+    return await get_program_by_date_service(str(current_user.id), program_date)
 
-@router.get("/user/{user_id}", response_model=List[DailyProgramResponse], status_code=status.HTTP_200_OK)
+@router.get("/", response_model=List[DailyProgramResponse], status_code=status.HTTP_200_OK)
 async def list_user_programs(
-    user_id: str,
     current_user: User = Depends(get_current_user)
 ) -> List[DailyProgramResponse]:
     """
-    List all daily programs for a user.
+    List all daily programs for the authenticated user.
     """
-    return await list_user_programs_service(user_id)
+    return await list_user_programs_service(str(current_user.id))
 
 @router.patch("/{program_id}", response_model=DailyProgramResponse, status_code=status.HTTP_200_OK)
 async def update_program(

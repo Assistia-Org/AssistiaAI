@@ -1,5 +1,6 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, UploadFile, File
 from app.schemas.reservation import ReservationCreate, ReservationResponse, ReservationUpdate
+from app.services.ai_service import analyze_ticket_with_gemini, analyze_bus_ticket_with_gemini
 from app.services.reservation_service import (
     create_reservation_service,
     delete_reservation_service,
@@ -23,7 +24,34 @@ async def create_reservation(
     Rezervasyon oluşturma endpoint'i.
     Yeni bir uçuş, otel veya araç kiralama rezervasyonunu detaylarıyla kaydeder.
     """
-    return await create_reservation_service(data)
+    return await create_reservation_service(str(current_user.id), data)
+
+
+@router.post("/analyze", status_code=status.HTTP_200_OK)
+async def analyze_reservation_ticket(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Bilet analizi endpoint'i.
+    Yüklenen bilet görselini veya PDF'ini AI ile analiz eder ve JSON döner.
+    """
+    content = await file.read()
+    result = await analyze_ticket_with_gemini(content, file.content_type)
+    return result
+
+@router.post("/analyze-bus", status_code=status.HTTP_200_OK)
+async def analyze_bus_ticket(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Otobüs bileti analizi endpoint'i.
+    Yüklenen bilet görselini veya PDF'ini AI ile analiz eder ve JSON döner.
+    """
+    content = await file.read()
+    result = await analyze_bus_ticket_with_gemini(content, file.content_type)
+    return result
 
 
 @router.get("/{reservation_id}", response_model=ReservationResponse, status_code=status.HTTP_200_OK)

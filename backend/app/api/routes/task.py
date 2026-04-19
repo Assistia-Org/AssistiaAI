@@ -23,7 +23,7 @@ async def create_task(
     Görev oluşturma endpoint'i.
     Kullanıcı üzerinde yeni bir yapılacak iş (task) kaydı ekler.
     """
-    return await create_task_service(data)
+    return await create_task_service(str(current_user.id), data)
 
 
 @router.get("/{task_id}", response_model=TaskResponse, status_code=status.HTTP_200_OK)
