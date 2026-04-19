@@ -2,11 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../domain/entities/user.dart';
-import '../../domain/usecases/login_usecase.dart';
-import '../../domain/usecases/register_usecase.dart';
-import '../../data/datasources/auth_remote_data_source.dart';
-import '../../data/repositories/auth_repository_impl.dart';
+import '../../domain/entities/user/user.dart';
+import '../../domain/usecases/auth/login_usecase.dart';
+import '../../domain/usecases/auth/register_usecase.dart';
+import '../../domain/usecases/auth/logout_usecase.dart';
+import '../../domain/usecases/auth/get_me_usecase.dart';
+import '../../data/datasources/auth/auth_remote_data_source.dart';
+import '../../data/repositories/auth/auth_repository_impl.dart';
 
 // --- Dependecy Injection via Riverpod ---
 
@@ -39,6 +41,16 @@ final registerUseCaseProvider = FutureProvider<RegisterUseCase>((ref) async {
   return RegisterUseCase(repository);
 });
 
+final logoutUseCaseProvider = FutureProvider<LogoutUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return LogoutUseCase(repository);
+});
+
+final getMeUseCaseProvider = FutureProvider<GetMeUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return GetMeUseCase(repository);
+});
+
 
 // --- State Management ---
 
@@ -63,7 +75,7 @@ class CurrentUserNotifier extends Notifier<User?> {
     state = user;
   }
 
-  void logout() {
+  void _clearState() {
     state = null;
   }
 }
@@ -96,6 +108,33 @@ class AuthController {
       ref.read(currentUserProvider.notifier).setUser(user);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> logout() async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final logoutUseCase = await ref.read(logoutUseCaseProvider.future);
+      await logoutUseCase.execute();
+      ref.read(currentUserProvider.notifier)._clearState();
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> initAuth() async {
+    final prefs = await ref.read(sharedPrefsProvider.future);
+    final token = prefs.getString('access_token');
+    
+    if (token != null) {
+      try {
+        final getMeUseCase = await ref.read(getMeUseCaseProvider.future);
+        final user = await getMeUseCase.execute(token);
+        ref.read(currentUserProvider.notifier).setUser(user);
+      } catch (e) {
+        // If token is invalid or expired, logout
+        await logout();
+      }
     }
   }
 }

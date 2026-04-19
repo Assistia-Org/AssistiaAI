@@ -3,8 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models/user_model.dart';
-import '../../domain/entities/user.dart';
+import '../../models/user/user_model.dart';
+import '../../../domain/entities/user/user.dart';
 
 class AuthRemoteDataSource {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
@@ -52,26 +52,39 @@ class AuthRemoteDataSource {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final accessToken = data['access_token'];
+      final refreshToken = data['refresh_token'];
       
-      // Save token
+      // Save tokens
       await sharedPreferences.setString('access_token', accessToken);
+      if (refreshToken != null) {
+        await sharedPreferences.setString('refresh_token', refreshToken);
+      }
 
       // Now fetch user details
-      final userResponse = await client.get(
-        Uri.parse('$baseUrl/users/me'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-      );
-
-      if (userResponse.statusCode == 200) {
-        return UserModel.fromJson(jsonDecode(userResponse.body));
-      } else {
-        throw Exception('Failed to get user details: ${userResponse.body}');
-      }
+      return await getMe(accessToken);
     } else {
       throw Exception('Failed to login: ${response.body}');
     }
+  }
+
+  Future<User> getMe(String token) async {
+    final response = await client.get(
+      Uri.parse('$baseUrl/users/me'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return UserModel.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to get user details: ${response.body}');
+    }
+  }
+
+  Future<void> logout() async {
+    await sharedPreferences.remove('access_token');
+    await sharedPreferences.remove('refresh_token');
   }
 }
