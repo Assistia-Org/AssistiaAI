@@ -72,6 +72,22 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
     if (!_formKey.currentState!.validate()) return;
 
     final uuid = const Uuid();
+    final DateTime combinedStart = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _startTime.hour,
+      _startTime.minute,
+    );
+
+    final DateTime combinedEnd = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _endTime.hour,
+      _endTime.minute,
+    );
+
     final task = TaskModel(
       id: uuid.v4(),
       creatorId: 'user_123', // Hardcoded for now
@@ -80,8 +96,8 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       title: _titleController.text,
       description: _descriptionController.text,
       dueDate: _selectedDate,
-      startDate: _formatTime(_startTime),
-      endDate: _formatTime(_endTime),
+      startDate: combinedStart,
+      endDate: combinedEnd,
       priority: _selectedPriority,
       status: 'pending',
     );

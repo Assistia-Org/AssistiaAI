@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'add_flight_reservation_page.dart';
 import 'add_manual_task_page.dart';
+import '../../providers/daily_program_provider.dart';
+import '../../../data/models/daily_program_model.dart';
+import '../../../data/models/task_model.dart';
+import '../../../data/models/reservation_model.dart';
 import '../../../core/constants/dummy_data.dart';
 
-class ProgramPage extends StatefulWidget {
+class ProgramPage extends ConsumerStatefulWidget {
   const ProgramPage({super.key});
 
   @override
-  State<ProgramPage> createState() => _ProgramPageState();
+  ConsumerState<ProgramPage> createState() => _ProgramPageState();
 }
 
-class _ProgramPageState extends State<ProgramPage> {
+class _ProgramPageState extends ConsumerState<ProgramPage> {
   late DateTime _selectedDate;
   late DateTime _firstDayOfCurrentWeek;
   String _monthYearText = "";
@@ -56,6 +62,10 @@ class _ProgramPageState extends State<ProgramPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Format selected date for API
+    final dateStr = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+    final programAsync = ref.watch(dailyProgramByDateProvider(dateStr));
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -83,7 +93,7 @@ class _ProgramPageState extends State<ProgramPage> {
                   child: Container(
                     width: double.infinity,
                     constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height - 0,
+                      minHeight: MediaQuery.of(context).size.height - 200,
                     ),
                     decoration: const BoxDecoration(
                       color: Colors.white,
@@ -95,7 +105,7 @@ class _ProgramPageState extends State<ProgramPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title and Action Buttons Row (Fitted to avoid overflow)
+                        // Title and Action Buttons Row
                         Padding(
                           padding: const EdgeInsets.only(left: 20, top: 20, right: 15, bottom: 20),
                           child: Row(
@@ -104,12 +114,11 @@ class _ProgramPageState extends State<ProgramPage> {
                               Text(
                                 "Günlük Program",
                                 style: GoogleFonts.inter(
-                                  fontSize: 20, // Reduced from 22
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black,
                                 ),
                               ),
-                              // Single "Etkinlik Ekle" Button with Popup Menu
                               PopupMenuButton<String>(
                                 offset: const Offset(0, 45),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -126,7 +135,16 @@ class _ProgramPageState extends State<ProgramPage> {
                           ),
                         ),
                         const Divider(height: 1),
-                        _buildChronologicalTimeline(),
+                        
+                        // Real-time Data Loading
+                        programAsync.when(
+                          data: (program) => _buildChronologicalTimeline(program),
+                          loading: () => const Center(child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 100),
+                            child: CircularProgressIndicator(color: Colors.cyanAccent),
+                          )),
+                          error: (err, stack) => _buildEmptyState(),
+                        ),
                         const SizedBox(height: 50),
                       ],
                     ),
@@ -472,58 +490,94 @@ class _ProgramPageState extends State<ProgramPage> {
   Color _getEventColor(String type) => DummyData.getEventColor(type);
   IconData _getEventIcon(String type) => DummyData.getEventIcon(type);
 
-  Widget _buildChronologicalTimeline() {
-    // 1. Fetch the program for the selected date from our shared library
-    final String selectedDateStr = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
-    final Map<String, dynamic>? currentProgram = DummyData.programs[selectedDateStr];
+  String _getTimeFromDateTime(DateTime? dateTime) {
+    if (dateTime == null) return "00:00";
+    return DateFormat('HH:mm').format(dateTime);
+  }
 
-    if (currentProgram == null) {
-      return _buildEmptyState();
+  DateTime? _parseTimeString(String? timeStr) {
+    if (timeStr == null || !timeStr.contains(':')) return null;
+    try {
+      final parts = timeStr.split(':');
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, hour, minute);
+    } catch (_) {
+      return null;
     }
+  }
 
-    // 2. Process and merge tasks and reservations from the fetched program
-    final List<Map<String, dynamic>> allReservations = (currentProgram['items']['etkinlikler'] as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
-    final List<Map<String, dynamic>> allTasks = (currentProgram['items']['tasks'] as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
-    
-    // Sort reservations by start time
-    allReservations.sort((a, b) => a['start_date'].compareTo(b['start_date']));
-    
-    // Identify which tasks are sub-tasks of which reservations
-    List<Map<String, dynamic>> rootItems = [];
-    Set<int> assignedTaskIndices = {};
+  DateTime _getEffectiveDateTime(dynamic data, bool isTask, {bool isEnd = false}) {
+    if (isTask) {
+      final TaskModel task = data as TaskModel;
+      final DateTime? date = isEnd ? task.endDate : task.startDate;
+      if (date != null) return date;
+      return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    } else {
+      final ReservationModel res = data as ReservationModel;
+      final DateTime? dateField = isEnd ? res.endDate : res.startDate;
+      if (dateField != null) return dateField;
 
+      // Fallback to details
+      final String? timeStr = isEnd 
+          ? res.details['arrival_time']?.toString() 
+          : res.details['departure_time']?.toString();
+      final DateTime? parsed = _parseTimeString(timeStr);
+      if (parsed != null) return parsed;
+
+      return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    }
+  }
+
+  Widget _buildChronologicalTimeline(DailyProgramModel program) {
+    final List<ReservationModel> allReservations = List.from(program.items.etkinlikler);
+    final List<TaskModel> allTasks = List.from(program.items.tasks);
+    
+    // Sort items by effective start time
+    List<Map<String, dynamic>> allItems = [];
     for (var res in allReservations) {
-      List<Map<String, dynamic>> subTasks = [];
-      for (int i = 0; i < allTasks.length; i++) {
-        var task = allTasks[i];
-        
-        // Robust time comparison
-        String tStart = task['start_date'];
-        String rStart = res['start_date'];
-        String rEnd = res['end_date'] == '00:00' ? '24:00' : res['end_date']; // Midnight fix
+      allItems.add({'data': res, 'isTask': false, 'time': _getEffectiveDateTime(res, false)});
+    }
+    for (var task in allTasks) {
+      allItems.add({'data': task, 'isTask': true, 'time': _getEffectiveDateTime(task, true)});
+    }
+    
+    allItems.sort((a, b) => (a['time'] as DateTime).compareTo(b['time'] as DateTime));
+    
+    // Group sub-tasks under reservations if they fall within the time window
+    List<Map<String, dynamic>> rootItems = [];
+    Set<int> assignedItemIndices = {};
 
-        if (tStart.compareTo(rStart) >= 0 && tStart.compareTo(rEnd) <= 0) {
-          subTasks.add(task);
-          assignedTaskIndices.add(i);
+    for (int i = 0; i < allItems.length; i++) {
+      if (assignedItemIndices.contains(i)) continue;
+      final item = allItems[i];
+      if (item['isTask']) {
+        rootItems.add({...item, 'subTasks': <TaskModel>[]});
+        continue;
+      }
+
+      // It's a reservation - look for tasks that fall within its window
+      final ReservationModel res = item['data'] as ReservationModel;
+      final DateTime resStart = item['time'] as DateTime;
+      final DateTime resEnd = _getEffectiveDateTime(res, false, isEnd: true);
+      
+      List<TaskModel> subTasks = [];
+      for (int j = 0; j < allItems.length; j++) {
+        if (i == j || assignedItemIndices.contains(j)) continue;
+        final candidate = allItems[j];
+        if (!candidate['isTask']) continue;
+
+        final DateTime taskTime = candidate['time'] as DateTime;
+        if (taskTime.isAfter(resStart.subtract(const Duration(seconds: 1))) && 
+            taskTime.isBefore(resEnd.add(const Duration(seconds: 1)))) {
+          subTasks.add(candidate['data'] as TaskModel);
+          assignedItemIndices.add(j);
         }
       }
-      res['subTasks'] = subTasks;
-      rootItems.add(res);
+      rootItems.add({...item, 'subTasks': subTasks});
     }
 
-    // Add remaining tasks that are NOT sub-tasks as root items
-    for (int i = 0; i < allTasks.length; i++) {
-      if (!assignedTaskIndices.contains(i)) {
-        rootItems.add({...allTasks[i], 'subTasks': []});
-      }
-    }
-
-    // Final sort of all root blocks
-    rootItems.sort((a, b) => a['start_date'].compareTo(b['start_date']));
+    if (rootItems.isEmpty) return _buildEmptyState();
 
     return ListView.builder(
       shrinkWrap: true,
@@ -536,10 +590,15 @@ class _ProgramPageState extends State<ProgramPage> {
     );
   }
 
-  Widget _buildTimelineBlock(Map<String, dynamic> event) {
-    bool hasSubTasks = event['subTasks'] != null && (event['subTasks'] as List).isNotEmpty;
-    List subTasks = event['subTasks'] ?? [];
+  Widget _buildTimelineBlock(Map<String, dynamic> rootItem) {
+    final bool isTask = rootItem['isTask'];
+    final dynamic data = rootItem['data'];
+    final List<TaskModel> subTasks = rootItem['subTasks'];
     
+    final String type = isTask ? (data as TaskModel).type : (data as ReservationModel).category;
+    final String startTime = _getTimeFromDateTime(_getEffectiveDateTime(data, isTask));
+    final String endTime = isTask ? "" : _getTimeFromDateTime(_getEffectiveDateTime(data, false, isEnd: true));
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -550,7 +609,7 @@ class _ProgramPageState extends State<ProgramPage> {
             child: Column(
               children: [
                 Text(
-                  event['start_date'],
+                  startTime,
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -562,29 +621,31 @@ class _ProgramPageState extends State<ProgramPage> {
                   child: Container(
                     width: 3,
                     decoration: BoxDecoration(
-                      color: _getEventColor(event['type']),
+                      color: _getEventColor(type),
                       borderRadius: BorderRadius.circular(2),
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          _getEventColor(event['type']),
-                          _getEventColor(event['type']).withValues(alpha: 0.3)
+                          _getEventColor(type),
+                          _getEventColor(type).withValues(alpha: 0.3)
                         ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  event['end_date'],
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[500],
+                if (!isTask) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    endTime,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[500],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20), // Bottom margin
+                ],
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -597,13 +658,14 @@ class _ProgramPageState extends State<ProgramPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildEventCard(
-                    event: event,
+                    data: data,
+                    isTask: isTask,
                     isMain: true,
                   ),
-                  if (hasSubTasks)
+                  if (subTasks.isNotEmpty)
                     ...subTasks.map((sub) => Padding(
                       padding: const EdgeInsets.only(top: 12),
-                      child: _buildSubTaskRow(sub, _getEventColor(event['type'])),
+                      child: _buildSubTaskRow(sub, _getEventColor(type)),
                     )),
                   const SizedBox(height: 20),
                 ],
@@ -673,7 +735,7 @@ class _ProgramPageState extends State<ProgramPage> {
     );
   }
 
-  Widget _buildSubTaskRow(Map<String, dynamic> sub, Color parentColor) {
+  Widget _buildSubTaskRow(TaskModel sub, Color parentColor) {
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -685,11 +747,11 @@ class _ProgramPageState extends State<ProgramPage> {
             child: Column(
               children: [
                 Text(
-                  sub['start_date'],
+                  _getTimeFromDateTime(sub.dueDate),
                   style: GoogleFonts.inter(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    color: _getEventColor(sub['type']),
+                    color: _getEventColor(sub.type),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -697,7 +759,7 @@ class _ProgramPageState extends State<ProgramPage> {
                   child: Container(
                     width: 1.5,
                     decoration: BoxDecoration(
-                      color: _getEventColor(sub['type']).withValues(alpha: 0.3),
+                      color: _getEventColor(sub.type).withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),
@@ -710,7 +772,8 @@ class _ProgramPageState extends State<ProgramPage> {
             child: Padding(
               padding: const EdgeInsets.only(top: 12),
               child: _buildEventCard(
-                event: sub,
+                data: sub,
+                isTask: true,
                 isMain: false,
               ),
             ),
@@ -721,13 +784,14 @@ class _ProgramPageState extends State<ProgramPage> {
   }
 
   Widget _buildEventCard({
-    required Map<String, dynamic> event,
+    required dynamic data,
+    required bool isTask,
     bool isMain = true,
   }) {
-    final String id = event['id'] ?? "";
-    final String type = event['type'];
-    final String title = event['title'];
-    final String subtitle = event['description'] ?? (event['details'] != null ? "${event['category']} - ${event['status']}" : "");
+    final String id = isTask ? (data as TaskModel).id : (data as ReservationModel).id;
+    final String type = isTask ? (data as TaskModel).type : (data as ReservationModel).category;
+    final String title = isTask ? (data as TaskModel).title : (data as ReservationModel).title;
+    final String subtitle = isTask ? ((data as TaskModel).description ?? "") : ((data as ReservationModel).details['pnr']?.toString() ?? "");
     final Color color = _getEventColor(type);
     final IconData icon = _getEventIcon(type);
     final bool isExpanded = _expandedId == id;
@@ -828,115 +892,28 @@ class _ProgramPageState extends State<ProgramPage> {
                           padding: EdgeInsets.symmetric(vertical: 8),
                           child: Divider(height: 1),
                         ),
-                        if (event['description'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              event['description'],
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                color: Colors.black87,
-                                height: 1.4,
+                        if (isTask) ...[
+                          if ((data as TaskModel).description != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                (data).description!,
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  color: Colors.black87,
+                                  height: 1.4,
+                                ),
                               ),
                             ),
-                          ),
-                        if (event['details'] != null)
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Column(
-                              children: (event['details'] as Map<String, dynamic>).entries.map((entry) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 2),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        entry.key.toUpperCase(),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: color.withValues(alpha: 0.7),
-                                        ),
-                                      ),
-                                      Text(
-                                        entry.value.toString(),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        if (event['tags'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: (event['tags'] as List).map((tag) {
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[100],
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    "#$tag",
-                                    style: GoogleFonts.inter(
-                                      fontSize: 9,
-                                      color: Colors.grey[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        if (event['end_date'] != null && !isMain)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              children: [
-                                Icon(Icons.access_time_filled_rounded, size: 12, color: color),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "BİTİŞ: ${event['end_date']}",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: color,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        if (event['priority'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 10),
-                            child: Row(
-                              children: [
-                                Icon(Icons.flag_rounded, size: 12, color: color),
-                                const SizedBox(width: 4),
-                                Text(
-                                  "${event['priority'].toString().toUpperCase()} PRIORITELI",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: color,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          _buildDetailRow("TİP", data.type, color),
+                          if (data.priority != null)
+                            _buildDetailRow("ÖNCELİK", data.priority!, color),
+                        ] else ...[
+                          // Reservation Details
+                          _buildDetailRow("PNR", (data as ReservationModel).details['pnr']?.toString() ?? "-", color),
+                          _buildDetailRow("KATEGORİ", data.category, color),
+                          _buildDetailRow("DURUM", data.status, color),
+                        ],
                       ],
                     )
                   : const SizedBox.shrink(),
@@ -944,6 +921,33 @@ class _ProgramPageState extends State<ProgramPage> {
           ],
         ),
       ),
+    ),
+  );
+}
+
+Widget _buildDetailRow(String label, String value, Color color) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: GoogleFonts.inter(
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+            color: color.withValues(alpha: 0.7),
+          ),
+        ),
+        Text(
+          value,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+      ],
     ),
   );
 }

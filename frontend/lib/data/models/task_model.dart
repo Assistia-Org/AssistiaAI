@@ -7,8 +7,8 @@ class TaskModel {
   final String title;
   final String? description;
   final DateTime? dueDate;
-  final String? startDate; // For UI time e.g. "16:00"
-  final String? endDate;   // For UI time e.g. "17:00"
+  final DateTime? startDate; 
+  final DateTime? endDate;   
   final String priority;
   final String status;
   final List<String> tags;
@@ -39,8 +39,8 @@ class TaskModel {
       title: json['title'] ?? '',
       description: json['description'],
       dueDate: json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
-      startDate: json['start_date'],
-      endDate: json['end_date'],
+      startDate: json['start_date'] != null ? DateTime.parse(json['start_date']) : null,
+      endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
       priority: json['priority'] ?? 'medium',
       status: json['status'] ?? 'pending',
       tags: List<String>.from(json['tags'] ?? []),
@@ -48,18 +48,6 @@ class TaskModel {
   }
 
   Map<String, dynamic> toJson() {
-    // Helper to combine date and "HH:mm" time into ISO string
-    String? combineDateTime(DateTime? date, String? time) {
-      if (date == null || time == null || !time.contains(':')) return null;
-      try {
-        final parts = time.split(':');
-        final dt = DateTime(date.year, date.month, date.day, int.parse(parts[0]), int.parse(parts[1]));
-        return dt.toIso8601String();
-      } catch (_) {
-        return null;
-      }
-    }
-
     return {
       'id': id,
       'creator_id': creatorId,
@@ -69,8 +57,8 @@ class TaskModel {
       'title': title,
       'description': description,
       'due_date': dueDate?.toIso8601String(),
-      'start_date': combineDateTime(dueDate, startDate),
-      'end_date': combineDateTime(dueDate, endDate),
+      'start_date': startDate?.toIso8601String(),
+      'end_date': endDate?.toIso8601String(),
       'priority': priority,
       'status': status,
       'tags': tags,
