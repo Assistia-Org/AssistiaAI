@@ -41,18 +41,23 @@ async def get_daily_program_service(program_id: str) -> DailyProgramResponse:
 
 async def get_program_by_date_service(user_id: str, search_date: date) -> DailyProgramResponse:
     """
-    Retrieve user's program for a specific date.
+    Retrieve user's program for a specific date with linked details.
     """
     program = await get_program_by_user_and_date(user_id, search_date)
     if not program:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=PROGRAM_NOT_FOUND)
+    
+    # Fetch links manually if repository didn't or ensure model_validate handles it
+    await program.fetch_all_links()
     return DailyProgramResponse.model_validate(program)
 
 async def list_user_programs_service(user_id: str) -> List[DailyProgramResponse]:
     """
-    List all programs for a user.
+    List all programs for a user with linked details.
     """
     programs = await list_programs_by_user(user_id)
+    for p in programs:
+        await p.fetch_all_links()
     return [DailyProgramResponse.model_validate(p) for p in programs]
 
 async def update_daily_program_service(program_id: str, data: DailyProgramUpdate) -> DailyProgramResponse:

@@ -1,6 +1,6 @@
-import '../../domain/entities/user.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../datasources/auth_remote_data_source.dart';
+import '../../../domain/entities/user/user.dart';
+import '../../../domain/repositories/auth/auth_repository.dart';
+import '../../datasources/auth/auth_remote_data_source.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
@@ -15,5 +15,15 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<User> register({required String name, required String email, required String password}) {
     return remoteDataSource.register(name: name, email: email, password: password);
+  }
+  
+  @override
+  Future<void> logout() {
+    return remoteDataSource.logout();
+  }
+
+  @override
+  Future<User> getMe(String token) {
+    return remoteDataSource.getMe(token);
   }
 }

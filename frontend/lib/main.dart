@@ -3,20 +3,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'presentation/pages/auth/login_page.dart';
 import 'presentation/pages/main_screen.dart';
+import 'presentation/providers/auth_provider.dart';
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize auth state only once on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authControllerProvider).initAuth();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final currentUser = ref.watch(currentUserProvider);
+
     return MaterialApp(
       title: 'Assistia AI',
       debugShowCheckedModeBanner: false,
@@ -24,7 +37,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueAccent),
         useMaterial3: true,
       ),
-      home: const MainScreen(),
+      home: currentUser != null ? const MainScreen() : const LoginPage(),
     );
   }
 }

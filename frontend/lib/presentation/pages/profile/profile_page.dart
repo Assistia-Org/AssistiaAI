@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../providers/auth_provider.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -46,7 +50,7 @@ class ProfilePage extends StatelessWidget {
                         
                         const SizedBox(height: 15),
                         Text(
-                          'Alperen',
+                          user?.displayName ?? 'Misafir',
                           style: GoogleFonts.inter(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -54,7 +58,7 @@ class ProfilePage extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'alper@example.com',
+                          user?.email ?? 'Giriş yapılmamış',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: Colors.grey[500],
@@ -65,7 +69,7 @@ class ProfilePage extends StatelessWidget {
                         _buildStats(),
                         
                         const SizedBox(height: 20),
-                        _buildSettingsList(context),
+                        _buildSettingsList(context, ref),
                         
                         const SizedBox(height: 50),
                       ],
@@ -174,7 +178,7 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingsList(BuildContext context) {
+  Widget _buildSettingsList(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Column(
@@ -197,13 +201,20 @@ class ProfilePage extends StatelessWidget {
           _buildSettingItem(Icons.palette_outlined, 'Görünüm'),
           _buildSettingItem(Icons.help_outline_rounded, 'Yardım & Destek'),
           const SizedBox(height: 20),
-          _buildSettingItem(Icons.logout_rounded, 'Çıkış Yap', color: Colors.redAccent),
+          _buildSettingItem(
+            Icons.logout_rounded, 
+            'Çıkış Yap', 
+            color: Colors.redAccent,
+            onTap: () {
+              ref.read(authControllerProvider).logout();
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSettingItem(IconData icon, String title, {Color? color}) {
+  Widget _buildSettingItem(IconData icon, String title, {Color? color, VoidCallback? onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -229,7 +240,7 @@ class ProfilePage extends StatelessWidget {
           ),
         ),
         trailing: Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }
