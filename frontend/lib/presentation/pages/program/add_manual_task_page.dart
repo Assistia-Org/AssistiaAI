@@ -6,7 +6,8 @@ import '../../../data/models/task_model.dart';
 import '../../providers/task_provider.dart';
 
 class AddManualTaskPage extends ConsumerStatefulWidget {
-  const AddManualTaskPage({super.key});
+  final DateTime initialDate;
+  const AddManualTaskPage({super.key, required this.initialDate});
 
   @override
   ConsumerState<AddManualTaskPage> createState() => _AddManualTaskPageState();
@@ -19,31 +20,23 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   
   String _selectedType = 'Görev';
   String _selectedPriority = 'medium';
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
   TimeOfDay _startTime = const TimeOfDay(hour: 10, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 11, minute: 0);
 
   final List<String> _types = ['Görev', 'Toplantı', 'Yemek', 'Spor', 'Eğlence', 'Diğer'];
 
   @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialDate;
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
-  }
-
-  Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2024),
-      lastDate: DateTime(2030),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
   }
 
   Future<void> _selectTime(bool isStart) async {
@@ -257,29 +250,28 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   }
 
   Widget _buildDatePicker() {
-    return InkWell(
-      onTap: _selectDate,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_month_rounded, color: Color(0xFF0EA5E9)),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Tarih', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
-                Text(DateFormat('dd MMMM yyyy').format(_selectedDate), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.calendar_month_rounded, color: Color(0xFF0EA5E9)),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Tarih', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+              Text(
+                DateFormat('dd MMMM yyyy').format(_selectedDate),
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

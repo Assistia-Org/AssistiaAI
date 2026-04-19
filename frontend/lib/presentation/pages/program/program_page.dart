@@ -281,7 +281,6 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             itemBuilder: (_) => [
               _menuItem('Rezerve', Icons.add_location_alt_rounded),
               _menuItem('Görev', Icons.add_task_rounded),
-              _menuItem('Toplantı', Icons.video_camera_front_rounded),
             ],
             child: Container(
               padding:
@@ -331,14 +330,18 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
   }
 
   void _onMenuSelected(String value) {
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
     if (value == 'Rezerve') {
       _showReservationPicker();
     } else {
       Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (_) => const AddManualTaskPage()),
-      );
+            builder: (_) => AddManualTaskPage(initialDate: _selectedDate)),
+      ).then((_) {
+        // Re-fetch the program for the selected date after returning
+        ref.invalidate(dailyProgramByDateProvider(dateStr));
+      });
     }
   }
 
