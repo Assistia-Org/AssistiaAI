@@ -46,6 +46,17 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
       final result = await ref.read(reservationControllerProvider).analyzeBusTicket(file, mimeType);
       
       if (mounted) {
+        if (result.containsKey('error')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'].toString()),
+              backgroundColor: Colors.redAccent,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+
         setState(() {
           _extractedData = result;
         });

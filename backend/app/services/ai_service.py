@@ -24,8 +24,13 @@ async def analyze_ticket_with_gemini(file_content: bytes, mime_type: str) -> dic
         
         # Multi-modal prompt in English for better extraction quality
         prompt = """
-        Analyze this flight ticket image or PDF and extract the following information. 
-        Return ONLY a raw JSON object with these exact keys:
+        Analyze this document. First, determine if it is a FLIGHT ticket or flight reservation.
+        If the document is clearly NOT a flight ticket (e.g., it is a bus ticket, an unrelated photo, a random document, etc.), you MUST return exactly this JSON object:
+        {
+          "error": "Lütfen geçerli bir uçak bileti yüklediğinizden emin olun."
+        }
+        
+        If it IS a flight ticket, extract the following information and return ONLY a raw JSON object with these exact keys:
         {
           "pnr": "PNR code (look for 6 characters alphanumeric code)",
           "airline": "Airline name (look for brand names, logos, or header text)",
@@ -114,8 +119,13 @@ async def analyze_bus_ticket_with_gemini(file_content: bytes, mime_type: str) ->
         base64_content = base64.b64encode(file_content).decode('utf-8')
         
         prompt = """
-        Analyze this bus ticket image or PDF and extract the following information. 
-        Return ONLY a raw JSON object with these exact keys:
+        Analyze this document. First, determine if it is a BUS ticket or bus reservation.
+        If the document is clearly NOT a bus ticket (e.g., it is a flight ticket, an unrelated photo, a random document, etc.), you MUST return exactly this JSON object:
+        {
+          "error": "Lütfen geçerli bir otobüs bileti yüklediğinizden emin olun."
+        }
+        
+        If it IS a bus ticket, extract the following information and return ONLY a raw JSON object with these exact keys:
         {
           "pnr": "PNR code or Ticket Number",
           "bus_company": "Bus company name (e.g., Kamil Koç, Metro, Pamukkale)",

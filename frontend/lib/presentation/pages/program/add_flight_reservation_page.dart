@@ -47,6 +47,17 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
       final result = await ref.read(reservationControllerProvider).analyzeTicket(file, mimeType);
       
       if (mounted) {
+        if (result.containsKey('error')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['error'].toString()),
+              backgroundColor: Colors.redAccent,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+          return;
+        }
+
         setState(() {
           _extractedData = result;
         });
@@ -156,7 +167,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
         ),
         const SizedBox(height: 40),
         Text(
-          "Yapay zeka bilet üzerindeki bilgileri otomatik olarak okuyup JSON formatında sisteme işleyecektir.",
+          "Yapay zeka bilet üzerindeki bilgileri otomatik olarak okuyup sisteme işleyecektir.",
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 12,
