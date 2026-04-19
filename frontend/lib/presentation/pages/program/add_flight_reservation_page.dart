@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/constants/dummy_data.dart';
-import '../../../domain/entities/reservation.dart';
+import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import 'package:uuid/uuid.dart';
 

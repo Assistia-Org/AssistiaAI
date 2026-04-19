@@ -1,5 +1,5 @@
-import '../../data/models/daily_program_model.dart';
-import '../../data/datasources/daily_program_remote_data_source.dart';
+import '../../models/daily_program/daily_program_model.dart';
+import '../../datasources/daily_program/daily_program_remote_data_source.dart';
 
 abstract class DailyProgramRepository {
   Future<DailyProgramModel> getProgramByDate(String dateStr);

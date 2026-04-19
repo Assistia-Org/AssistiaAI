@@ -6,21 +6,28 @@ import 'presentation/pages/main_screen.dart';
 import 'presentation/providers/auth_provider.dart';
 
 void main() {
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Initialize auth state
-    Future.microtask(() => ref.read(authControllerProvider).initAuth());
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
 
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize auth state only once on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authControllerProvider).initAuth();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
 
     return MaterialApp(

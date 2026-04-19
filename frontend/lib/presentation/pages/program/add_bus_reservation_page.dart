@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import '../../../domain/entities/reservation.dart';
+import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -12,7 +12,8 @@ class AddBusReservationPage extends ConsumerStatefulWidget {
   const AddBusReservationPage({super.key});
 
   @override
-  ConsumerState<AddBusReservationPage> createState() => _AddBusReservationPageState();
+  ConsumerState<AddBusReservationPage> createState() =>
+      _AddBusReservationPageState();
 }
 
 class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
@@ -41,10 +42,12 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
     setState(() {
       _extractedData = null;
     });
-    
+
     try {
-      final result = await ref.read(reservationControllerProvider).analyzeBusTicket(file, mimeType);
-      
+      final result = await ref
+          .read(reservationControllerProvider)
+          .analyzeBusTicket(file, mimeType);
+
       if (mounted) {
         if (result.containsKey('error')) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +63,7 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
         setState(() {
           _extractedData = result;
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Bilet detayları başarıyla çözümlendi!"),
@@ -99,7 +102,7 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
               ),
             ),
           ),
-          
+
           SafeArea(
             child: Column(
               children: [
@@ -107,9 +110,9 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: ref.watch(reservationLoadingProvider) 
-                      ? _buildAnalyzingState()
-                      : _extractedData != null 
+                    child: ref.watch(reservationLoadingProvider)
+                        ? _buildAnalyzingState()
+                        : _extractedData != null
                         ? _buildResultState()
                         : _buildInitialState(),
                   ),
@@ -129,7 +132,11 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 8),
           Text(
@@ -225,24 +232,28 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
           const SizedBox(height: 20),
           _buildResultHeader(),
           const SizedBox(height: 24),
-          
+
           _buildInfoCard(
             title: "Sefer Bilgileri",
             icon: Icons.directions_bus_rounded,
             color: const Color(0xFFF59E0B),
             content: [
-              _buildRow("Nerden/Nereye", "${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}"),
+              _buildRow(
+                "Nerden/Nereye",
+                "${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
+              ),
               _buildRow("Otobüs Firması", data['bus_company'] ?? '-'),
               if (data['trip_no'] != null && data['trip_no']!.isNotEmpty)
                 _buildRow("Sefer No", data['trip_no']),
               _buildRow("Tarih", data['date'] ?? '-'),
               _buildRow("Kalkış Saati", data['departure_time'] ?? '-'),
-              if (data['arrival_time'] != null && data['arrival_time']!.isNotEmpty)
+              if (data['arrival_time'] != null &&
+                  data['arrival_time']!.isNotEmpty)
                 _buildRow("Varış Saati", data['arrival_time']),
             ],
           ),
           const SizedBox(height: 16),
-          
+
           _buildInfoCard(
             title: "Bilet Detayları",
             icon: Icons.confirmation_number_rounded,
@@ -254,7 +265,7 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
               _buildRow("Yolcu", data['passenger'] ?? '-'),
             ],
           ),
-          
+
           const SizedBox(height: 32),
           _buildActionButtons(),
           const SizedBox(height: 40),
@@ -272,7 +283,11 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
             color: Colors.green.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 28),
+          child: const Icon(
+            Icons.check_circle_rounded,
+            color: Colors.greenAccent,
+            size: 28,
+          ),
         ),
         const SizedBox(width: 16),
         Column(
@@ -288,10 +303,7 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
             ),
             Text(
               "Tüm bilgiler JSON formatına dönüştürüldü.",
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                color: Colors.white60,
-              ),
+              style: GoogleFonts.inter(fontSize: 12, color: Colors.white60),
             ),
           ],
         ),
@@ -314,10 +326,7 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: color.withValues(alpha: 0.3),
-            width: 2,
-          ),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
         ),
         child: Row(
           children: [
@@ -428,13 +437,15 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
 
   Widget _buildActionButtons() {
     final isSaving = ref.watch(reservationLoadingProvider);
-    
+
     return Row(
       children: [
         Expanded(
           child: _buildSecondaryButton(
             "Yeniden Tara",
-            onTap: isSaving ? () {} : () => setState(() => _extractedData = null),
+            onTap: isSaving
+                ? () {}
+                : () => setState(() => _extractedData = null),
           ),
         ),
         const SizedBox(width: 16),
@@ -442,41 +453,48 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
           flex: 2,
           child: _buildPrimaryButton(
             isSaving ? "Kaydediliyor..." : "Onayla ve Kaydet",
-            onTap: isSaving ? () {} : () async {
-              try {
-                const uuid = Uuid();
-                final data = _extractedData!;
-                
-                final reservation = Reservation(
-                  id: uuid.v4(),
-                  category: "bus",
-                  title: "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
-                  details: data,
-                  status: "confirmed",
-                );
+            onTap: isSaving
+                ? () {}
+                : () async {
+                    try {
+                      const uuid = Uuid();
+                      final data = _extractedData!;
 
-                await ref.read(reservationControllerProvider).addReservation(reservation);
+                      final reservation = Reservation(
+                        id: uuid.v4(),
+                        category: "bus",
+                        title:
+                            "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
+                        details: data,
+                        status: "confirmed",
+                      );
 
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Otobüs rezervasyonu başarıyla kaydedildi!"),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                  Navigator.pop(context);
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Kaydedilemedi: ${e.toString()}"),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              }
-            },
+                      await ref
+                          .read(reservationControllerProvider)
+                          .addReservation(reservation);
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Otobüs rezervasyonu başarıyla kaydedildi!",
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                        Navigator.pop(context);
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text("Kaydedilemedi: ${e.toString()}"),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  },
           ),
         ),
       ],
@@ -504,7 +522,9 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
         ),
         child: Text(
           label,

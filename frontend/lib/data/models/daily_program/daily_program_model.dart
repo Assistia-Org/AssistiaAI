@@ -1,14 +1,11 @@
-import 'task_model.dart';
-import 'reservation_model.dart';
+import '../task/task_model.dart';
+import '../reservation/reservation_model.dart';
 
 class DailyProgramSummary {
   final int taskSayisi;
   final int etkinlikSayisi;
 
-  DailyProgramSummary({
-    this.taskSayisi = 0,
-    this.etkinlikSayisi = 0,
-  });
+  DailyProgramSummary({this.taskSayisi = 0, this.etkinlikSayisi = 0});
 
   factory DailyProgramSummary.fromJson(Map<String, dynamic> json) {
     return DailyProgramSummary(
@@ -22,10 +19,7 @@ class DailyProgramItems {
   final List<TaskModel> tasks;
   final List<ReservationModel> etkinlikler;
 
-  DailyProgramItems({
-    required this.tasks,
-    required this.etkinlikler,
-  });
+  DailyProgramItems({required this.tasks, required this.etkinlikler});
 
   factory DailyProgramItems.fromJson(Map<String, dynamic> json) {
     return DailyProgramItems(

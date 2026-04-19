@@ -7,8 +7,8 @@ class TaskModel {
   final String title;
   final String? description;
   final DateTime? dueDate;
-  final DateTime? startDate; 
-  final DateTime? endDate;   
+  final DateTime? startDate;
+  final DateTime? endDate;
   final String priority;
   final String status;
   final List<String> tags;
@@ -38,9 +38,15 @@ class TaskModel {
       type: json['type'] ?? 'Görev',
       title: json['title'] ?? '',
       description: json['description'],
-      dueDate: json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
-      startDate: json['start_date'] != null ? DateTime.parse(json['start_date']) : null,
-      endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
+      dueDate: json['due_date'] != null
+          ? DateTime.parse(json['due_date'])
+          : null,
+      startDate: json['start_date'] != null
+          ? DateTime.parse(json['start_date'])
+          : null,
+      endDate: json['end_date'] != null
+          ? DateTime.parse(json['end_date'])
+          : null,
       priority: json['priority'] ?? 'medium',
       status: json['status'] ?? 'pending',
       tags: List<String>.from(json['tags'] ?? []),

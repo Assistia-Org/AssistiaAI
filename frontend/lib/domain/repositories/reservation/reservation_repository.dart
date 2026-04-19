@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../entities/reservation.dart';
+import '../../entities/reservation/reservation.dart';
 
 abstract class ReservationRepository {
   Future<Reservation> createReservation(Reservation reservation);

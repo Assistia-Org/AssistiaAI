@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../repositories/reservation_repository.dart';
+import '../repositories/reservation/reservation_repository.dart';
 
 class AnalyzeBusTicketUseCase {
   final ReservationRepository repository;

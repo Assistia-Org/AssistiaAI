@@ -1,8 +1,8 @@
 import 'dart:io';
-import '../../domain/entities/reservation.dart';
-import '../../domain/repositories/reservation_repository.dart';
-import '../datasources/reservation_remote_data_source.dart';
-import '../models/reservation_model.dart';
+import '../../../domain/entities/reservation/reservation.dart';
+import '../../../domain/repositories/reservation/reservation_repository.dart';
+import '../../datasources/reservation/reservation_remote_data_source.dart';
+import '../../models/reservation/reservation_model.dart';
 
 class ReservationRepositoryImpl implements ReservationRepository {
   final ReservationRemoteDataSource remoteDataSource;
@@ -26,8 +26,10 @@ class ReservationRepositoryImpl implements ReservationRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> analyzeBusTicket(File file, String mimeType) async {
+  Future<Map<String, dynamic>> analyzeBusTicket(
+    File file,
+    String mimeType,
+  ) async {
     return await remoteDataSource.analyzeBusTicket(file, mimeType);
   }
 }
-
