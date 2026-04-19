@@ -731,6 +731,47 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 if (data.details['pnr'] != null)
                   _detailRow('PNR', data.details['pnr'].toString(), color),
               ],
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: GestureDetector(
+                  onTap: () => _showDetailSheet(
+                    context: context,
+                    data: data,
+                    isTask: isTask,
+                    color: color,
+                    icon: icon,
+                    title: title,
+                    label: label,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: color.withOpacity(0.2), width: 1),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Detaylar',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded,
+                            size: 14, color: color),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ],
         ),
@@ -764,6 +805,487 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ],
       ),
     );
+  }
+
+  // ─── DETAIL BOTTOM SHEET ────────────────────────────────────────────────────
+
+  void _showDetailSheet({
+    required BuildContext context,
+    required dynamic data,
+    required bool isTask,
+    required Color color,
+    required IconData icon,
+    required String title,
+    required String label,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.88,
+        expand: false,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              // ── Handle bar
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // ── Header Row
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(icon, color: color, size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: color,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            title,
+                            style: GoogleFonts.inter(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0F172A),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(height: 1, color: const Color(0xFFE2E8F0)),
+              // ── Scrollable body
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 36),
+                  child: isTask
+                      ? _buildTaskDetails(data as TaskModel, color)
+                      : _buildReservationDetails(data as ReservationModel, color),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTaskDetails(TaskModel task, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Status + Priority chips row
+        Row(
+          children: [
+            _statusChip(task.status, color),
+            const SizedBox(width: 8),
+            _priorityChip(task.priority),
+            const SizedBox(width: 8),
+            _infoChip(task.type, Icons.category_outlined, const Color(0xFF64748B)),
+          ],
+        ),
+        // Time section
+        if (task.startDate != null || task.endDate != null) ...[
+          const SizedBox(height: 16),
+          _sectionCard(
+            color: color,
+            title: 'ZAMANLAMA',
+            child: Row(
+              children: [
+                if (task.startDate != null)
+                  Expanded(
+                    child: _gridCell(
+                      'Başlangıç',
+                      DateFormat('dd MMM').format(task.startDate!),
+                      sub: DateFormat('HH:mm').format(task.startDate!),
+                      color: color,
+                    ),
+                  ),
+                if (task.startDate != null && task.endDate != null)
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: const Color(0xFFE2E8F0),
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                if (task.endDate != null)
+                  Expanded(
+                    child: _gridCell(
+                      'Bitiş',
+                      DateFormat('dd MMM').format(task.endDate!),
+                      sub: DateFormat('HH:mm').format(task.endDate!),
+                      color: color,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        // Description
+        if (task.description != null && task.description!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _sectionCard(
+            color: color,
+            title: 'AÇIKLAMA',
+            child: Text(
+              task.description!,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: const Color(0xFF334155),
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildReservationDetails(ReservationModel res, Color color) {
+    final details = res.details;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Status chip
+        _statusChip(res.status, color),
+        // Time range card
+        if (res.startDate != null || res.endDate != null) ...[
+          const SizedBox(height: 14),
+          _sectionCard(
+            color: color,
+            title: 'TARİH & SAAT',
+            child: Row(
+              children: [
+                if (res.startDate != null)
+                  Expanded(
+                    child: _gridCell(
+                      res.category.toLowerCase().contains('hotel') ||
+                              res.category.toLowerCase().contains('otel')
+                          ? 'Giriş'
+                          : 'Kalkış',
+                      DateFormat('dd MMM yy').format(res.startDate!),
+                      sub: DateFormat('HH:mm').format(res.startDate!),
+                      color: color,
+                    ),
+                  ),
+                if (res.startDate != null && res.endDate != null)
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: const Color(0xFFE2E8F0),
+                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                  ),
+                if (res.endDate != null)
+                  Expanded(
+                    child: _gridCell(
+                      res.category.toLowerCase().contains('hotel') ||
+                              res.category.toLowerCase().contains('otel')
+                          ? 'Çıkış'
+                          : 'Varış',
+                      DateFormat('dd MMM yy').format(res.endDate!),
+                      sub: DateFormat('HH:mm').format(res.endDate!),
+                      color: color,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        // Flight detail card (2-col grid)
+        if (details.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _sectionCard(
+            color: color,
+            title: 'DETAYLAR',
+            child: Wrap(
+              spacing: 0,
+              runSpacing: 0,
+              children: _buildDetailGridCells(details, color),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _buildDetailGridCells(
+      Map<String, dynamic> details, Color color) {
+    // Keys that should span full width (long text)
+    const fullWidthKeys = {'passenger', 'guest_name', 'location'};
+    final entries = details.entries
+        .where((e) => e.value != null && e.value.toString().isNotEmpty)
+        .toList();
+
+    final List<Widget> widgets = [];
+    int i = 0;
+    while (i < entries.length) {
+      final e = entries[i];
+      final isFullWidth = fullWidthKeys.contains(e.key);
+      if (isFullWidth) {
+        if (widgets.isNotEmpty) widgets.add(const SizedBox(height: 2));
+        widgets.add(SizedBox(
+          width: double.infinity,
+          child: _gridCell(
+            _formatDetailKey(e.key),
+            e.value.toString(),
+            color: color,
+          ),
+        ));
+        i++;
+      } else {
+        // Pair two cells side by side
+        final eNext = (i + 1 < entries.length &&
+                !fullWidthKeys.contains(entries[i + 1].key))
+            ? entries[i + 1]
+            : null;
+        widgets.add(IntrinsicHeight(
+          child: Row(
+            children: [
+              Expanded(
+                child: _gridCell(
+                  _formatDetailKey(e.key),
+                  e.value.toString(),
+                  color: color,
+                ),
+              ),
+              if (eNext != null) ...[
+                Container(
+                  width: 1,
+                  color: const Color(0xFFE2E8F0),
+                  margin: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                Expanded(
+                  child: _gridCell(
+                    _formatDetailKey(eNext.key),
+                    eNext.value.toString(),
+                    color: color,
+                  ),
+                ),
+              ] else
+                const Expanded(child: SizedBox()),
+            ],
+          ),
+        ));
+        widgets.add(const Divider(height: 1, color: Color(0xFFF1F5F9)));
+        i += eNext != null ? 2 : 1;
+      }
+    }
+    return widgets;
+  }
+
+  Widget _sectionCard({
+    required Color color,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: color.withOpacity(0.6),
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _gridCell(String label, String value, {String? sub, required Color color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF94A3B8),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          if (sub != null)
+            Text(
+              sub,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusChip(String status, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            status,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _priorityChip(String priority) {
+    final Color c = priority == 'high'
+        ? const Color(0xFFF43F5E)
+        : priority == 'medium'
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFF10B981);
+    final String label = priority == 'high'
+        ? 'Yüksek'
+        : priority == 'medium'
+            ? 'Orta'
+            : 'Düşük';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.withOpacity(0.25)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.inter(
+            fontSize: 12, fontWeight: FontWeight.w700, color: c),
+      ),
+    );
+  }
+
+  Widget _infoChip(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: GoogleFonts.inter(
+                fontSize: 12, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDetailKey(String key) {
+    const map = {
+      'pnr': 'PNR',
+      'airline': 'Havayolu',
+      'flight_no': 'Uçuş No',
+      'departure': 'Kalkış',
+      'arrival': 'Varış',
+      'date': 'Tarih',
+      'departure_time': 'Kalkış',
+      'arrival_time': 'Varış',
+      'status': 'Durum',
+      'passenger': 'Yolcu',
+      'hotel_name': 'Otel',
+      'location': 'Konum',
+      'check_in': 'Giriş',
+      'check_out': 'Çıkış',
+      'check_in_time': 'Giriş Saati',
+      'check_out_time': 'Çıkış Saati',
+      'room_type': 'Oda',
+      'guest_name': 'Misafir',
+      'confirmation_no': 'Onay No',
+    };
+    return map[key] ??
+        key
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map((w) =>
+                w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
+            .join(' ');
   }
 
   // ─── EMPTY STATE ───────────────────────────────────────────────────────────
