@@ -1,5 +1,11 @@
 from fastapi import HTTPException
-from app.core.messages.error_message import RESERVATION_NOT_FOUND
+from app.core.messages.error_message import (
+    RESERVATION_NOT_FOUND,
+    RESERVATION_ALREADY_EXISTS
+)
+from datetime import date, datetime
+from app.models.reservation import Reservation
+from app.models.daily_program import DailyProgramSummary, DailyProgramItems
 from app.repositories.reservation import (
     create_reservation,
     get_reservation_by_id,
@@ -9,11 +15,59 @@ from app.repositories.reservation import (
     delete_reservation,
 )
 from app.schemas.reservation import ReservationCreate, ReservationUpdate, ReservationResponse
+from app.repositories.daily_program import (
+    get_program_by_user_and_date,
+    create_daily_program
+)
 
+async def create_reservation_service(user_id: str, data: ReservationCreate) -> ReservationResponse:
+    """
+    Orchestrate reservation creation.
+    1. Check for duplicate PNR
+    2. Parse date
+    3. Find/Create DailyProgram
+    4. Save Reservation and Link to Program
+    """
+    # 1. Duplicate check by PNR
+    pnr = data.details.get("pnr")
+    if pnr:
+        existing = await Reservation.find_one(
+            Reservation.user_id == user_id,
+            Reservation.details.pnr == pnr
+        )
+        if existing:
+            raise HTTPException(status_code=409, detail=RESERVATION_ALREADY_EXISTS)
 
-async def create_reservation_service(data: ReservationCreate) -> ReservationResponse:
-    """Orchestrate reservation creation."""
+    # 2. Parse date from details
+    target_date_str = data.details.get("date")
+    try:
+        if target_date_str:
+            target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+        else:
+            target_date = date.today()
+    except ValueError:
+        target_date = date.today()
+
+    # 3. Find or Create DailyProgram
+    program = await get_program_by_user_and_date(user_id, target_date)
+    if not program:
+        program_data = {
+            "tarih": target_date,
+            "kullanici_id": user_id,
+            "ozet": DailyProgramSummary(task_sayisi=0, etkinlik_sayisi=0),
+            "items": DailyProgramItems(tasks=[], etkinlikler=[])
+        }
+        program = await create_daily_program(program_data)
+
+    # 4. Save Reservation
+    data.user_id = user_id
     reservation = await create_reservation(data.model_dump())
+    
+    # 5. Link to Program
+    program.items.etkinlikler.append(reservation) # Beanie Link handles this
+    program.ozet.etkinlik_sayisi += 1
+    await program.save()
+
     return ReservationResponse.model_validate(reservation)
 
 
