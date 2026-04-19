@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'add_flight_reservation_page.dart';
+import 'add_manual_task_page.dart';
 import '../../../core/constants/dummy_data.dart';
 
 class ProgramPage extends StatefulWidget {
@@ -296,10 +297,10 @@ class _ProgramPageState extends State<ProgramPage> {
   void _onEventOptionSelected(String value) {
     if (value == "Rezerve") {
       _showReservationTypePicker(context);
-    } else {
-      // Handle other options like "Görev", "Toplantı"
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("$value ekleme yakında eklenecek!")),
+    } else if (value == "Görev" || value == "Toplantı") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const AddManualTaskPage()),
       );
     }
   }
