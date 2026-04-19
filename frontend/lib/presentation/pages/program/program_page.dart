@@ -10,6 +10,7 @@ import '../../providers/daily_program_provider.dart';
 import 'add_manual_task_page.dart';
 import 'add_flight_reservation_page.dart';
 import 'add_bus_reservation_page.dart';
+import 'add_manual_hotel_page.dart';
 
 class ProgramPage extends ConsumerStatefulWidget {
   const ProgramPage({super.key});
@@ -81,19 +82,33 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
   }
 
   DateTime _effectiveTime(dynamic data, bool isTask, {bool isEnd = false}) {
+    DateTime? dt;
     if (isTask) {
       final task = data as TaskModel;
-      final dt = isEnd ? task.endDate : task.startDate;
-      return dt ??
-          DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+      dt = isEnd ? task.endDate : task.startDate;
     } else {
       final res = data as ReservationModel;
-      final dt = isEnd ? res.endDate : res.startDate;
-      if (dt != null) return dt;
-      final parsed = _parseTimeFromDetails(res.details, isEnd);
-      return parsed ??
-          DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+      dt = isEnd ? res.endDate : res.startDate;
+      if (dt == null) {
+        dt = _parseTimeFromDetails(res.details, isEnd);
+      }
     }
+
+    if (dt == null) {
+      return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    }
+
+    final startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1)); // Next day 00:00
+
+    if (dt.isBefore(startOfDay)) {
+      return startOfDay;
+    }
+    if (dt.isAfter(endOfDay)) {
+      return endOfDay;
+    }
+
+    return dt;
   }
 
   // ─── BUILD ────────────────────────────────────────────────────────────────
@@ -1401,8 +1416,16 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               title: 'Otel Konaklama',
               subtitle: 'Konaklama ve reservasyon bilgileri',
               icon: Icons.hotel_rounded,
-              color: const Color(0xFF1E293B),
-              onTap: () => Navigator.pop(context),
+              color: const Color(0xFF6366F1),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddManualHotelPage(),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 12),
             _resOption(

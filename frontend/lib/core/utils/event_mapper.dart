@@ -5,7 +5,7 @@ class EventMapper {
   static Color getColor(String type) {
     final t = type.toLowerCase();
     if (t.contains('uçuş') || t == 'flight') return const Color(0xFF0EA5E9); // Sky Blue
-    if (t.contains('otel') || t == 'hotel') return const Color(0xFF1E293B); // Slate Blue
+    if (t.contains('otel') || t == 'hotel') return const Color(0xFF6366F1); // Indigo
     if (t.contains('otobüs') || t == 'bus') return const Color(0xFFF59E0B); // Amber
     if (t.contains('görev') || t == 'task') return const Color(0xFF10B981); // Emerald
     if (t.contains('toplantı') || t == 'meeting') return const Color(0xFF8B5CF6); // Violet
