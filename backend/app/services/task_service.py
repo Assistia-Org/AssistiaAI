@@ -11,9 +11,46 @@ from app.repositories.task import (
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
 
 
-async def create_task_service(data: TaskCreate) -> TaskResponse:
-    """Orchestrate task creation."""
+from datetime import date
+from app.models.daily_program import DailyProgramSummary, DailyProgramItems
+from app.repositories.daily_program import (
+    get_program_by_user_and_date,
+    create_daily_program
+)
+
+async def create_task_service(creator_id: str, data: TaskCreate) -> TaskResponse:
+    """
+    Orchestrate task creation and DailyProgram sync.
+    1. Determine target date
+    2. Find/Create DailyProgram
+    3. Save Task and Link to Program
+    """
+    # 1. Determine target date (due_date or today)
+    target_date = data.due_date.date() if data.due_date else date.today()
+
+    # 2. Find or Create DailyProgram
+    program = await get_program_by_user_and_date(creator_id, target_date)
+    if not program:
+        program_data = {
+            "tarih": target_date,
+            "kullanici_id": creator_id,
+            "ozet": DailyProgramSummary(task_sayisi=0, etkinlik_sayisi=0),
+            "items": DailyProgramItems(tasks=[], etkinlikler=[])
+        }
+        program = await create_daily_program(program_data)
+
+    # 3. Save Task
+    data.creator_id = creator_id
+    if creator_id not in data.assigned_to:
+        data.assigned_to.append(creator_id)
+        
     task = await create_task(data.model_dump())
+    
+    # 4. Link to Program
+    program.items.tasks.append(task) # Beanie Link handles this
+    program.ozet.task_sayisi += 1
+    await program.save()
+
     return TaskResponse.model_validate(task)
 
 
