@@ -9,7 +9,7 @@ class ReservationRemoteDataSource {
   final String baseUrl = 'http://10.0.2.2:8000/api/v1';
   final http.Client client;
   final SharedPreferences sharedPreferences;
-  final token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzY2MTAzNDAsInN1YiI6InN0cmluZyIsInR5cGUiOiJhY2Nlc3MifQ.H5kHHc0jw9d8I5GXm9c-rcDCAK60iV5AlPcOjChtzyQ";
+  final token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzY2MjM0MTgsInN1YiI6InN0cmluZyIsInR5cGUiOiJhY2Nlc3MifQ.Ao0P0h3sYcfjRWtz4DpfeBOWyqg5eCi9VOHosx8cV3k";
 
   ReservationRemoteDataSource({
     required this.client,
@@ -82,4 +82,33 @@ class ReservationRemoteDataSource {
       throw Exception('Analiz hatası: ${response.statusCode}');
     }
   }
+
+  Future<Map<String, dynamic>> analyzeBusTicket(File file, String mimeType) async {
+    // final token = sharedPreferences.getString('access_token');
+    
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/reservations/analyze-bus'),
+    );
+    
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token'; // ignore: unnecessary_null_comparison
+    }
+    
+    request.files.add(await http.MultipartFile.fromPath(
+      'file',
+      file.path,
+      contentType: MediaType.parse(mimeType),
+    ));
+    
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Analiz hatası (Otobüs): ${response.statusCode}');
+    }
+  }
 }
+

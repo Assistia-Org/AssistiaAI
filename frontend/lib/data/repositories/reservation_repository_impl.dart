@@ -24,4 +24,10 @@ class ReservationRepositoryImpl implements ReservationRepository {
   Future<Map<String, dynamic>> analyzeTicket(File file, String mimeType) async {
     return await remoteDataSource.analyzeTicket(file, mimeType);
   }
+
+  @override
+  Future<Map<String, dynamic>> analyzeBusTicket(File file, String mimeType) async {
+    return await remoteDataSource.analyzeBusTicket(file, mimeType);
+  }
 }
+

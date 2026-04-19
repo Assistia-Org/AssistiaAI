@@ -9,6 +9,7 @@ import '../../../data/models/task_model.dart';
 import '../../providers/daily_program_provider.dart';
 import 'add_manual_task_page.dart';
 import 'add_flight_reservation_page.dart';
+import 'add_bus_reservation_page.dart';
 
 class ProgramPage extends ConsumerStatefulWidget {
   const ProgramPage({super.key});
@@ -1409,7 +1410,15 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               subtitle: 'Şehirler arası seyahat planı',
               icon: Icons.directions_bus_rounded,
               color: const Color(0xFFF59E0B),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddBusReservationPage(),
+                  ),
+                );
+              },
             ),
           ],
         ),

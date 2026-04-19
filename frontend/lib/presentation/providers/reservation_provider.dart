@@ -4,6 +4,7 @@ import '../../data/datasources/reservation_remote_data_source.dart';
 import '../../data/repositories/reservation_repository_impl.dart';
 import '../../domain/usecases/add_reservation_usecase.dart';
 import '../../domain/usecases/analyze_ticket_usecase.dart';
+import '../../domain/usecases/analyze_bus_ticket_usecase.dart';
 import '../../domain/entities/reservation.dart';
 import 'dart:io';
 
@@ -28,6 +29,11 @@ final addReservationUseCaseProvider = FutureProvider<AddReservationUseCase>((ref
 final analyzeTicketUseCaseProvider = FutureProvider<AnalyzeTicketUseCase>((ref) async {
   final repository = await ref.watch(reservationRepositoryProvider.future);
   return AnalyzeTicketUseCase(repository);
+});
+
+final analyzeBusTicketUseCaseProvider = FutureProvider<AnalyzeBusTicketUseCase>((ref) async {
+  final repository = await ref.watch(reservationRepositoryProvider.future);
+  return AnalyzeBusTicketUseCase(repository);
 });
 
 // --- State Management ---
@@ -65,6 +71,16 @@ class ReservationController {
     ref.read(reservationLoadingProvider.notifier).setLoading(true);
     try {
       final useCase = await ref.read(analyzeTicketUseCaseProvider.future);
+      return await useCase.execute(file, mimeType);
+    } finally {
+      ref.read(reservationLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<Map<String, dynamic>> analyzeBusTicket(File file, String mimeType) async {
+    ref.read(reservationLoadingProvider.notifier).setLoading(true);
+    try {
+      final useCase = await ref.read(analyzeBusTicketUseCaseProvider.future);
       return await useCase.execute(file, mimeType);
     } finally {
       ref.read(reservationLoadingProvider.notifier).setLoading(false);

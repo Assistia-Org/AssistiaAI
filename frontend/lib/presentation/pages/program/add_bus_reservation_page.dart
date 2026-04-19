@@ -4,19 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
-import '../../../core/constants/dummy_data.dart';
 import '../../../domain/entities/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import 'package:uuid/uuid.dart';
 
-class AddFlightReservationPage extends ConsumerStatefulWidget {
-  const AddFlightReservationPage({super.key});
+class AddBusReservationPage extends ConsumerStatefulWidget {
+  const AddBusReservationPage({super.key});
 
   @override
-  ConsumerState<AddFlightReservationPage> createState() => _AddFlightReservationPageState();
+  ConsumerState<AddBusReservationPage> createState() => _AddBusReservationPageState();
 }
 
-class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationPage> {
+class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
   Map<String, dynamic>? _extractedData;
   final ImagePicker _picker = ImagePicker();
 
@@ -44,7 +43,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
     });
     
     try {
-      final result = await ref.read(reservationControllerProvider).analyzeTicket(file, mimeType);
+      final result = await ref.read(reservationControllerProvider).analyzeBusTicket(file, mimeType);
       
       if (mounted) {
         setState(() {
@@ -54,7 +53,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Bilet detayları başarıyla çözümlendi!"),
-            backgroundColor: Color(0xFF0EA5E9),
+            backgroundColor: Color(0xFFF59E0B),
           ),
         );
       }
@@ -85,7 +84,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFF0EA5E9).withValues(alpha: 0.1),
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
               ),
             ),
           ),
@@ -123,7 +122,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
           ),
           const SizedBox(width: 8),
           Text(
-            "Uçuş Rezervasyonu Ekle",
+            "Otobüs Yolculuğu Ekle",
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -143,7 +142,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
           title: "PDF Bileti Yükle",
           subtitle: "E-bilet dosyanızı (PDF) seçin",
           icon: Icons.picture_as_pdf_rounded,
-          color: const Color(0xFF0EA5E9),
+          color: const Color(0xFFF59E0B),
           onTap: _pickFile,
         ),
         const SizedBox(height: 20),
@@ -151,7 +150,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
           title: "Ekran Görüntüsü Yükle",
           subtitle: "Bilet görselini galeriden seçin",
           icon: Icons.add_photo_alternate_rounded,
-          color: const Color(0xFF8B5CF6),
+          color: const Color(0xFFD97706),
           onTap: _pickImage,
         ),
         const SizedBox(height: 40),
@@ -177,7 +176,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
             width: 80,
             height: 80,
             child: CircularProgressIndicator(
-              color: Color(0xFF0EA5E9),
+              color: Color(0xFFF59E0B),
               strokeWidth: 4,
             ),
           ),
@@ -217,28 +216,31 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
           const SizedBox(height: 24),
           
           _buildInfoCard(
-            title: "Uçuş Bilgileri",
-            icon: Icons.airplanemode_active_rounded,
-            color: const Color(0xFF0EA5E9),
+            title: "Sefer Bilgileri",
+            icon: Icons.directions_bus_rounded,
+            color: const Color(0xFFF59E0B),
             content: [
               _buildRow("Nerden/Nereye", "${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}"),
-              _buildRow("Uçuş No", data['flight_no'] ?? '-'),
-              _buildRow("Havayolu", data['airline'] ?? '-'),
+              _buildRow("Otobüs Firması", data['bus_company'] ?? '-'),
+              if (data['trip_no'] != null && data['trip_no']!.isNotEmpty)
+                _buildRow("Sefer No", data['trip_no']),
               _buildRow("Tarih", data['date'] ?? '-'),
               _buildRow("Kalkış Saati", data['departure_time'] ?? '-'),
-              _buildRow("Varış Saati", data['arrival_time'] ?? '-'),
+              if (data['arrival_time'] != null && data['arrival_time']!.isNotEmpty)
+                _buildRow("Varış Saati", data['arrival_time']),
             ],
           ),
           const SizedBox(height: 16),
           
           _buildInfoCard(
-            title: "Rezervasyon Detayları",
+            title: "Bilet Detayları",
             icon: Icons.confirmation_number_rounded,
-            color: const Color(0xFF8B5CF6),
+            color: const Color(0xFFD97706),
             content: [
-              _buildRow("PNR Numarası", data['pnr'] ?? '-'),
-              _buildRow("Bilet Durumu", data['status'] ?? '-'),
-              _buildRow("Yolcu Tipi", data['passenger'] ?? '-'),
+              _buildRow("PNR/Bilet No", data['pnr'] ?? '-'),
+              _buildRow("Koltuk No", data['seat_number'] ?? '-'),
+              _buildRow("Durum", data['status'] ?? '-'),
+              _buildRow("Yolcu", data['passenger'] ?? '-'),
             ],
           ),
           
@@ -436,8 +438,8 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
                 
                 final reservation = Reservation(
                   id: uuid.v4(),
-                  category: "flight",
-                  title: "Uçuş: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
+                  category: "bus",
+                  title: "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
                   details: data,
                   status: "confirmed",
                 );
@@ -447,7 +449,7 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text("Rezervasyon başarıyla kaydedildi!"),
+                      content: Text("Otobüs rezervasyonu başarıyla kaydedildi!"),
                       backgroundColor: Colors.green,
                     ),
                   );
@@ -476,11 +478,11 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: const LinearGradient(
-          colors: [Color(0xFF0EA5E9), Color(0xFF0284C7)],
+          colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0EA5E9).withValues(alpha: 0.3),
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
