@@ -166,7 +166,7 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
         ),
         const SizedBox(height: 40),
         Text(
-          "Yapay zeka bilet üzerindeki bilgileri otomatik olarak okuyup JSON formatında sisteme işleyecektir.",
+          "Yapay zeka bilet üzerindeki bilgileri otomatik olarak okuyup sisteme işleyecektir.",
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 12,
