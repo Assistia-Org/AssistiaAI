@@ -9,13 +9,17 @@ import '../../../domain/entities/user/user.dart';
 class AuthRemoteDataSource {
   // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
   // The plan requested to be tested on Chrome, so we use localhost
-  final String baseUrl = 'http://localhost:8000/api/v1';
+  final String baseUrl = 'http://10.0.2.2:8000/api/v1';
   final http.Client client;
   final SharedPreferences sharedPreferences;
 
   AuthRemoteDataSource({required this.client, required this.sharedPreferences});
 
-  Future<User> register({required String name, required String email, required String password}) async {
+  Future<User> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
     const uuid = Uuid();
     final uniqueId = uuid.v4();
 
@@ -43,17 +47,14 @@ class AuthRemoteDataSource {
     final response = await client.post(
       Uri.parse('$baseUrl/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-      }),
+      body: jsonEncode({'email': email, 'password': password}),
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final accessToken = data['access_token'];
       final refreshToken = data['refresh_token'];
-      
+
       // Save tokens
       await sharedPreferences.setString('access_token', accessToken);
       if (refreshToken != null) {

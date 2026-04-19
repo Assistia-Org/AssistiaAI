@@ -1,5 +1,5 @@
-import '../entities/reservation.dart';
-import '../repositories/reservation_repository.dart';
+import '../entities/reservation/reservation.dart';
+import '../repositories/reservation/reservation_repository.dart';
 
 class AddReservationUseCase {
   final ReservationRepository repository;

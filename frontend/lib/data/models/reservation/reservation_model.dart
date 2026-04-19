@@ -1,4 +1,4 @@
-import '../../domain/entities/reservation.dart';
+import '../../../domain/entities/reservation/reservation.dart';
 
 class ReservationModel extends Reservation {
   ReservationModel({
@@ -23,8 +23,12 @@ class ReservationModel extends Reservation {
       title: json['title'],
       details: json['details'] ?? {},
       isShared: json['is_shared'] ?? false,
-      startDate: json['start_date'] != null ? DateTime.parse(json['start_date']) : null,
-      endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
+      startDate: json['start_date'] != null
+          ? DateTime.parse(json['start_date'])
+          : null,
+      endDate: json['end_date'] != null
+          ? DateTime.parse(json['end_date'])
+          : null,
       status: json['status'],
     );
   }

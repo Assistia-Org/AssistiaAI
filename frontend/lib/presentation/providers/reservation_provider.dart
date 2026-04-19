@@ -1,40 +1,54 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth_provider.dart';
-import '../../data/datasources/reservation_remote_data_source.dart';
-import '../../data/repositories/reservation_repository_impl.dart';
+import '../../data/datasources/reservation/reservation_remote_data_source.dart';
+import '../../data/repositories/reservation/reservation_repository_impl.dart';
 import '../../domain/usecases/add_reservation_usecase.dart';
 import '../../domain/usecases/analyze_ticket_usecase.dart';
 import '../../domain/usecases/analyze_bus_ticket_usecase.dart';
-import '../../domain/entities/reservation.dart';
+import '../../domain/entities/reservation/reservation.dart';
 import 'dart:io';
 
 // --- Dependency Injection ---
 
-final reservationRemoteDataSourceProvider = FutureProvider<ReservationRemoteDataSource>((ref) async {
-  final prefs = await ref.watch(sharedPrefsProvider.future);
-  final client = ref.watch(httpClientProvider);
-  return ReservationRemoteDataSource(client: client, sharedPreferences: prefs);
-});
+final reservationRemoteDataSourceProvider =
+    FutureProvider<ReservationRemoteDataSource>((ref) async {
+      final prefs = await ref.watch(sharedPrefsProvider.future);
+      final client = ref.watch(httpClientProvider);
+      return ReservationRemoteDataSource(
+        client: client,
+        sharedPreferences: prefs,
+      );
+    });
 
-final reservationRepositoryProvider = FutureProvider<ReservationRepositoryImpl>((ref) async {
-  final remoteDataSource = await ref.watch(reservationRemoteDataSourceProvider.future);
-  return ReservationRepositoryImpl(remoteDataSource: remoteDataSource);
-});
+final reservationRepositoryProvider = FutureProvider<ReservationRepositoryImpl>(
+  (ref) async {
+    final remoteDataSource = await ref.watch(
+      reservationRemoteDataSourceProvider.future,
+    );
+    return ReservationRepositoryImpl(remoteDataSource: remoteDataSource);
+  },
+);
 
-final addReservationUseCaseProvider = FutureProvider<AddReservationUseCase>((ref) async {
+final addReservationUseCaseProvider = FutureProvider<AddReservationUseCase>((
+  ref,
+) async {
   final repository = await ref.watch(reservationRepositoryProvider.future);
   return AddReservationUseCase(repository);
 });
 
-final analyzeTicketUseCaseProvider = FutureProvider<AnalyzeTicketUseCase>((ref) async {
+final analyzeTicketUseCaseProvider = FutureProvider<AnalyzeTicketUseCase>((
+  ref,
+) async {
   final repository = await ref.watch(reservationRepositoryProvider.future);
   return AnalyzeTicketUseCase(repository);
 });
 
-final analyzeBusTicketUseCaseProvider = FutureProvider<AnalyzeBusTicketUseCase>((ref) async {
-  final repository = await ref.watch(reservationRepositoryProvider.future);
-  return AnalyzeBusTicketUseCase(repository);
-});
+final analyzeBusTicketUseCaseProvider = FutureProvider<AnalyzeBusTicketUseCase>(
+  (ref) async {
+    final repository = await ref.watch(reservationRepositoryProvider.future);
+    return AnalyzeBusTicketUseCase(repository);
+  },
+);
 
 // --- State Management ---
 
@@ -47,9 +61,10 @@ class ReservationLoadingNotifier extends Notifier<bool> {
   }
 }
 
-final reservationLoadingProvider = NotifierProvider<ReservationLoadingNotifier, bool>(() {
-  return ReservationLoadingNotifier();
-});
+final reservationLoadingProvider =
+    NotifierProvider<ReservationLoadingNotifier, bool>(() {
+      return ReservationLoadingNotifier();
+    });
 
 class ReservationController {
   final Ref ref;
@@ -77,7 +92,10 @@ class ReservationController {
     }
   }
 
-  Future<Map<String, dynamic>> analyzeBusTicket(File file, String mimeType) async {
+  Future<Map<String, dynamic>> analyzeBusTicket(
+    File file,
+    String mimeType,
+  ) async {
     ref.read(reservationLoadingProvider.notifier).setLoading(true);
     try {
       final useCase = await ref.read(analyzeBusTicketUseCaseProvider.future);
