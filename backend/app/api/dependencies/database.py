@@ -10,6 +10,7 @@ from app.models.invitation import Invitation
 
 async def init_db():
     """Initialize Beanie ODM with MongoDB."""
+    Invitation.model_rebuild()
     client = AsyncIOMotorClient(settings.MONGODB_URL)
     await init_beanie(
         database=client.get_database(settings.DATABASE_NAME),
