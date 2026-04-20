@@ -16,7 +16,9 @@ class UserCreate(UserBase):
     password: str
 
 class UserUpdate(BaseModel):
+    username: Optional[str] = None
     display_name: Optional[str] = None
+    email: Optional[EmailStr] = None
     avatar_url: Optional[str] = None
     personal_settings: Optional[PersonalSettingsModel] = None
 

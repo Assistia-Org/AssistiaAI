@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
+import 'account_info_page.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -195,7 +196,16 @@ class ProfilePage extends ConsumerWidget {
               ),
             ),
           ),
-          _buildSettingItem(Icons.person_outline_rounded, 'Hesap Bilgileri'),
+          _buildSettingItem(
+            Icons.person_outline_rounded, 
+            'Hesap Bilgileri',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AccountInfoPage()),
+              );
+            },
+          ),
           _buildSettingItem(Icons.notifications_none_rounded, 'Bildirimler'),
           _buildSettingItem(Icons.security_rounded, 'Güvenlik'),
           _buildSettingItem(Icons.palette_outlined, 'Görünüm'),
