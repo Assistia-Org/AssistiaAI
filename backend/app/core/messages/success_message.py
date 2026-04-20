@@ -1,3 +1,6 @@
 USER_CREATED = "User created successfully."
 ASSISTANT_CREATED = "Assistant created successfully."
 LOGIN_SUCCESSFUL = "Login successful."
+INVITATION_SENT = "Invitation sent successfully."
+INVITATION_ACCEPTED = "Invitation accepted successfully."
+INVITATION_REJECTED = "Invitation rejected successfully."

@@ -6,6 +6,7 @@ from app.services.community_service import (
     get_community_service,
     list_communities_service,
     update_community_service,
+    get_my_communities_service,
 )
 from app.api.dependencies.auth import get_current_user
 from app.models.user import User
@@ -19,7 +20,15 @@ async def create_community(
     current_user: User = Depends(get_current_user)
 ) -> CommunityResponse:
     """Create a new community."""
-    return await create_community_service(data)
+    return await create_community_service(data, current_user)
+
+
+@router.get("/me", response_model=list[CommunityResponse], status_code=status.HTTP_200_OK)
+async def get_my_communities(
+    current_user: User = Depends(get_current_user)
+) -> list[CommunityResponse]:
+    """Get all communities the current user is a member or owner of."""
+    return await get_my_communities_service(current_user.id)
 
 
 @router.get("/{community_id}", response_model=CommunityResponse, status_code=status.HTTP_200_OK)

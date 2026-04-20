@@ -6,23 +6,41 @@ from app.repositories.community import (
     list_communities,
     update_community,
     delete_community,
+    get_my_communities,
 )
 from app.schemas.community import CommunityCreate, CommunityUpdate, CommunityResponse
+from app.models.user import User
+from app.models.community import CommunityMember
 
 
-async def create_community_service(data: CommunityCreate) -> CommunityResponse:
-    """Orchestrate community creation."""
+async def create_community_service(data: CommunityCreate, current_user: User) -> CommunityResponse:
+    """
+    Orchestrate community creation using a provided string ID.
+    Automatically assigns owner_id and adds creator as the first member.
+    """
     existing = await get_community_by_id(data.id)
     if existing:
         raise HTTPException(status_code=400, detail=COMMUNITY_ALREADY_EXISTS)
     
-    community = await create_community(data.model_dump(by_alias=True))
+    community_dict = data.model_dump(by_alias=True)
+    
+    # Automate ownership and membership
+    community_dict["owner_id"] = str(current_user.id)
+    
+    # Initialize members list with the owner
+    owner_member = CommunityMember(user=current_user, role="owner")
+    community_dict["members"] = [owner_member]
+    
+    community = await create_community(community_dict)
+    
+    # Fetch links for the response
+    await community.fetch_all_links()
     return CommunityResponse.model_validate(community)
 
 
 async def get_community_service(community_id: str) -> CommunityResponse:
     """Orchestrate community retrieval."""
-    community = await get_community_by_id(community_id)
+    community = await get_community_by_id(community_id, fetch_links=True)
     if not community:
         raise HTTPException(status_code=404, detail=COMMUNITY_NOT_FOUND)
     return CommunityResponse.model_validate(community)
@@ -34,6 +52,12 @@ async def list_communities_service() -> list[CommunityResponse]:
     return [CommunityResponse.model_validate(c) for c in communities]
 
 
+async def get_my_communities_service(user_id: str) -> list[CommunityResponse]:
+    """Orchestrate retrieval of user's communities."""
+    communities = await get_my_communities(user_id, fetch_links=True)
+    return [CommunityResponse.model_validate(c) for c in communities]
+
+
 async def update_community_service(community_id: str, data: CommunityUpdate) -> CommunityResponse:
     """Orchestrate community update."""
     community = await get_community_by_id(community_id)
@@ -41,6 +65,8 @@ async def update_community_service(community_id: str, data: CommunityUpdate) -> 
         raise HTTPException(status_code=404, detail=COMMUNITY_NOT_FOUND)
     
     updated_community = await update_community(community, data.model_dump(exclude_unset=True))
+    # Fetch links for the response
+    await updated_community.fetch_all_links()
     return CommunityResponse.model_validate(updated_community)
 
 
