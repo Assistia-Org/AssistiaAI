@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
-from app.models.task import Task
+from app.models.task import Task, TaskStatus
 
 async def create_task(task_data: dict) -> Task:
     """Create a new task and return the inserted document."""

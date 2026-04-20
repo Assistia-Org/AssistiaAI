@@ -38,9 +38,6 @@ async def update_user_service(user_id: str, data: UserUpdate) -> UserResponse:
             raise HTTPException(status_code=400, detail=DUPLICATE_EMAIL)
     
     update_data = data.model_dump(exclude_unset=True)
-    if "password" in update_data:
-        # Use centralized security utility
-        update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
         
     updated_user = await update_user(user, update_data)
     return UserResponse.model_validate(updated_user)
