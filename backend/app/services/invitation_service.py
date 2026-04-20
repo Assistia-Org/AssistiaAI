@@ -37,11 +37,10 @@ async def send_invitation_service(current_user: User, data: InvitationCreate) ->
         raise HTTPException(status_code=403, detail=UNAUTHORIZED_INVITATION)
     
     # 3. Check if invitee is already a member
-    is_member = any(m.user_id == str(data.invitee_email) for m in community.members) # Simplified, usually user_id is checked
-    # Better: check if user exists first and if their ID is in members
     invitee = await get_user_by_email(data.invitee_email)
     if invitee:
-        if any(m.user_id == invitee.id for m in community.members):
+        # Since m.user is a Link[User], we compare IDs
+        if any(str(getattr(m.user, "id", m.user)) == invitee.id for m in community.members):
             raise HTTPException(status_code=400, detail=ALREADY_MEMBER)
     
     # 4. Check if a pending invitation already exists

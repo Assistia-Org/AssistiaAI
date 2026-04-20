@@ -1,4 +1,5 @@
 from typing import List, Optional
+from beanie import PydanticObjectId
 from app.models.community import Community, CommunityMember
 
 async def create_community(community_data: dict) -> Community:
@@ -48,13 +49,27 @@ async def delete_community(community: Community) -> bool:
     await community.delete()
     return True
 
-async def get_my_communities(user_id: str) -> list[Community]:
-        try:
-            obj_id = PydanticObjectId(user_id)
-        except Exception:
-            return []
+async def get_my_communities(user_id: str, fetch_links: bool = False) -> List[Community]:
+    """Return communities where user is owner or member."""
+    # We try to use both string and ObjectId to be safe across different storage formats
+    try:
+        obj_id = PydanticObjectId(user_id)
+    except Exception:
+        obj_id = None
 
-        return await Community.find(
-            Community.user_id == obj_id,
-            Community.is_deleted == False
-        ).to_list()
+    query_filter = {
+        "$or": [
+            {"owner_id": user_id},
+            {"members.user": user_id},
+            {"members.user.$id": user_id}
+        ]
+    }
+
+    if obj_id:
+        query_filter["$or"].extend([
+            {"owner_id": obj_id},
+            {"members.user": obj_id},
+            {"members.user.$id": obj_id}
+        ])
+
+    return await Community.find(query_filter, fetch_links=fetch_links).to_list()

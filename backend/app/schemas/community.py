@@ -13,10 +13,9 @@ class CommunityMemberResponse(BaseModel):
 class CommunityBase(BaseModel):
     name: str
     type: str
-    owner_id: str
-    members: List[CommunityMemberResponse] = []
 
 class CommunityCreate(CommunityBase):
+    """Schema for creating a community. User must provide a string ID."""
     id: str
 
 class CommunityUpdate(BaseModel):
@@ -26,6 +25,8 @@ class CommunityUpdate(BaseModel):
 
 class CommunityResponse(CommunityBase, BaseSchema):
     id: str
+    owner_id: str
+    members: List[CommunityMemberResponse] = []
 
     class Config:
         from_attributes = True
