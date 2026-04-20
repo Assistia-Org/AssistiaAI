@@ -50,26 +50,43 @@ async def delete_community(community: Community) -> bool:
     return True
 
 async def get_my_communities(user_id: str, fetch_links: bool = False) -> List[Community]:
-    """Return communities where user is owner or member."""
-    # We try to use both string and ObjectId to be safe across different storage formats
+    """
+    Return communities where user is owner or member.
+    Uses an exhaustive search strategy for nested links in the members array.
+    """
     try:
         obj_id = PydanticObjectId(user_id)
     except Exception:
         obj_id = None
 
-    query_filter = {
-        "$or": [
-            {"owner_id": user_id},
-            {"members.user": user_id},
-            {"members.user.$id": user_id}
-        ]
-    }
-
+    ids_to_check = [user_id]
     if obj_id:
-        query_filter["$or"].extend([
-            {"owner_id": obj_id},
-            {"members.user": obj_id},
-            {"members.user.$id": obj_id}
+        ids_to_check.append(obj_id)
+    
+    or_filters = []
+    for uid in ids_to_check:
+        # 1. Direct ownership
+        or_filters.append({"owner_id": uid})
+        
+        # 2. Check within the 'members' array for the 'user' field in all known formats
+        # We check both direct path and $elemMatch path for robustness
+        or_filters.extend([
+            {"members.user": uid},
+            {"members.user.$id": uid},
+            {"members.user.id": uid},
+            {"members.user._id": uid}
         ])
+        
+        # $elemMatch patterns (keys are relative to array element)
+        patterns = [
+            {"user": uid},                  # Direct match
+            {"user.$id": uid},              # DBRef match
+            {"user.id": uid},               # Embedded object 'id'
+            {"user._id": uid},              # Embedded object '_id'
+            {"user": {"$ref": "users", "$id": uid}} # Full DBRef object
+        ]
+        
+        for pattern in patterns:
+            or_filters.append({"members": {"$elemMatch": pattern}})
 
-    return await Community.find(query_filter, fetch_links=fetch_links).to_list()
+    return await Community.find({"$or": or_filters}, fetch_links=fetch_links).to_list()
