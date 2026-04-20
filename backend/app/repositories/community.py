@@ -6,9 +6,9 @@ async def create_community(community_data: dict) -> Community:
     community = Community(**community_data)
     return await community.insert()
 
-async def get_community_by_id(community_id: str) -> Optional[Community]:
+async def get_community_by_id(community_id: str, fetch_links: bool = False) -> Optional[Community]:
     """Return community by ID or None if not found."""
-    return await Community.find_one(Community.id == community_id)
+    return await Community.find_one(Community.id == community_id, fetch_links=fetch_links)
 
 async def list_communities() -> List[Community]:
     """Return all communities."""
@@ -28,7 +28,11 @@ async def remove_community_member(community_id: str, user_id: str) -> bool:
     community = await get_community_by_id(community_id)
     if not community:
         return False
-    community.members = [m for m in community.members if m.user_id != user_id]
+    # Handle linked user ID check
+    community.members = [
+        m for m in community.members 
+        if str(getattr(m.user, "id", m.user)) != user_id
+    ]
     await community.save()
     return True
 

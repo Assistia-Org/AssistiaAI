@@ -17,12 +17,13 @@ async def create_community_service(data: CommunityCreate) -> CommunityResponse:
         raise HTTPException(status_code=400, detail=COMMUNITY_ALREADY_EXISTS)
     
     community = await create_community(data.model_dump(by_alias=True))
-    return CommunityResponse.model_validate(community)
+    full_community = await get_community_by_id(community.id, fetch_links=True)
+    return CommunityResponse.model_validate(full_community)
 
 
 async def get_community_service(community_id: str) -> CommunityResponse:
     """Orchestrate community retrieval."""
-    community = await get_community_by_id(community_id)
+    community = await get_community_by_id(community_id, fetch_links=True)
     if not community:
         raise HTTPException(status_code=404, detail=COMMUNITY_NOT_FOUND)
     return CommunityResponse.model_validate(community)
@@ -41,7 +42,9 @@ async def update_community_service(community_id: str, data: CommunityUpdate) -> 
         raise HTTPException(status_code=404, detail=COMMUNITY_NOT_FOUND)
     
     updated_community = await update_community(community, data.model_dump(exclude_unset=True))
-    return CommunityResponse.model_validate(updated_community)
+    # Fetch links for the response
+    full_community = await get_community_by_id(updated_community.id, fetch_links=True)
+    return CommunityResponse.model_validate(full_community)
 
 
 async def delete_community_service(community_id: str) -> None:

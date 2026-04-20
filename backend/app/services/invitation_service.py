@@ -93,7 +93,7 @@ async def accept_invitation_service(current_user: User, invitation_id: str) -> I
     await update_invitation(invitation, {"status": InvitationStatus.ACCEPTED})
     
     # 2. Add member to community
-    member = CommunityMember(user_id=current_user.id, role=invitation.role)
+    member = CommunityMember(user=current_user, role=invitation.role)
     await add_community_member(invitation.community_id, member)
     
     # 3. Add community to user

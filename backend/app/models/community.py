@@ -1,9 +1,11 @@
 from typing import List
 from pydantic import BaseModel, Field
+from beanie import Link
 from app.models.base import BaseDocument
+from app.models.user import User
 
 class CommunityMember(BaseModel):
-    user_id: str
+    user: Link[User]
     role: str
 
 class Community(BaseDocument):

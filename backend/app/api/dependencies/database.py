@@ -2,6 +2,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
 from app.core.config import settings
 from app.models.user import User
+from app.models.community import Community
 from app.models.task import Task
 from app.models.reservation import Reservation
 from app.models.daily_program import DailyProgram
@@ -14,6 +15,7 @@ async def init_db():
         database=client.get_database(settings.DATABASE_NAME),
         document_models=[
             User,
+            Community,
             Task,
             Reservation,
             DailyProgram,
