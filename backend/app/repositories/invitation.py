@@ -44,9 +44,9 @@ async def get_pending_invitation(community_id: str, email: str) -> Optional[Invi
     Queries by community ID (DBRef).
     """
     return await Invitation.find_one(
-        Invitation.community.id == community_id,
-        Invitation.invitee_email == email,
-        Invitation.status == InvitationStatus.PENDING
+        {"community.$id": community_id},
+        {"invitee_email": email},
+        {"status": InvitationStatus.PENDING}
     )
 
 async def update_invitation(invitation: Invitation, data: dict) -> Invitation:
