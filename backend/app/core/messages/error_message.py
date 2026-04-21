@@ -15,3 +15,5 @@ INVITATION_ALREADY_EXISTS = "An active invitation already exists for this email.
 ALREADY_MEMBER = "User is already a member of this community."
 UNAUTHORIZED_INVITATION = "You are not authorized to send invitations for this community."
 UNAUTHORIZED_COMMUNITY_ACTION = "You are not authorized to perform this action on this community."
+INVALID_OR_EXPIRED_TOKEN = "Invalid or expired reset token."
+EMAIL_SEND_FAILED = "Failed to send email."
