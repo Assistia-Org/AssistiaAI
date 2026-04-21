@@ -5,15 +5,18 @@ from datetime import datetime, timezone
 from app.core.config import settings
 from app.repositories.user import get_user_by_reset_token
 from app.utils.templates import get_reset_password_html, get_reset_error_html
-from app.schemas.auth import LoginSchema, Token, TokenRefresh, ForgotPasswordRequest, ResetPasswordRequest
+from app.schemas.auth import LoginSchema, Token, TokenRefresh, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest
 from app.schemas.user import UserCreate, UserResponse
 from app.services.auth_service import (
     register_user_service, 
     login_service, 
     refresh_token_service,
     forgot_password_service,
-    reset_password_service
+    reset_password_service,
+    change_password_service
 )
+from app.api.dependencies.auth import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,6 +49,14 @@ async def forgot_password(data: ForgotPasswordRequest) -> dict:
 async def reset_password(data: ResetPasswordRequest) -> dict:
     """Reset password using token."""
     return await reset_password_service(data)
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    """Change authenticated user's password."""
+    return await change_password_service(current_user, data)
 
 @router.get("/reset-password", response_class=HTMLResponse)
 async def reset_password_page(token: str):

@@ -11,13 +11,15 @@ from app.repositories.user import (
     get_user_by_id, 
     get_user_by_reset_token
 )
+from app.models.user import User
 from app.schemas.auth import (
     LoginSchema, 
     Token, 
     TokenPayload, 
     TokenRefresh, 
     ForgotPasswordRequest, 
-    ResetPasswordRequest
+    ResetPasswordRequest,
+    ChangePasswordRequest
 )
 from app.schemas.user import UserCreate, UserResponse
 from app.core.messages.error_message import (
@@ -26,13 +28,41 @@ from app.core.messages.error_message import (
     INVALID_REFRESH_TOKEN,
     USER_NOT_FOUND,
     INVALID_OR_EXPIRED_TOKEN,
-    EMAIL_SEND_FAILED
+    EMAIL_SEND_FAILED,
+    INCORRECT_CURRENT_PASSWORD,
+    INVALID_PASSWORD_STRUCTURE
 )
 from app.core.messages.success_message import (
     PASSWORD_RESET_EMAIL_SENT,
-    PASSWORD_RESET_SUCCESS
+    PASSWORD_RESET_SUCCESS,
+    PASSWORD_CHANGED
 )
 from app.utils.email import send_password_reset_email
+from app.utils.validators import validate_password_strength
+
+async def change_password_service(user: User, data: ChangePasswordRequest) -> dict:
+    """
+    Change user password after verifying the current one.
+    """
+    if not verify_password(data.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=INCORRECT_CURRENT_PASSWORD
+        )
+    
+    if data.new_password != data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match."
+        )
+    
+    # Validate password strength
+    validate_password_strength(data.new_password)
+    
+    user.hashed_password = get_password_hash(data.new_password)
+    await user.save()
+    
+    return {"message": PASSWORD_CHANGED}
 
 async def forgot_password_service(data: ForgotPasswordRequest) -> dict:
     """
@@ -69,6 +99,9 @@ async def reset_password_service(data: ResetPasswordRequest) -> dict:
             detail="Passwords do not match."
         )
     
+    # Validate password strength
+    validate_password_strength(data.new_password)
+    
     user = await get_user_by_reset_token(data.token)
     if not user:
         raise HTTPException(
@@ -96,6 +129,9 @@ async def register_user_service(data: UserCreate) -> UserResponse:
     Handle user registration.
     Checks for duplicate email and hashes password before storage.
     """
+    # Validate password strength
+    validate_password_strength(data.password)
+    
     existing_user = await get_user_by_email(data.email)
     if existing_user:
         raise HTTPException(
