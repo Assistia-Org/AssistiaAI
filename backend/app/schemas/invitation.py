@@ -33,3 +33,7 @@ class InvitationResponse(BaseModel):
 class InvitationStatusUpdate(BaseModel):
     """Schema for updating invitation status."""
     status: InvitationStatus
+
+class InvitationFilter(BaseModel):
+    """Schema for filtering invitations."""
+    status: Optional[InvitationStatus] = None

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import HTTPException
 from app.core.messages.error_message import (
     COMMUNITY_NOT_FOUND,
@@ -11,6 +11,7 @@ from app.repositories.invitation import (
     create_invitation,
     get_invitation_by_id,
     get_invitations_by_email,
+    get_user_invitations,
     get_pending_invitation,
     update_invitation
 )
@@ -19,7 +20,7 @@ from app.repositories.user import get_user_by_email, add_community_role
 from app.models.invitation import InvitationStatus
 from app.models.community import CommunityMember
 from app.models.user import CommunityRoleModel, User
-from app.schemas.invitation import InvitationCreate, InvitationResponse
+from app.schemas.invitation import InvitationCreate, InvitationResponse, InvitationFilter
 
 
 async def send_invitation_service(current_user: User, data: InvitationCreate) -> InvitationResponse:
@@ -63,20 +64,18 @@ async def send_invitation_service(current_user: User, data: InvitationCreate) ->
     return InvitationResponse.model_validate(invitation)
 
 
-async def get_my_invitations_service(current_user: User) -> List[InvitationResponse]:
-    """Retrieve all invitations for the user with full community/inviter details."""
-    # Fetch invitations by email and user ID with links
-    invitations = await get_invitations_by_email(current_user.email, fetch_links=True)
+async def get_my_invitations_service(current_user: User, filter_data: Optional[InvitationFilter] = None) -> List[InvitationResponse]:
+    """Retrieve all invitations for the currently logged-in user."""
+    status = filter_data.status if filter_data else None
     
-    from app.repositories.invitation import get_invitations_by_invitee_id
-    id_invitations = await get_invitations_by_invitee_id(str(current_user.id), fetch_links=True)
+    # Single query for user ID using PydanticObjectId
+    invitations = await get_user_invitations(
+        user_id=str(current_user.id),
+        status=status,
+        fetch_links=True
+    )
     
-    # Merge and deduplicate
-    all_invitations = {str(inv.id): inv for inv in invitations}
-    for inv in id_invitations:
-        all_invitations[str(inv.id)] = inv
-        
-    return [InvitationResponse.model_validate(inv) for inv in all_invitations.values()]
+    return [InvitationResponse.model_validate(inv) for inv in invitations]
 
 
 async def accept_invitation_service(current_user: User, invitation_id: str) -> InvitationResponse:
