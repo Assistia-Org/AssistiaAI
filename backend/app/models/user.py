@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, EmailStr
 from app.models.base import BaseDocument
@@ -22,6 +23,8 @@ class User(BaseDocument):
     avatar_url: Optional[str] = None
     joined_communities: List[CommunityRoleModel] = Field(default_factory=list)
     personal_settings: PersonalSettingsModel = Field(default_factory=PersonalSettingsModel)
+    reset_token: Optional[str] = None
+    reset_token_expires_at: Optional[datetime] = None
 
     class Settings:
         name = "users"
