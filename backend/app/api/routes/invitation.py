@@ -1,8 +1,8 @@
-from typing import List
-from fastapi import APIRouter, Depends, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, status, Body
 from app.api.dependencies.auth import get_current_user
 from app.models.user import User
-from app.schemas.invitation import InvitationCreate, InvitationResponse
+from app.schemas.invitation import InvitationCreate, InvitationResponse, InvitationFilter
 from app.services.invitation_service import (
     accept_invitation_service,
     get_my_invitations_service,
@@ -25,12 +25,13 @@ async def send_invitation(
     """Send a community invitation to an email."""
     return await send_invitation_service(current_user, data)
 
-@router.get("/me", response_model=List[InvitationResponse], status_code=status.HTTP_200_OK)
+@router.post("/me", response_model=List[InvitationResponse], status_code=status.HTTP_200_OK)
 async def get_my_invitations(
+    filter_data: Optional[InvitationFilter] = Body(None),
     current_user: User = Depends(get_current_user)
 ) -> List[InvitationResponse]:
     """Get all invitations for the logged-in user."""
-    return await get_my_invitations_service(current_user)
+    return await get_my_invitations_service(current_user, filter_data)
 
 @router.patch("/{invitation_id}/accept", response_model=InvitationResponse, status_code=status.HTTP_200_OK)
 async def accept_invitation(
