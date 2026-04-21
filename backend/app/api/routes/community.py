@@ -54,8 +54,8 @@ async def update_community(
     data: CommunityUpdate, 
     current_user: User = Depends(get_current_user)
 ) -> CommunityResponse:
-    """Update community details."""
-    return await update_community_service(community_id, data)
+    """Update community details. Only owner is authorized."""
+    return await update_community_service(community_id, data, current_user)
 
 
 @router.delete("/{community_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -63,5 +63,5 @@ async def delete_community(
     community_id: str, 
     current_user: User = Depends(get_current_user)
 ) -> None:
-    """Delete a community."""
-    await delete_community_service(community_id)
+    """Delete a community. Only owner is authorized."""
+    await delete_community_service(community_id, current_user)

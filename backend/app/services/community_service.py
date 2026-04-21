@@ -1,5 +1,9 @@
 from fastapi import HTTPException
-from app.core.messages.error_message import COMMUNITY_NOT_FOUND, COMMUNITY_ALREADY_EXISTS
+from app.core.messages.error_message import (
+    COMMUNITY_NOT_FOUND, 
+    COMMUNITY_ALREADY_EXISTS,
+    UNAUTHORIZED_COMMUNITY_ACTION
+)
 from app.repositories.community import (
     create_community,
     get_community_by_id,
@@ -58,11 +62,15 @@ async def get_my_communities_service(user_id: str) -> list[CommunityResponse]:
     return [CommunityResponse.model_validate(c) for c in communities]
 
 
-async def update_community_service(community_id: str, data: CommunityUpdate) -> CommunityResponse:
-    """Orchestrate community update."""
+async def update_community_service(community_id: str, data: CommunityUpdate, current_user: User) -> CommunityResponse:
+    """Orchestrate community update. Only owner is authorized."""
     community = await get_community_by_id(community_id)
     if not community:
         raise HTTPException(status_code=404, detail=COMMUNITY_NOT_FOUND)
+    
+    # Ownership check
+    if community.owner_id != str(current_user.id):
+        raise HTTPException(status_code=403, detail=UNAUTHORIZED_COMMUNITY_ACTION)
     
     updated_community = await update_community(community, data.model_dump(exclude_unset=True))
     # Fetch links for the response
@@ -70,9 +78,14 @@ async def update_community_service(community_id: str, data: CommunityUpdate) -> 
     return CommunityResponse.model_validate(updated_community)
 
 
-async def delete_community_service(community_id: str) -> None:
-    """Orchestrate community deletion."""
+async def delete_community_service(community_id: str, current_user: User) -> None:
+    """Orchestrate community deletion. Only owner is authorized."""
     community = await get_community_by_id(community_id)
     if not community:
         raise HTTPException(status_code=404, detail=COMMUNITY_NOT_FOUND)
+    
+    # Ownership check
+    if community.owner_id != str(current_user.id):
+        raise HTTPException(status_code=403, detail=UNAUTHORIZED_COMMUNITY_ACTION)
+        
     await delete_community(community)
