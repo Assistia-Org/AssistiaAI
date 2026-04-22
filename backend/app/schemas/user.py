@@ -12,7 +12,6 @@ class UserBase(BaseModel):
     personal_settings: Optional[PersonalSettingsModel] = None
 
 class UserCreate(UserBase):
-    id: str
     password: str
 
 class UserUpdate(BaseModel):

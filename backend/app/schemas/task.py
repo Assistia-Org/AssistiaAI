@@ -18,7 +18,7 @@ class TaskBase(BaseModel):
     tags: List[str] = []
 
 class TaskCreate(TaskBase):
-    id: str
+    pass
 
 class TaskUpdate(BaseModel):
     assigned_to: Optional[List[str]] = None
