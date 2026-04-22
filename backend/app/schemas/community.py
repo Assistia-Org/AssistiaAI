@@ -15,8 +15,8 @@ class CommunityBase(BaseModel):
     type: str
 
 class CommunityCreate(CommunityBase):
-    """Schema for creating a community. User must provide a string ID."""
-    id: str
+    """Schema for creating a community."""
+    pass
 
 class CommunityUpdate(BaseModel):
     name: Optional[str] = None
