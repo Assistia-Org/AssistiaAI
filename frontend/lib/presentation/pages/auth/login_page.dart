@@ -111,6 +111,257 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
+  void _showForgotPasswordDialog() {
+    final resetEmailController = TextEditingController(text: _emailController.text);
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (dialogContext) {
+        String? localErrorMessage;
+        bool isSubmitting = false;
+
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(dialogContext).viewInsets.bottom + 24,
+          top: 16,
+          left: 24,
+          right: 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Icon
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.blueAccent.withValues(alpha: 0.1),
+              ),
+              child: const Icon(
+                Icons.lock_reset_rounded,
+                size: 40,
+                color: Colors.blueAccent,
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Texts
+            Text(
+              'Şifremi Unuttum',
+              style: GoogleFonts.inter(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Hesabınıza bağlı e-posta adresini girin.\nSize bir şifre sıfırlama bağlantısı göndereceğiz.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.grey[600],
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 32),
+            
+            // Text Field
+            TextField(
+              controller: resetEmailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'ornek@email.com',
+                prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+            
+            // Error Message Display
+            if (localErrorMessage != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        localErrorMessage!,
+                        style: GoogleFonts.inter(
+                          color: Colors.red.shade700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            
+            const SizedBox(height: 24),
+            
+            // Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      side: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    child: Text(
+                      'İptal',
+                      style: GoogleFonts.inter(
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: isSubmitting ? null : () async {
+                      setState(() {
+                        localErrorMessage = null;
+                        isSubmitting = true;
+                      });
+                      
+                      final emailText = resetEmailController.text.trim();
+                      if (emailText.isEmpty) {
+                        setState(() {
+                          localErrorMessage = 'E-posta alanı boş bırakılamaz.';
+                          isSubmitting = false;
+                        });
+                        return;
+                      }
+                      
+                      // Validate email format
+                      final errorMsg = Validators.validateEmail(emailText);
+                      if (errorMsg != null) {
+                        setState(() {
+                          localErrorMessage = 'Lütfen geçerli bir email adresi girin.';
+                          isSubmitting = false;
+                        });
+                        return; // Stop execution without closing the bottom sheet
+                      }
+                      
+                      try {
+                        // Use the main page's context safely
+                        await ref.read(authControllerProvider).forgotPassword(emailText);
+                        
+                        // Close bottom sheet ONLY after a successful operation
+                        if (mounted) {
+                          Navigator.pop(dialogContext); // Close bottom sheet
+                          
+                          ScaffoldMessenger.of(context).showSnackBar( // Context from main page
+                            SnackBar(
+                              content: Row(
+                                children: [
+                                  const Icon(Icons.check_circle, color: Colors.white),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Sıfırlama bağlantısı e-postanıza gönderildi.',
+                                      style: GoogleFonts.inter(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              backgroundColor: Colors.green.shade600,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        final errorString = e.toString().toLowerCase();
+                        
+                        setState(() {
+                          if (errorString.contains('user_not_found') || errorString.contains('user not found')) {
+                            localErrorMessage = 'Böyle bir kullanıcı bulunamadı.';
+                          } else {
+                            localErrorMessage = 'Hata: ${e.toString()}';
+                          }
+                          isSubmitting = false;
+                        });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: Colors.blueAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: isSubmitting 
+                      ? const SizedBox(
+                          height: 24, 
+                          width: 24, 
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                        )
+                      : Text(
+                          'Gönder',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+   );
+  },
+ );
+}
+
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authLoadingProvider);
@@ -186,6 +437,23 @@ class _LoginPageState extends ConsumerState<LoginPage>
                         validator: Validators.validatePassword,
                       ),
                       const SizedBox(height: 12),
+
+                      // Forgot Password Button
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _showForgotPasswordDialog,
+                          child: Text(
+                            'Şifremi Unuttum?',
+                            style: GoogleFonts.inter(
+                              color: Colors.blueAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
                       // Login Button
                       SizedBox(
                         height: 56,

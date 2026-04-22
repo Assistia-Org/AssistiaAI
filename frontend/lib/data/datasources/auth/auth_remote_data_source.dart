@@ -84,6 +84,18 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> forgotPassword(String email) async {
+    final response = await client.post(
+      Uri.parse('$baseUrl/auth/forgot-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to send password reset email: ${response.body}');
+    }
+  }
+
   Future<void> logout() async {
     await sharedPreferences.remove('access_token');
     await sharedPreferences.remove('refresh_token');
