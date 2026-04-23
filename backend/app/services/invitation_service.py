@@ -87,8 +87,12 @@ async def accept_invitation_service(current_user: User, invitation_id: str) -> I
     if invitation.status != InvitationStatus.PENDING:
         raise HTTPException(status_code=400, detail="Invitation is no longer pending.")
 
-    # 1. Update invitation status
-    await update_invitation(invitation, {"status": InvitationStatus.ACCEPTED})
+    # 1. Update invitation status and link user if not linked
+    update_data = {"status": InvitationStatus.ACCEPTED}
+    if not invitation.invitee:
+        update_data["invitee"] = current_user
+        
+    await update_invitation(invitation, update_data)
     
     # 2. Add member to community
     member = CommunityMember(user=current_user, role=invitation.role)
