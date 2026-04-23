@@ -4,9 +4,10 @@ from app.core.messages.error_message import (
     COMMUNITY_ALREADY_EXISTS,
     UNAUTHORIZED_COMMUNITY_ACTION,
     MEMBER_NOT_FOUND,
-    CANNOT_REMOVE_SELF
+    CANNOT_REMOVE_SELF,
+    OWNER_CANNOT_LEAVE
 )
-from app.core.messages.success_message import MEMBER_REMOVED
+from app.core.messages.success_message import MEMBER_REMOVED, COMMUNITY_LEFT
 from app.repositories.community import (
     create_community,
     get_community_by_id,
@@ -124,3 +125,27 @@ async def remove_community_member_service(community_id: str, user_id: str, curre
     await remove_community_role(user_id, community_id)
     
     return MEMBER_REMOVED
+
+
+async def leave_community_service(community_id: str, current_user: User) -> str:
+    """
+    Orchestrate leaving a community.
+    The owner cannot leave.
+    """
+    community = await get_community_by_id(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail=COMMUNITY_NOT_FOUND)
+    
+    # Owner check
+    if community.owner_id == str(current_user.id):
+        raise HTTPException(status_code=400, detail=OWNER_CANNOT_LEAVE)
+    
+    # Remove from community
+    removed = await remove_community_member(community_id, str(current_user.id))
+    if not removed:
+        raise HTTPException(status_code=404, detail=MEMBER_NOT_FOUND)
+    
+    # Remove from user's joined list
+    await remove_community_role(str(current_user.id), community_id)
+    
+    return COMMUNITY_LEFT
