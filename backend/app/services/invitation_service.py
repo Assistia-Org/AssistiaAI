@@ -5,7 +5,8 @@ from app.core.messages.error_message import (
     INVITATION_NOT_FOUND,
     INVITATION_ALREADY_EXISTS,
     ALREADY_MEMBER,
-    UNAUTHORIZED_INVITATION
+    UNAUTHORIZED_INVITATION,
+    USER_NOT_FOUND
 )
 from app.repositories.invitation import (
     create_invitation,
@@ -36,12 +37,14 @@ async def send_invitation_service(current_user: User, data: InvitationCreate) ->
     if community.owner_id != str(current_user.id):
         raise HTTPException(status_code=403, detail=UNAUTHORIZED_INVITATION)
     
-    # 3. Check if invitee is already a member
+    # 3. Check if invitee exists and is already a member
     invitee = await get_user_by_email(data.invitee_email)
-    if invitee:
-        # Comparison with linked user ID
-        if any(str(getattr(m.user, "id", m.user)) == str(invitee.id) for m in community.members):
-            raise HTTPException(status_code=400, detail=ALREADY_MEMBER)
+    if not invitee:
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
+        
+    # Comparison with linked user ID
+    if any(str(getattr(m.user, "id", m.user)) == str(invitee.id) for m in community.members):
+        raise HTTPException(status_code=400, detail=ALREADY_MEMBER)
     
     # 4. Check if pending invitation exists
     existing_invitation = await get_pending_invitation(data.community_id, data.invitee_email)
