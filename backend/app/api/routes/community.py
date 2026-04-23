@@ -8,6 +8,7 @@ from app.services.community_service import (
     update_community_service,
     get_my_communities_service,
     remove_community_member_service,
+    leave_community_service,
 )
 from app.api.dependencies.auth import get_current_user
 from app.models.user import User
@@ -76,3 +77,12 @@ async def remove_community_member(
 ) -> str:
     """Remove a member from a community. Only owner is authorized. Owner cannot remove themselves."""
     return await remove_community_member_service(community_id, user_id, current_user)
+
+
+@router.post("/{community_id}/leave", response_model=str, status_code=status.HTTP_200_OK)
+async def leave_community(
+    community_id: str,
+    current_user: User = Depends(get_current_user)
+) -> str:
+    """Leave a community. Owner cannot leave."""
+    return await leave_community_service(community_id, current_user)
