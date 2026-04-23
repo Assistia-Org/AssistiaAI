@@ -259,9 +259,7 @@ class _AddMemberSheet extends StatefulWidget {
 class _AddMemberSheetState extends State<_AddMemberSheet> {
   final _emailController = TextEditingController();
   bool _isLoading = false;
-  bool _isChecking = false;
   String? _emailError;
-  Map<String, dynamic>? _foundUser; // holds user data preview
 
   static final _emailRegex = RegExp(
     r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$',
@@ -271,61 +269,6 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
   void dispose() {
     _emailController.dispose();
     super.dispose();
-  }
-
-  Future<void> _checkEmail() async {
-    final email = _emailController.text.trim();
-
-    // 1. Format check
-    if (!_emailRegex.hasMatch(email)) {
-      setState(() {
-        _emailError = 'Geçersiz e-posta formatı.';
-        _foundUser = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isChecking = true;
-      _emailError = null;
-      _foundUser = null;
-    });
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(AppConstants.accessTokenKey);
-      final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}${ApiConstants.userByEmail(email)}'),
-        headers: {
-          ...AppConstants.baseHeaders,
-          if (token != null) ...AppConstants.authHeader(token),
-        },
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _foundUser = jsonDecode(response.body) as Map<String, dynamic>;
-          _emailError = null;
-        });
-      } else if (response.statusCode == 404) {
-        setState(() {
-          _emailError = 'Bu hesaba ait bir kişi bulunamadı.';
-          _foundUser = null;
-        });
-      } else {
-        setState(() {
-          _emailError = 'Kullanıcı doğrulanamadı.';
-          _foundUser = null;
-        });
-      }
-    } catch (_) {
-      setState(() {
-        _emailError = 'Bağlantı hatası. Lütfen tekrar deneyin.';
-        _foundUser = null;
-      });
-    } finally {
-      setState(() => _isChecking = false);
-    }
   }
 
   @override
@@ -390,39 +333,12 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     onChanged: (_) {
-                      // Clear previous results when typing
-                      if (_foundUser != null || _emailError != null) {
+                      if (_emailError != null) {
                         setState(() {
-                          _foundUser = null;
                           _emailError = null;
                         });
                       }
                     },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                SizedBox(
-                  height: 55,
-                  width: 55,
-                  child: ElevatedButton(
-                    onPressed: _isChecking ? null : _checkEmail,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: _isChecking
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.search, color: Colors.white),
                   ),
                 ),
               ],
@@ -448,69 +364,12 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
                   ],
                 ),
               ],
-            // User found preview card
-            if (_foundUser != null) ...
-              [
-                const SizedBox(height: 15),
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                        color: Colors.green.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor: Colors.green.withValues(alpha: 0.15),
-                        child: Text(
-                          (_foundUser!['display_name'] as String? ?? '?')
-                              .substring(0, 1)
-                              .toUpperCase(),
-                          style: GoogleFonts.inter(
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _foundUser!['display_name'] as String? ?? '-',
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                            Text(
-                              _foundUser!['email'] as String? ?? '-',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.check_circle,
-                          color: Colors.green, size: 22),
-                    ],
-                  ),
-                ),
-              ],
             const SizedBox(height: 25),
             SizedBox(
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
-                // Only enabled when user is confirmed
-                onPressed:
-                    (_isLoading || _foundUser == null) ? null : _handleAddMember,
+                onPressed: _isLoading ? null : _handleAddMember,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF1B232A),
                   disabledBackgroundColor: Colors.grey[300],
@@ -521,15 +380,11 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
-                        _foundUser == null
-                            ? 'Önce Sorgulayın'
-                            : 'Davet Gönder',
+                        'Davet Gönder',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: _foundUser == null
-                              ? Colors.grey[500]
-                              : Colors.white,
+                          color: Colors.white,
                         ),
                       ),
               ),
@@ -542,12 +397,22 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
   }
 
   Future<void> _handleAddMember() async {
-    if (_foundUser == null) return;
+    final email = _emailController.text.trim();
+    if (email.isEmpty) return;
 
-    setState(() => _isLoading = true);
+    if (!_emailRegex.hasMatch(email)) {
+      setState(() {
+        _emailError = 'Geçersiz e-posta formatı.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _emailError = null;
+    });
 
     try {
-      final email = _emailController.text.trim();
 
       await widget.ref
           .read(invitationControllerProvider.notifier)
@@ -567,14 +432,11 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
       }
     } catch (e) {
       if (mounted) {
-        // Strip the 'Exception: ' prefix for clean display
-        final msg = e.toString().replaceFirst('Exception: ', '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        String msg = e.toString().replaceFirst('Exception: ', '');
+        
+        setState(() {
+          _emailError = msg;
+        });
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

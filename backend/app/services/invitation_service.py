@@ -22,7 +22,7 @@ from app.models.invitation import InvitationStatus
 from app.models.community import CommunityMember
 from app.models.user import CommunityRoleModel, User
 from app.schemas.invitation import InvitationCreate, InvitationResponse, InvitationFilter
-
+from app.core.events import event_manager
 
 async def send_invitation_service(current_user: User, data: InvitationCreate) -> InvitationResponse:
     """
@@ -64,6 +64,10 @@ async def send_invitation_service(current_user: User, data: InvitationCreate) ->
     invitation = await create_invitation(invitation_data)
     # Ensure links are fetched for response
     await invitation.fetch_all_links()
+    
+    # Notify invitee via SSE
+    await event_manager.publish(str(invitee.id), "new_invitation", {"invitation_id": str(invitation.id)})
+    
     return InvitationResponse.model_validate(invitation)
 
 
