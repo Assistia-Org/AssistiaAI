@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/daily_program/daily_program_model.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/constants/app_constants.dart';
 
 class DailyProgramRemoteDataSource {
-  final String baseUrl = 'http://10.0.2.2:8000/api/v1';
   final http.Client client;
   final SharedPreferences sharedPreferences;
 
@@ -14,13 +15,13 @@ class DailyProgramRemoteDataSource {
   });
 
   Future<DailyProgramModel> getProgramByDate(String dateStr) async {
-    final token = sharedPreferences.getString('access_token');
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
 
     final response = await client.get(
-      Uri.parse('$baseUrl/daily-programs/date/$dateStr'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.dailyProgramsByDate(dateStr)}'),
       headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
       },
     );
 
