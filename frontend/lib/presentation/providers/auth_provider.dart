@@ -12,7 +12,7 @@ import '../../data/datasources/auth/auth_remote_data_source.dart';
 import '../../data/repositories/auth/auth_repository_impl.dart';
 import 'community_provider.dart';
 import 'invitation_provider.dart';
-
+import 'sse_provider.dart';
 // --- Dependecy Injection via Riverpod ---
 
 final sharedPrefsProvider = FutureProvider<SharedPreferences>((ref) async {
@@ -103,6 +103,13 @@ class AuthController {
       final loginUseCase = await ref.read(loginUseCaseProvider.future);
       final user = await loginUseCase.execute(email: email, password: password);
       ref.read(currentUserProvider.notifier).setUser(user);
+      
+      // Connect SSE
+      final prefs = await ref.read(sharedPrefsProvider.future);
+      final token = prefs.getString('access_token');
+      if (token != null) {
+        ref.read(sseServiceProvider).connect(token);
+      }
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
@@ -128,6 +135,7 @@ class AuthController {
       ref.invalidate(myCommunitiesProvider);
       ref.invalidate(myInvitationsProvider);
       ref.read(currentUserProvider.notifier)._clearState();
+      ref.read(sseServiceProvider).disconnect();
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
@@ -142,6 +150,9 @@ class AuthController {
         final getMeUseCase = await ref.read(getMeUseCaseProvider.future);
         final user = await getMeUseCase.execute(token);
         ref.read(currentUserProvider.notifier).setUser(user);
+        
+        // Connect SSE on app launch
+        ref.read(sseServiceProvider).connect(token);
       } catch (e) {
         // If token is invalid or expired, logout
         await logout();

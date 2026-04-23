@@ -58,7 +58,7 @@ class InvitationRemoteDataSource {
 
   Future<List<InvitationModel>> getMyInvitations() async {
     final token = sharedPreferences.getString(AppConstants.accessTokenKey);
-    final response = await client.get(
+    final response = await client.post(
       Uri.parse('${ApiConstants.baseUrl}/invitations/me'),
       headers: {
         ...AppConstants.baseHeaders,
@@ -109,17 +109,24 @@ class InvitationRemoteDataSource {
   }
 
   String _mapErrorMessage(String backendMsg, int statusCode) {
-    if (backendMsg.contains('already a member')) {
+    final lowerMsg = backendMsg.toLowerCase();
+    if (lowerMsg.contains('already a member')) {
       return 'Bu kullanıcı zaten topluluğun bir üyesi.';
     }
-    if (backendMsg.contains('already exists')) {
+    if (lowerMsg.contains('already exists')) {
       return 'Bu kullanıcıya zaten bekleyen bir davet gönderildi.';
     }
-    if (backendMsg.contains('not authorized')) {
+    if (lowerMsg.contains('not authorized')) {
       return 'Bu topluluğa davet göndermek için yetkiniz yok.';
     }
-    if (backendMsg.contains('not found') || statusCode == 404) {
+    if (lowerMsg.contains('user not found')) {
+      return 'Geçersiz e-posta formatı veya kullanıcı bulunamadı.';
+    }
+    if (lowerMsg.contains('community not found')) {
       return 'Topluluk bulunamadı.';
+    }
+    if (statusCode == 404) {
+      return 'Kayıt bulunamadı.';
     }
     if (statusCode == 422) {
       return 'Geçersiz e-posta adresi. Lütfen tekrar kontrol edin.';

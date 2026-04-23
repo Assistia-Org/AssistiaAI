@@ -10,6 +10,7 @@ from app.api.routes.daily_program import router as daily_program_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.invitation import router as invitation_router
 from app.api.routes.verification import router as verification_router
+from app.api.routes.sse import router as sse_router
 from app.core.config import settings
 
 @asynccontextmanager
@@ -50,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(invitation_router, prefix="/api/v1")
     app.include_router(verification_router, prefix="/api/v1")
+    app.include_router(sse_router, prefix="/api/v1")
 
     @app.get("/health", tags=["health"])
     async def health_check():
