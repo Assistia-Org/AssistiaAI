@@ -7,6 +7,7 @@ import '../../domain/usecases/auth/login_usecase.dart';
 import '../../domain/usecases/auth/register_usecase.dart';
 import '../../domain/usecases/auth/logout_usecase.dart';
 import '../../domain/usecases/auth/get_me_usecase.dart';
+import '../../domain/usecases/auth/forgot_password_usecase.dart';
 import '../../data/datasources/auth/auth_remote_data_source.dart';
 import '../../data/repositories/auth/auth_repository_impl.dart';
 
@@ -49,6 +50,11 @@ final logoutUseCaseProvider = FutureProvider<LogoutUseCase>((ref) async {
 final getMeUseCaseProvider = FutureProvider<GetMeUseCase>((ref) async {
   final repository = await ref.watch(authRepositoryProvider.future);
   return GetMeUseCase(repository);
+});
+
+final forgotPasswordUseCaseProvider = FutureProvider<ForgotPasswordUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return ForgotPasswordUseCase(repository);
 });
 
 
@@ -135,6 +141,16 @@ class AuthController {
         // If token is invalid or expired, logout
         await logout();
       }
+    }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final forgotPasswordUseCase = await ref.read(forgotPasswordUseCaseProvider.future);
+      await forgotPasswordUseCase.execute(email);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
     }
   }
 }
