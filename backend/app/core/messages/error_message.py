@@ -22,3 +22,5 @@ INVALID_PASSWORD_STRUCTURE = "Password must be greater than 6 characters and can
 MEMBER_NOT_FOUND = "Member not found in this community."
 CANNOT_REMOVE_SELF = "You cannot remove yourself from the community. Please delete the community if you are the owner."
 OWNER_CANNOT_LEAVE = "As the owner, you cannot leave the community. Please delete the community or transfer ownership."
+TOO_MANY_VERIFICATION_REQUESTS = "Too many verification requests. Please wait 5 minutes before trying again."
+INVALID_VERIFICATION_CODE = "Invalid or expired verification code."

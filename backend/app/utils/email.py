@@ -45,3 +45,44 @@ def send_password_reset_email(email: str, token: str) -> bool:
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
+
+def send_verification_code_email(email: str, code: str) -> bool:
+    """
+    Send a 6-digit verification code email using Resend.
+    Returns True if successful, False otherwise.
+    """
+    resend.api_key = settings.RESEND_API_KEY
+    
+    subject = f"Doğrulama Kodunuz: {code}"
+    
+    html_content = f"""
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; background-color: #f9f9f9;">
+        <h2 style="color: #333; text-align: center;">E-posta Doğrulama</h2>
+        <p style="text-align: center;">Uygulamamıza giriş yapmak veya işlem yapmak için kullanacağınız doğrulama kodunuz aşağıdadır:</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <div style="background-color: #fff; border: 2px solid #007bff; color: #007bff; padding: 15px 30px; font-size: 32px; font-weight: bold; border-radius: 5px; display: inline-block; letter-spacing: 5px;">
+                {code}
+            </div>
+        </div>
+        
+        <p style="text-align: center; color: #888; font-size: 14px;">Bu kod 5 dakika içerisinde geçerliliğini yitirecektir.</p>
+        
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="color: #aaa; font-size: 12px; text-align: center;">Eğer bu işlemi siz yapmadıysanız bu e-postayı dikkate almayınız.</p>
+    </div>
+    """
+    
+    params = {
+        "from": settings.EMAILS_FROM_EMAIL,
+        "to": email,
+        "subject": subject,
+        "html": html_content,
+    }
+
+    try:
+        resend.Emails.send(params)
+        return True
+    except Exception as e:
+        print(f"Error sending verification email: {e}")
+        return False
