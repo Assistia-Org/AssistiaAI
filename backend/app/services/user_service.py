@@ -1,15 +1,13 @@
 from fastapi import HTTPException
-from app.core.security import get_password_hash
 from app.core.messages.error_message import USER_NOT_FOUND, DUPLICATE_EMAIL
 from app.repositories.user import (
-    create_user,
     delete_user,
     get_user_by_email,
     get_user_by_id,
     list_users,
     update_user,
 )
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserResponse, UserUpdate
 
 
 async def get_user_service(user_id: str) -> UserResponse:
@@ -49,6 +47,11 @@ async def update_user_service(user_id: str, data: UserUpdate) -> UserResponse:
         
     updated_user = await update_user(user, update_data)
     return UserResponse.model_validate(updated_user)
+
+
+async def update_me_service(current_user_id: str, data: UserUpdate) -> UserResponse:
+    """Update the currently authenticated user."""
+    return await update_user_service(current_user_id, data)
 
 
 async def delete_user_service(user_id: str) -> None:
