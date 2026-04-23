@@ -20,6 +20,14 @@ async def get_user_service(user_id: str) -> UserResponse:
     return UserResponse.model_validate(user)
 
 
+async def get_user_by_email_service(email: str) -> UserResponse:
+    """Orchestrate user retrieval by email."""
+    user = await get_user_by_email(email)
+    if not user:
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
+    return UserResponse.model_validate(user)
+
+
 async def list_users_service() -> list[UserResponse]:
     """Orchestrate user listing."""
     users = await list_users()

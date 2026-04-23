@@ -5,6 +5,7 @@ from app.services.user_service import (
     get_user_service,
     list_users_service,
     update_user_service,
+    get_user_by_email_service,
 )
 from app.api.dependencies.auth import get_current_user
 from app.models.user import User
@@ -30,6 +31,18 @@ async def get_user(
     Belirtilen ID'ye sahip kullanıcı bilgilerini döndürür.
     """
     return await get_user_service(user_id)
+
+
+@router.get("/email/{email}", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def get_user_by_email(
+    email: str,
+    current_user: User = Depends(get_current_user)
+) -> UserResponse:
+    """
+    Email ile kullanıcı getirme endpoint'i.
+    Belirtilen e-posta adresine sahip kullanıcı bilgilerini döndürür.
+    """
+    return await get_user_by_email_service(email)
 
 
 @router.get("/", response_model=list[UserResponse], status_code=status.HTTP_200_OK)
