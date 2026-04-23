@@ -10,6 +10,8 @@ import '../../domain/usecases/auth/get_me_usecase.dart';
 import '../../domain/usecases/auth/forgot_password_usecase.dart';
 import '../../data/datasources/auth/auth_remote_data_source.dart';
 import '../../data/repositories/auth/auth_repository_impl.dart';
+import 'community_provider.dart';
+import 'invitation_provider.dart';
 
 // --- Dependecy Injection via Riverpod ---
 
@@ -122,6 +124,9 @@ class AuthController {
     try {
       final logoutUseCase = await ref.read(logoutUseCaseProvider.future);
       await logoutUseCase.execute();
+      // Clear all cached user data
+      ref.invalidate(myCommunitiesProvider);
+      ref.invalidate(myInvitationsProvider);
       ref.read(currentUserProvider.notifier)._clearState();
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);

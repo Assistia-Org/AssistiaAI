@@ -25,13 +25,10 @@ from app.models.community import CommunityMember
 
 async def create_community_service(data: CommunityCreate, current_user: User) -> CommunityResponse:
     """
-    Orchestrate community creation using a provided string ID.
+    Orchestrate community creation.
     Automatically assigns owner_id and adds creator as the first member.
     """
-    existing = await get_community_by_id(data.id)
-    if existing:
-        raise HTTPException(status_code=400, detail=COMMUNITY_ALREADY_EXISTS)
-    
+
     community_dict = data.model_dump(by_alias=True)
     
     # Automate ownership and membership
