@@ -6,6 +6,7 @@ from app.services.user_service import (
     list_users_service,
     update_user_service,
     get_user_by_email_service,
+    update_me_service,
 )
 from app.api.dependencies.auth import get_current_user
 from app.models.user import User
@@ -19,6 +20,17 @@ async def get_me(current_user: User = Depends(get_current_user)) -> UserResponse
     Get current authenticated user profile.
     """
     return UserResponse.model_validate(current_user)
+
+
+@router.post("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def update_me(
+    data: UserUpdate,
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    """
+    Update current authenticated user profile.
+    """
+    return await update_me_service(current_user.id, data)
 
 
 @router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
