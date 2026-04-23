@@ -7,6 +7,7 @@ from app.services.community_service import (
     list_communities_service,
     update_community_service,
     get_my_communities_service,
+    remove_community_member_service,
 )
 from app.api.dependencies.auth import get_current_user
 from app.models.user import User
@@ -65,3 +66,13 @@ async def delete_community(
 ) -> None:
     """Delete a community. Only owner is authorized."""
     await delete_community_service(community_id, current_user)
+
+
+@router.delete("/{community_id}/members/{user_id}", response_model=str, status_code=status.HTTP_200_OK)
+async def remove_community_member(
+    community_id: str,
+    user_id: str,
+    current_user: User = Depends(get_current_user)
+) -> str:
+    """Remove a member from a community. Only owner is authorized. Owner cannot remove themselves."""
+    return await remove_community_member_service(community_id, user_id, current_user)

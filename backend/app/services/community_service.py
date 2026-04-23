@@ -2,8 +2,11 @@ from fastapi import HTTPException
 from app.core.messages.error_message import (
     COMMUNITY_NOT_FOUND, 
     COMMUNITY_ALREADY_EXISTS,
-    UNAUTHORIZED_COMMUNITY_ACTION
+    UNAUTHORIZED_COMMUNITY_ACTION,
+    MEMBER_NOT_FOUND,
+    CANNOT_REMOVE_SELF
 )
+from app.core.messages.success_message import MEMBER_REMOVED
 from app.repositories.community import (
     create_community,
     get_community_by_id,
@@ -11,7 +14,9 @@ from app.repositories.community import (
     update_community,
     delete_community,
     get_my_communities,
+    remove_community_member,
 )
+from app.repositories.user import remove_community_role
 from app.schemas.community import CommunityCreate, CommunityUpdate, CommunityResponse
 from app.models.user import User
 from app.models.community import CommunityMember
@@ -88,4 +93,34 @@ async def delete_community_service(community_id: str, current_user: User) -> Non
     if community.owner_id != str(current_user.id):
         raise HTTPException(status_code=403, detail=UNAUTHORIZED_COMMUNITY_ACTION)
         
+    
     await delete_community(community)
+
+
+async def remove_community_member_service(community_id: str, user_id: str, current_user: User) -> str:
+    """
+    Orchestrate member removal from a community.
+    Only the owner is authorized to remove members.
+    The owner cannot remove themselves.
+    """
+    community = await get_community_by_id(community_id)
+    if not community:
+        raise HTTPException(status_code=404, detail=COMMUNITY_NOT_FOUND)
+    
+    # Ownership check
+    if community.owner_id != str(current_user.id):
+        raise HTTPException(status_code=403, detail=UNAUTHORIZED_COMMUNITY_ACTION)
+    
+    # Self-removal check
+    if user_id == str(current_user.id):
+        raise HTTPException(status_code=400, detail=CANNOT_REMOVE_SELF)
+    
+    # Remove from community
+    removed = await remove_community_member(community_id, user_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail=MEMBER_NOT_FOUND)
+    
+    # Remove from user's joined list (consistency)
+    await remove_community_role(user_id, community_id)
+    
+    return MEMBER_REMOVED
