@@ -41,12 +41,12 @@ async def get_invitations_by_invitee_id(invitee_id: str, status: Optional[Invita
 async def get_pending_invitation(community_id: str, email: str) -> Optional[Invitation]:
     """
     Return a pending invitation for a community and email if it exists.
-    Queries by community ID (DBRef).
+    Uses Beanie expressions for robust querying.
     """
     return await Invitation.find_one(
-        {"community.$id": community_id},
-        {"invitee_email": email},
-        {"status": InvitationStatus.PENDING}
+        Invitation.community.id == community_id,
+        Invitation.invitee_email == email,
+        Invitation.status == InvitationStatus.PENDING
     )
 
 async def update_invitation(invitation: Invitation, data: dict) -> Invitation:
