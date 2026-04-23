@@ -58,7 +58,7 @@ class InvitationRemoteDataSource {
 
   Future<List<InvitationModel>> getMyInvitations() async {
     final token = sharedPreferences.getString(AppConstants.accessTokenKey);
-    final response = await client.get(
+    final response = await client.post(
       Uri.parse('${ApiConstants.baseUrl}/invitations/me'),
       headers: {
         ...AppConstants.baseHeaders,

@@ -26,9 +26,9 @@ async def send_invitation(
     """Send a community invitation to an email."""
     return await send_invitation_service(current_user, data)
 
-@router.get("/me", response_model=List[InvitationResponse], status_code=status.HTTP_200_OK)
+@router.post("/me", response_model=List[InvitationResponse], status_code=status.HTTP_200_OK)
 async def get_my_invitations(
-    status: Optional[InvitationStatus] = None,
+    status: Optional[InvitationFilter] = "pending",
     current_user: User = Depends(get_current_user)
 ) -> List[InvitationResponse]:
     """Get all invitations for the logged-in user."""
