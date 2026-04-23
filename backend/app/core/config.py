@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Assistant AI"
     MONGODB_URL: str
+    REDIS_URL: str = ""
     DATABASE_NAME: str = "assistant_ai"
     
     FIRST_SUPERUSER: str
