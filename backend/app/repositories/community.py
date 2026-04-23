@@ -25,15 +25,21 @@ async def add_community_member(community_id: str, member: CommunityMember) -> bo
     return True
 
 async def remove_community_member(community_id: str, user_id: str) -> bool:
-    """Remove a member from a community by user ID."""
+    """Remove a member from a community by user ID. Returns True if member was removed."""
     community = await get_community_by_id(community_id)
     if not community:
         return False
+    
+    initial_count = len(community.members)
     # Handle linked user ID check
     community.members = [
         m for m in community.members 
         if str(getattr(m.user, "id", m.user)) != user_id
     ]
+    
+    if len(community.members) == initial_count:
+        return False
+        
     await community.save()
     return True
 
