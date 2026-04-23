@@ -1,4 +1,5 @@
 from typing import List, Optional
+from pydantic import BaseModel
 from app.models.user import User, CommunityRoleModel, PersonalSettingsModel
 
 async def create_user(user_data: dict) -> User:
