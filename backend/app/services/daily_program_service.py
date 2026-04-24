@@ -59,9 +59,8 @@ async def get_program_by_date_service(user_id: str, search_date: date) -> DailyP
         if fresh_t:
             await sync_task_status(fresh_t)
             fresh_tasks.append(fresh_t)
-        else:
-            fresh_tasks.append(t)
     program.items.tasks = fresh_tasks
+    program.ozet.task_sayisi = len(fresh_tasks)
         
     return DailyProgramResponse.model_validate(program)
 
@@ -79,9 +78,8 @@ async def list_user_programs_service(user_id: str) -> List[DailyProgramResponse]
             if fresh_t:
                 await sync_task_status(fresh_t)
                 fresh_tasks.append(fresh_t)
-            else:
-                fresh_tasks.append(t)
         p.items.tasks = fresh_tasks
+        p.ozet.task_sayisi = len(fresh_tasks)
             
     return [DailyProgramResponse.model_validate(p) for p in programs]
 

@@ -67,4 +67,20 @@ class TaskRemoteDataSource {
       throw Exception('Görev durumu güncellenemedi: ${response.statusCode}');
     }
   }
+
+  Future<void> deleteTask(String taskId) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+
+    final response = await client.delete(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tasks}$taskId'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
+      },
+    );
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Görev silinemedi: ${response.statusCode}');
+    }
+  }
 }

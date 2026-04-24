@@ -63,6 +63,16 @@ class TaskController {
       ref.read(taskLoadingProvider.notifier).setLoading(false);
     }
   }
+
+  Future<void> deleteTask(String taskId) async {
+    ref.read(taskLoadingProvider.notifier).setLoading(true);
+    try {
+      final repository = await ref.read(taskRepositoryProvider.future);
+      await repository.deleteTask(taskId);
+    } finally {
+      ref.read(taskLoadingProvider.notifier).setLoading(false);
+    }
+  }
 }
 
 final taskControllerProvider = Provider<TaskController>((ref) {
