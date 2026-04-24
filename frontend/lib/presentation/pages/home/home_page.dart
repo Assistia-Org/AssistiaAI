@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../../data/models/reservation/reservation_model.dart';
 import '../../../data/models/daily_program/daily_program_model.dart';
+import 'category_listing_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -96,6 +97,19 @@ class _HomePageState extends ConsumerState<HomePage> {
         }
       }
     }
+  }
+
+  void _navigateToListing(String title, {List<TaskModel>? tasks, List<ReservationModel>? reservations}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryListingPage(
+          title: title,
+          tasks: tasks,
+          reservations: reservations,
+        ),
+      ),
+    );
   }
 
   void _showTaskActions(dynamic item) {
@@ -340,8 +354,28 @@ class _HomePageState extends ConsumerState<HomePage> {
           final tasks = program.items.tasks;
           final reservations = program.items.etkinlikler;
           
-          final bool allTasksDone = tasks.isNotEmpty && tasks.every((t) => t.status == 'completed');
-          final bool allReservationsDone = reservations.isNotEmpty && reservations.every((r) => r.status == 'completed');
+          final regularTasks = tasks.where((t) => t.type.toLowerCase() != 'meeting' && t.type.toLowerCase() != 'toplantı').toList();
+          final meetingTasks = tasks.where((t) => t.type.toLowerCase() == 'meeting' || t.type.toLowerCase() == 'toplantı').toList();
+
+          final now = DateTime.now();
+
+          final bool tasksDone = regularTasks.isNotEmpty && regularTasks.every((t) => t.status == 'completed');
+          final bool meetingsDone = meetingTasks.isNotEmpty && meetingTasks.every((t) => t.status == 'completed');
+          
+          // Reservations are done if manually completed OR if end time has passed
+          final bool resDone = reservations.isNotEmpty && reservations.every((r) {
+            final bool isManuallyDone = r.status == 'completed';
+            final bool isTimeOver = r.endDate != null && now.isAfter(r.endDate!);
+            return isManuallyDone || isTimeOver;
+          });
+          
+          final bool everythingDone = (tasks.isNotEmpty || reservations.isNotEmpty) && 
+                                       tasks.every((t) => t.status == 'completed') && 
+                                       reservations.every((r) {
+                                         final bool isManuallyDone = r.status == 'completed';
+                                         final bool isTimeOver = r.endDate != null && now.isAfter(r.endDate!);
+                                         return isManuallyDone || isTimeOver;
+                                       });
           
           // Dynamic header message
           String headerMsg = 'Bugün için her şey hazır görünüyor!';
@@ -424,7 +458,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       ),
                                     ),
                                     const SizedBox(height: 25),
-                                    _buildDailySummaries(allTasksDone, allReservationsDone),
+                                    _buildDailySummaries(
+                                      tasksDone: tasksDone,
+                                      meetingsDone: meetingsDone,
+                                      resDone: resDone,
+                                      everythingDone: everythingDone,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -433,7 +472,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                             const SizedBox(height: 35),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
-                              child: _buildSectionHeader("Rezervasyonlarım"),
+                              child: _buildSectionHeader(
+                                "Rezervasyonlarım",
+                                onTap: () => _navigateToListing("Rezervasyonlarım", reservations: reservations),
+                              ),
                             ),
                             const SizedBox(height: 15),
                             _buildReservationsList(reservations),
@@ -441,7 +483,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                             const SizedBox(height: 35),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
-                              child: _buildSectionHeader("Görevlerim"),
+                              child: _buildSectionHeader(
+                                "Görevlerim",
+                                onTap: () => _navigateToListing("Görevlerim", tasks: tasks.where((t) => t.type.toLowerCase() != 'meeting' && t.type.toLowerCase() != 'toplantı').toList()),
+                              ),
                             ),
                             const SizedBox(height: 15),
                             _buildTasksList(tasks),
@@ -449,7 +494,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                             const SizedBox(height: 35),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
-                              child: _buildSectionHeader("Toplantılarım"),
+                              child: _buildSectionHeader(
+                                "Toplantılarım",
+                                onTap: () => _navigateToListing("Toplantılarım", tasks: tasks.where((t) => t.type.toLowerCase() == 'meeting' || t.type.toLowerCase() == 'toplantı').toList()),
+                              ),
                             ),
                             const SizedBox(height: 15),
                             _buildMeetingsList(tasks),
@@ -469,20 +517,24 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
+  Widget _buildSectionHeader(String title, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
-        ),
-        const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      ],
+          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        ],
+      ),
     );
   }
 
@@ -529,12 +581,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildDailySummaries(bool tasksDone, bool resDone) {
+  Widget _buildDailySummaries({
+    required bool tasksDone,
+    required bool meetingsDone,
+    required bool resDone,
+    required bool everythingDone,
+  }) {
     final List<Map<String, dynamic>> summaries = [
-      {'icon': Icons.task_alt_rounded, 'is_done': tasksDone},
-      {'icon': Icons.business_center_rounded, 'is_done': resDone},
-      {'icon': Icons.insights_rounded, 'is_done': tasksDone && resDone},
-      {'icon': Icons.calendar_today_rounded, 'is_gray': true},
+      {'icon': Icons.check_circle_outline_rounded, 'is_done': tasksDone},
+      {'icon': Icons.business_center_rounded, 'is_done': meetingsDone},
+      {'icon': Icons.auto_graph_rounded, 'is_done': resDone},
+      {'icon': Icons.calendar_today_rounded, 'is_done': everythingDone},
       {'icon': Icons.more_horiz_rounded, 'is_last': true},
     ];
 
@@ -562,19 +619,21 @@ class _HomePageState extends ConsumerState<HomePage> {
               colors: isGray 
                 ? [Colors.grey[50]!, Colors.grey[100]!]
                 : (isDone 
-                    ? [const Color(0xFFE0F2F1), const Color(0xFFB2DFDB)]
+                    ? [const Color(0xFF10B981).withOpacity(0.1), const Color(0xFF10B981).withOpacity(0.2)]
                     : [Colors.white, Colors.grey[50]!]),
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: isLast ? null : Border.all(
-              color: isDone ? const Color(0xFF4A9090).withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.05), 
+              color: isDone ? const Color(0xFF10B981).withOpacity(0.3) : Colors.black.withOpacity(0.05), 
               width: 1.5,
             ),
           ),
           child: Icon(
-            data['icon'],
-            color: isLast ? Colors.grey[300] : (isDone ? const Color(0xFF4A9090) : Colors.grey[400]),
-            size: 22,
+            isDone && data['icon'] == Icons.calendar_today_rounded 
+                ? Icons.check_circle_rounded 
+                : data['icon'],
+            color: isLast ? Colors.grey[300] : (isDone ? const Color(0xFF10B981) : Colors.grey[400]),
+            size: 24,
           ),
         ),
         if (isDone)
@@ -584,7 +643,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             child: Container(
               padding: const EdgeInsets.all(3),
               decoration: const BoxDecoration(
-                color: Color(0xFF4A9090),
+                color: Color(0xFF10B981),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check, size: 8, color: Colors.white),
@@ -620,8 +679,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   time: _formatTime(res.startDate),
                   icon: EventMapper.getIcon(res.category),
                   color: EventMapper.getColor(res.category),
-                  isCompleted: res.status == 'completed',
-                  isInProgress: res.status == 'in_progress',
+                  isCompleted: res.status == 'completed' || (res.endDate != null && DateTime.now().isAfter(res.endDate!)),
+                  isInProgress: res.status == 'in_progress' || (res.startDate != null && res.endDate != null && DateTime.now().isAfter(res.startDate!) && DateTime.now().isBefore(res.endDate!)),
                 ),
               ),
             );
