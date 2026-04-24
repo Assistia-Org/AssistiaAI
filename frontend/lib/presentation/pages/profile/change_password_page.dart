@@ -1,40 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../widgets/custom_text_field.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ChangePasswordPage extends StatefulWidget {
+import '../../widgets/custom_text_field.dart';
+import '../../providers/auth_provider.dart';
+
+class ChangePasswordPage extends ConsumerStatefulWidget {
   const ChangePasswordPage({super.key});
 
   @override
-  State<ChangePasswordPage> createState() => _ChangePasswordPageState();
+  ConsumerState<ChangePasswordPage> createState() => _ChangePasswordPageState();
 }
 
-class _ChangePasswordPageState extends State<ChangePasswordPage> {
+class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
+  bool _hasChanges = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _oldPasswordController.addListener(_checkForChanges);
+    _newPasswordController.addListener(_checkForChanges);
+    _confirmPasswordController.addListener(_checkForChanges);
+  }
+
+  void _checkForChanges() {
+    final hasText = _oldPasswordController.text.isNotEmpty ||
+        _newPasswordController.text.isNotEmpty ||
+        _confirmPasswordController.text.isNotEmpty;
+
+    if (_hasChanges != hasText) {
+      setState(() {
+        _hasChanges = hasText;
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _oldPasswordController.removeListener(_checkForChanges);
+    _newPasswordController.removeListener(_checkForChanges);
+    _confirmPasswordController.removeListener(_checkForChanges);
     _oldPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    // TODO: Backend entegrasyonu eklenecek
-    Future.delayed(const Duration(milliseconds: 800), () {
+    try {
+      await ref.read(authControllerProvider).changePassword(
+        _oldPasswordController.text,
+        _newPasswordController.text,
+      );
+
       if (!mounted) return;
-      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Şifre başarıyla güncellendi'),
@@ -42,7 +72,19 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
       );
       Navigator.pop(context);
-    });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Şifre değiştirilemedi: ${e.toString().replaceAll('Exception: Failed to change password: ', '')}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -219,7 +261,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               const SizedBox(width: 15),
                               Expanded(
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _submit,
+                                  onPressed: (!_hasChanges || _isLoading) ? null : _submit,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: const Color(0xFF1B232A),
                                     disabledBackgroundColor: Colors.grey[200],

@@ -8,6 +8,7 @@ import '../../domain/usecases/auth/register_usecase.dart';
 import '../../domain/usecases/auth/logout_usecase.dart';
 import '../../domain/usecases/auth/get_me_usecase.dart';
 import '../../domain/usecases/auth/forgot_password_usecase.dart';
+import '../../domain/usecases/auth/change_password_usecase.dart';
 import '../../data/datasources/auth/auth_remote_data_source.dart';
 import '../../data/repositories/auth/auth_repository_impl.dart';
 import 'community_provider.dart';
@@ -57,6 +58,11 @@ final getMeUseCaseProvider = FutureProvider<GetMeUseCase>((ref) async {
 final forgotPasswordUseCaseProvider = FutureProvider<ForgotPasswordUseCase>((ref) async {
   final repository = await ref.watch(authRepositoryProvider.future);
   return ForgotPasswordUseCase(repository);
+});
+
+final changePasswordUseCaseProvider = FutureProvider<ChangePasswordUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return ChangePasswordUseCase(repository);
 });
 
 
@@ -154,6 +160,16 @@ class AuthController {
     try {
       final forgotPasswordUseCase = await ref.read(forgotPasswordUseCaseProvider.future);
       await forgotPasswordUseCase.execute(email);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final changePasswordUseCase = await ref.read(changePasswordUseCaseProvider.future);
+      await changePasswordUseCase.execute(oldPassword: oldPassword, newPassword: newPassword);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
