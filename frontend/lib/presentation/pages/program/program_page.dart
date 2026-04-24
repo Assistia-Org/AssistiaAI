@@ -7,6 +7,7 @@ import '../../../data/models/daily_program/daily_program_model.dart';
 import '../../../data/models/reservation/reservation_model.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../providers/daily_program_provider.dart';
+import '../../providers/task_provider.dart';
 import 'add_manual_task_page.dart';
 import 'add_flight_reservation_page.dart';
 import 'add_bus_reservation_page.dart';
@@ -63,6 +64,16 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     return DateFormat('HH:mm').format(dt);
   }
 
+  String _getDayOffsetLabel(DateTime? eventDate) {
+    if (eventDate == null) return '';
+    final s = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final e = DateTime(eventDate.year, eventDate.month, eventDate.day);
+    final diff = e.difference(s).inDays;
+    if (diff > 0) return ' +$diff GÜN';
+    if (diff < 0) return ' $diff GÜN';
+    return '';
+  }
+
   DateTime? _parseTimeFromDetails(Map<String, dynamic> details, bool isEnd) {
     final key = isEnd ? 'arrival_time' : 'departure_time';
     final raw = details[key]?.toString();
@@ -81,6 +92,77 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     }
   }
 
+  Future<void> _completeTask(String taskId) async {
+    try {
+      await ref.read(taskControllerProvider).updateTaskStatus(taskId, 'completed');
+      if (mounted) {
+        Navigator.pop(context); // Close bottom sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Görev başarıyla tamamlandı!', style: GoogleFonts.inter()),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        ref.invalidate(dailyProgramByDateProvider(DateFormat('yyyy-MM-dd').format(_selectedDate)));
+      }
+    } catch (e) {
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Hata: $e')),
+         );
+       }
+    }
+  }
+
+  Future<void> _deleteTask(String taskId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Görevi Sil', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text('Bu görevi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', style: GoogleFonts.inter()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Vazgeç', style: GoogleFonts.inter(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Sil', style: GoogleFonts.inter(color: const Color(0xFFF43F5E), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(taskControllerProvider).deleteTask(taskId);
+        if (mounted) {
+          Navigator.pop(context); // Close bottom sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Görev silindi', style: GoogleFonts.inter()),
+              backgroundColor: const Color(0xFF1B232A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+          ref.invalidate(dailyProgramByDateProvider(DateFormat('yyyy-MM-dd').format(_selectedDate)));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hata: $e')),
+          );
+        }
+      }
+    }
+  }
+
   DateTime _effectiveTime(dynamic data, bool isTask, {bool isEnd = false}) {
     DateTime? dt;
     if (isTask) {
@@ -96,16 +178,6 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
 
     if (dt == null) {
       return DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    }
-
-    final startOfDay = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1)); // Next day 00:00
-
-    if (dt.isBefore(startOfDay)) {
-      return startOfDay;
-    }
-    if (dt.isAfter(endOfDay)) {
-      return endOfDay;
     }
 
     return dt;
@@ -459,6 +531,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     final Color color = EventMapper.getColor(type);
     final String startTime = _formatTime(root['start'] as DateTime?);
     final String endTime = _formatTime(root['end'] as DateTime?);
+    final String startOffset = _getDayOffsetLabel(root['start'] as DateTime?);
+    final String endOffset = _getDayOffsetLabel(root['end'] as DateTime?);
     final bool hasChildren = children.isNotEmpty;
 
     return IntrinsicHeight(
@@ -467,18 +541,32 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         children: [
           // ── Left Rail ──
           SizedBox(
-            width: 68,
+            width: 78,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const SizedBox(height: 14),
-                Text(
-                  startTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF0F172A),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      startTime,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    if (startOffset.isNotEmpty)
+                      Text(
+                        startOffset,
+                        style: GoogleFonts.inter(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF64748B), // Grey for past
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Expanded(
@@ -500,13 +588,27 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  endTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF94A3B8),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      endTime,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                    if (endOffset.isNotEmpty)
+                      Text(
+                        endOffset,
+                        style: GoogleFonts.inter(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFFF43F5E),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 14),
               ],
@@ -528,12 +630,14 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   ...children.map((child) {
                     final bool childIsTask = child['isTask'] as bool;
                     final dynamic childData = child['data'];
-                    final String childStart =
-                        _formatTime(child['start'] as DateTime?);
-                    final String childEnd =
-                        _formatTime(child['end'] as DateTime?);
-                    return _buildChildRow(
-                        childData, childIsTask, childStart, childEnd, color);
+                    final DateTime? cStart = child['start'] as DateTime?;
+                    final DateTime? cEnd = child['end'] as DateTime?;
+                    final String childStartStr = _formatTime(cStart);
+                    final String childEndStr = _formatTime(cEnd);
+                    final String cStartOffset = _getDayOffsetLabel(cStart);
+                    final String cEndOffset = _getDayOffsetLabel(cEnd);
+                    return _buildChildRow(childData, childIsTask, childStartStr,
+                        childEndStr, cStartOffset, cEndOffset, color);
                   }),
                 const SizedBox(height: 8),
               ],
@@ -549,6 +653,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     bool isTask,
     String startTime,
     String endTime,
+    String startOffset,
+    String endOffset,
     Color parentLineColor,
   ) {
     return IntrinsicHeight(
@@ -557,20 +663,34 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         children: [
           // Sub-rail
           SizedBox(
-            width: 58,
+            width: 70,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const SizedBox(height: 12),
-                Text(
-                  startTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: EventMapper.getColor(isTask
-                        ? (data as TaskModel).type
-                        : (data as ReservationModel).category),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      startTime,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: EventMapper.getColor(isTask
+                            ? (data as TaskModel).type
+                            : (data as ReservationModel).category),
+                      ),
+                    ),
+                    if (startOffset.isNotEmpty)
+                      Text(
+                        startOffset,
+                        style: GoogleFonts.inter(
+                          fontSize: 7,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Expanded(
@@ -585,13 +705,27 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  endTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF94A3B8),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      endTime,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                    if (endOffset.isNotEmpty)
+                      Text(
+                        endOffset,
+                        style: GoogleFonts.inter(
+                          fontSize: 7,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFFF43F5E),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 12),
               ],
@@ -990,6 +1124,45 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
           ),
         ],
+        const SizedBox(height: 32),
+        if (task.status != 'completed') ...[
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              onPressed: () => _completeTask(task.id),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: Text(
+                'Görevi Tamamla',
+                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: OutlinedButton(
+            onPressed: () => _deleteTask(task.id),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.red.withOpacity(0.2)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: Text(
+              'Görevi Sil',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.red[400],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

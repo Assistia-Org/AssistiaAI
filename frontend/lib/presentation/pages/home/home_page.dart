@@ -1,52 +1,127 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/dummy_data.dart';
+import 'package:intl/intl.dart';
+import '../../../core/utils/event_mapper.dart';
+import '../../providers/daily_program_provider.dart';
+import '../../providers/task_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../../data/models/task/task_model.dart';
+import '../../../data/models/reservation/reservation_model.dart';
+import '../../../data/models/daily_program/daily_program_model.dart';
+import 'category_listing_page.dart';
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  late List<Map<String, dynamic>> _localTasks;
-  late List<Map<String, dynamic>> _localReservations;
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize local state from DummyData
-    final Map<String, dynamic>? todayProgram = DummyData.programs[DummyData.today];
-    _localTasks = todayProgram != null 
-        ? List<Map<String, dynamic>>.from(todayProgram['items']['tasks']) 
-        : [];
-    _localReservations = todayProgram != null 
-        ? List<Map<String, dynamic>>.from(todayProgram['items']['etkinlikler']) 
-        : [];
+class _HomePageState extends ConsumerState<HomePage> {
+  // Local state to track optimizations or UI tweaks if needed
+  String _getTodayStr() => DateFormat('yyyy-MM-dd').format(DateTime.now());
+  
+  String _formatTime(DateTime? dt) {
+    if (dt == null) return '--:--';
+    return DateFormat('HH:mm').format(dt);
   }
 
-  void _completeTask(String taskId) {
-    setState(() {
-      final index = _localTasks.indexWhere((t) => t['id'] == taskId);
-      if (index != -1) {
-        _localTasks[index]['status'] = 'completed';
+  Future<void> _completeTask(String taskId) async {
+    try {
+      await ref.read(taskControllerProvider).updateTaskStatus(taskId, 'completed');
+      if (mounted) {
+        Navigator.pop(context); // Close bottom sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Görev başarıyla tamamlandı!', style: GoogleFonts.inter()),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        // Refresh the program provider
+        ref.invalidate(dailyProgramByDateProvider(_getTodayStr()));
       }
-    });
-    Navigator.pop(context); // Close bottom sheet
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Görev başarıyla tamamlandı!', style: GoogleFonts.inter()),
-        backgroundColor: const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    } catch (e) {
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Hata: $e')),
+         );
+       }
+    }
+  }
+
+  Future<void> _deleteTask(String taskId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Görevi Sil', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text('Bu görevi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', style: GoogleFonts.inter()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Vazgeç', style: GoogleFonts.inter(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Sil', style: GoogleFonts.inter(color: const Color(0xFFF43F5E), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(taskControllerProvider).deleteTask(taskId);
+        if (mounted) {
+          Navigator.pop(context); // Close bottom sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Görev silindi', style: GoogleFonts.inter()),
+              backgroundColor: const Color(0xFF1B232A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+          ref.invalidate(dailyProgramByDateProvider(_getTodayStr()));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hata: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _navigateToListing(String title, {List<TaskModel>? tasks, List<ReservationModel>? reservations}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryListingPage(
+          title: title,
+          tasks: tasks,
+          reservations: reservations,
+        ),
       ),
     );
   }
 
-  void _showTaskActions(Map<String, dynamic> task) {
-    final String calculatedStatus = DummyData.getCalculatedStatus(task);
-    final Color themeColor = DummyData.getEventColor(task['type']);
+  void _showTaskActions(dynamic item) {
+    final bool isTask = item is TaskModel;
+    final String type = isTask ? item.type : (item as ReservationModel).category;
+    final String status = isTask ? item.status : (item as ReservationModel).status;
+    final String displayStatus = EventMapper.getStatusLabel(status).toUpperCase();
+    
+    final Color themeColor = EventMapper.getColor(type);
+    final String title = isTask ? item.title : (item as ReservationModel).title;
+    final String description = isTask ? (item.description ?? 'Detaylı açıklama bulunmuyor.') : '';
+    final String timeRange = '${_formatTime(item.startDate)} - ${_formatTime(item.endDate)}';
 
     showModalBottomSheet(
       context: context,
@@ -87,14 +162,14 @@ class _HomePageState extends State<HomePage> {
                     color: themeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Icon(DummyData.getEventIcon(task['type']), color: themeColor),
+                  child: Icon(EventMapper.getIcon(type), color: themeColor),
                 ),
                 const SizedBox(width: 15),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      task['type'].toString().toUpperCase(),
+                      type.toUpperCase(),
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -103,7 +178,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     Text(
-                      '${task['start_date']} - ${task['end_date']}',
+                      timeRange,
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: Colors.grey[500],
@@ -117,19 +192,19 @@ class _HomePageState extends State<HomePage> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: calculatedStatus == 'TAMAMLANDI' 
+                    color: status == 'completed' 
                       ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                      : (calculatedStatus == 'İŞLEMDE' ? Colors.blue.withValues(alpha: 0.1) : Colors.grey[100]),
+                      : (status == 'in_progress' ? Colors.blue.withValues(alpha: 0.1) : Colors.grey[100]),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    calculatedStatus,
+                    displayStatus,
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: calculatedStatus == 'TAMAMLANDI' 
+                      color: status == 'completed' 
                         ? const Color(0xFF065F46)
-                        : (calculatedStatus == 'İŞLEMDE' ? Colors.blue[700] : Colors.grey[600]),
+                        : (status == 'in_progress' ? Colors.blue[700] : Colors.grey[600]),
                     ),
                   ),
                 ),
@@ -138,7 +213,7 @@ class _HomePageState extends State<HomePage> {
             
             const SizedBox(height: 25),
             Text(
-              task['title'],
+              title,
               style: GoogleFonts.inter(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -148,7 +223,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 12),
             
             // Structured Details for Reservations or Simple Description for Tasks
-            if (task['details'] != null)
+            if (!isTask)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -158,7 +233,7 @@ class _HomePageState extends State<HomePage> {
                   border: Border.all(color: Colors.grey[200]!),
                 ),
                 child: Column(
-                  children: (task['details'] as Map<String, dynamic>).entries.map((entry) {
+                  children: (item as ReservationModel).details.entries.map((entry) {
                     String label = entry.key == 'seat' ? 'Koltuk' : 
                                    entry.key == 'gate' ? 'Kapı' : 
                                    entry.key == 'room' ? 'Oda No' : 
@@ -178,7 +253,7 @@ class _HomePageState extends State<HomePage> {
               )
             else
               Text(
-                task['description'] ?? 'Detaylı açıklama bulunmuyor.',
+                description,
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -189,28 +264,47 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 40),
             
             // Action Buttons
-            if (calculatedStatus != 'TAMAMLANDI')
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: calculatedStatus == 'BEKLİYOR' ? null : () => _completeTask(task['id']),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    disabledBackgroundColor: Colors.grey[200],
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                    elevation: 0,
+            if (isTask) ...[
+              if (status == 'completed')
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle, color: Color(0xFF10B981), size: 28),
+                        SizedBox(width: 10),
+                        Text('Bu görev tamamlandı', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                      ],
+                    ),
                   ),
-                  child: Text(
-                    calculatedStatus == 'BEKLİYOR' ? 'Saati Bekleniyor...' : 'Görevi Tamamla',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: calculatedStatus == 'BEKLİYOR' ? Colors.grey[400] : Colors.white,
+                )
+              else if (status == 'pending')
+                Container(
+                  width: double.infinity,
+                  height: 60,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(18)),
+                  child: Text('Saati Bekleniyor...', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+                )
+              else // in_progress or overdue
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: () => _completeTask(item.id),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Görevi Tamamla',
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
                 ),
-              ),
+            ],
               
             const SizedBox(height: 12),
             
@@ -219,12 +313,7 @@ class _HomePageState extends State<HomePage> {
               width: double.infinity,
               height: 60,
               child: OutlinedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Silme özelliği yakında eklenecek.', style: GoogleFonts.inter()))
-                  );
-                },
+                onPressed: () => _deleteTask(item.id),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -248,148 +337,208 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // 3. Calculate completion flags for summary ticks
-    final bool allTasksDone = _localTasks.isNotEmpty && _localTasks.every((t) => t['status'] == 'completed');
-    final bool allReservationsDone = _localReservations.isNotEmpty && _localReservations.every((r) => r['status'] == 'completed');
+    final todayStr = _getTodayStr();
+    final programAsync = ref.watch(dailyProgramByDateProvider(todayStr));
+    final currentUser = ref.watch(currentUserProvider);
+    final String firstName = currentUser?.displayName.split(' ').first ?? 'Kullanıcı';
 
     // Global Background Color (Darker for Contrast)
     const Color globalBg = Color(0xFFEAEFF5);
 
     return Scaffold(
       backgroundColor: globalBg,
-      body: Stack(
-        children: [
-          // Top Background Filler (Dark)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 400,
-            child: Container(color: const Color(0xFF1B232A)),
-          ),
-          // Scrollable Content
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              children: [
-                _buildHeader(),
-                Transform.translate(
-                  offset: const Offset(0, -30),
-                  child: Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: globalBg,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(40),
-                        topRight: Radius.circular(40),
+      body: programAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Hata: $err')),
+        data: (program) {
+          final tasks = program.items.tasks;
+          final reservations = program.items.etkinlikler;
+          
+          final regularTasks = tasks.where((t) => t.type.toLowerCase() != 'meeting' && t.type.toLowerCase() != 'toplantı').toList();
+          final meetingTasks = tasks.where((t) => t.type.toLowerCase() == 'meeting' || t.type.toLowerCase() == 'toplantı').toList();
+
+          final now = DateTime.now();
+
+          final bool tasksDone = regularTasks.isNotEmpty && regularTasks.every((t) => t.status == 'completed');
+          final bool meetingsDone = meetingTasks.isNotEmpty && meetingTasks.every((t) => t.status == 'completed');
+          
+          // Reservations are done if manually completed OR if end time has passed
+          final bool resDone = reservations.isNotEmpty && reservations.every((r) {
+            final bool isManuallyDone = r.status == 'completed';
+            final bool isTimeOver = r.endDate != null && now.isAfter(r.endDate!);
+            return isManuallyDone || isTimeOver;
+          });
+          
+          final bool everythingDone = (tasks.isNotEmpty || reservations.isNotEmpty) && 
+                                       tasks.every((t) => t.status == 'completed') && 
+                                       reservations.every((r) {
+                                         final bool isManuallyDone = r.status == 'completed';
+                                         final bool isTimeOver = r.endDate != null && now.isAfter(r.endDate!);
+                                         return isManuallyDone || isTimeOver;
+                                       });
+          
+          // Dynamic header message
+          String headerMsg = 'Bugün için her şey hazır görünüyor!';
+          if (tasks.isNotEmpty) {
+            final pendingCount = tasks.where((t) => t.status != 'completed').length;
+            headerMsg = pendingCount > 0 
+                ? 'Bugün tamamlanması gereken $pendingCount görevin var.'
+                : 'Harika! Bütün görevlerini tamamladın.';
+          }
+          
+          return Stack(
+            children: [
+              // Top Background Filler (Dark)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 400,
+                child: Container(color: const Color(0xFF1B232A)),
+              ),
+              // Scrollable Content
+              SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    _buildHeader(headerMsg),
+                    Transform.translate(
+                      offset: const Offset(0, -30),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          color: globalBg,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(40),
+                            topRight: Radius.circular(40),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 30),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 25),
+                              child: Text(
+                                "$firstName'a Merhaba",
+                                style: GoogleFonts.inter(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 25),
+                            // Daily Summaries Card
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 25),
+                              child: Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(32),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.03),
+                                      blurRadius: 40,
+                                      offset: const Offset(0, 15),
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Günün Özetleri",
+                                      style: GoogleFonts.inter(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 25),
+                                    _buildDailySummaries(
+                                      tasksDone: tasksDone,
+                                      meetingsDone: meetingsDone,
+                                      resDone: resDone,
+                                      everythingDone: everythingDone,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 35),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 25),
+                              child: _buildSectionHeader(
+                                "Rezervasyonlarım",
+                                onTap: () => _navigateToListing("Rezervasyonlarım", reservations: reservations),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            _buildReservationsList(reservations),
+    
+                            const SizedBox(height: 35),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 25),
+                              child: _buildSectionHeader(
+                                "Görevlerim",
+                                onTap: () => _navigateToListing("Görevlerim", tasks: tasks.where((t) => t.type.toLowerCase() != 'meeting' && t.type.toLowerCase() != 'toplantı').toList()),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            _buildTasksList(tasks),
+    
+                            const SizedBox(height: 35),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 25),
+                              child: _buildSectionHeader(
+                                "Toplantılarım",
+                                onTap: () => _navigateToListing("Toplantılarım", tasks: tasks.where((t) => t.type.toLowerCase() == 'meeting' || t.type.toLowerCase() == 'toplantı').toList()),
+                              ),
+                            ),
+                            const SizedBox(height: 15),
+                            _buildMeetingsList(tasks),
+    
+                            const SizedBox(height: 60),
+                          ],
+                        ),
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 30),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: Text(
-                            "Can'a Merhaba",
-                            style: GoogleFonts.inter(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 25),
-                        // Daily Summaries Card
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(32),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                  blurRadius: 40,
-                                  offset: const Offset(0, 15),
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Günün Özetleri",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 19,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 25),
-                                _buildDailySummaries(allTasksDone, allReservationsDone),
-                              ],
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 35),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: _buildSectionHeader("Rezervasyonlarım"),
-                        ),
-                        const SizedBox(height: 15),
-                        _buildReservationsList(_localReservations),
-
-                        const SizedBox(height: 35),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: _buildSectionHeader("Görevlerim"),
-                        ),
-                        const SizedBox(height: 15),
-                        _buildTasksList(_localTasks),
-
-                        const SizedBox(height: 35),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: _buildSectionHeader("Toplantılarım"),
-                        ),
-                        const SizedBox(height: 15),
-                        _buildMeetingsList(_localTasks),
-
-                        const SizedBox(height: 60),
-                      ],
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
           ),
+          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      ],
-    );
-  }
-
-  Widget _buildHeader() {
+  Widget _buildHeader(String message) {
     return Container(
       padding: const EdgeInsets.only(top: 40, left: 20, right: 20, bottom: 50),
       color: const Color(0xFF1B232A),
@@ -418,7 +567,7 @@ class _HomePageState extends State<HomePage> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                'Bugün için her şey hazır görünüyor!',
+                message,
                 style: GoogleFonts.inter(
                   color: Colors.white,
                   fontSize: 14,
@@ -432,12 +581,17 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildDailySummaries(bool tasksDone, bool resDone) {
+  Widget _buildDailySummaries({
+    required bool tasksDone,
+    required bool meetingsDone,
+    required bool resDone,
+    required bool everythingDone,
+  }) {
     final List<Map<String, dynamic>> summaries = [
-      {'icon': Icons.task_alt_rounded, 'is_done': tasksDone},
-      {'icon': Icons.business_center_rounded, 'is_done': resDone},
-      {'icon': Icons.insights_rounded, 'is_done': tasksDone && resDone},
-      {'icon': Icons.calendar_today_rounded, 'is_gray': true},
+      {'icon': Icons.check_circle_outline_rounded, 'is_done': tasksDone},
+      {'icon': Icons.business_center_rounded, 'is_done': meetingsDone},
+      {'icon': Icons.auto_graph_rounded, 'is_done': resDone},
+      {'icon': Icons.calendar_today_rounded, 'is_done': everythingDone},
       {'icon': Icons.more_horiz_rounded, 'is_last': true},
     ];
 
@@ -465,19 +619,21 @@ class _HomePageState extends State<HomePage> {
               colors: isGray 
                 ? [Colors.grey[50]!, Colors.grey[100]!]
                 : (isDone 
-                    ? [const Color(0xFFE0F2F1), const Color(0xFFB2DFDB)]
+                    ? [const Color(0xFF10B981).withOpacity(0.1), const Color(0xFF10B981).withOpacity(0.2)]
                     : [Colors.white, Colors.grey[50]!]),
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: isLast ? null : Border.all(
-              color: isDone ? const Color(0xFF4A9090).withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.05), 
+              color: isDone ? const Color(0xFF10B981).withOpacity(0.3) : Colors.black.withOpacity(0.05), 
               width: 1.5,
             ),
           ),
           child: Icon(
-            data['icon'],
-            color: isLast ? Colors.grey[300] : (isDone ? const Color(0xFF4A9090) : Colors.grey[400]),
-            size: 22,
+            isDone && data['icon'] == Icons.calendar_today_rounded 
+                ? Icons.check_circle_rounded 
+                : data['icon'],
+            color: isLast ? Colors.grey[300] : (isDone ? const Color(0xFF10B981) : Colors.grey[400]),
+            size: 24,
           ),
         ),
         if (isDone)
@@ -487,7 +643,7 @@ class _HomePageState extends State<HomePage> {
             child: Container(
               padding: const EdgeInsets.all(3),
               decoration: const BoxDecoration(
-                color: Color(0xFF4A9090),
+                color: Color(0xFF10B981),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check, size: 8, color: Colors.white),
@@ -497,8 +653,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildReservationsList(List<Map<String, dynamic>> items) {
-    if (items.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Yakınlarda rezervasyon yok"));
+  Widget _buildReservationsList(List<ReservationModel> items) {
+    if (items.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Yakınlarda rezervasyon yok", style: TextStyle(color: Colors.grey)));
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -508,22 +664,23 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Row(
           children: items.map((res) {
-            final isFlight = res['type'] == 'Uçuş';
-            final String calculatedStatus = DummyData.getCalculatedStatus(res);
+            final typeLower = res.category.toLowerCase();
+            final isFlight = typeLower == 'flight' || typeLower == 'uçuş';
+            final statusLabel = EventMapper.getStatusLabel(res.status);
             return Padding(
               padding: const EdgeInsets.only(right: 15),
               child: GestureDetector(
                 onTap: () => _showTaskActions(res),
                 child: _buildInfoCard(
-                  type: res['type'],
-                  title: res['title'],
-                  subtitle: isFlight ? "Koltuk: ${res['details']['seat']}" : "Oda: ${res['details']['room']}",
-                  status: calculatedStatus,
-                  time: res['start_date'],
-                  icon: DummyData.getEventIcon(res['type']),
-                  color: DummyData.getEventColor(res['type']),
-                  isCompleted: calculatedStatus == 'TAMAMLANDI',
-                  isInProgress: calculatedStatus == 'İŞLEMDE',
+                  type: EventMapper.getLabel(res.category),
+                  title: res.title,
+                  subtitle: isFlight ? "Koltuk: ${res.details['seat'] ?? '-'}" : "Oda: ${res.details['room'] ?? '-'}",
+                  status: statusLabel,
+                  time: _formatTime(res.startDate),
+                  icon: EventMapper.getIcon(res.category),
+                  color: EventMapper.getColor(res.category),
+                  isCompleted: res.status == 'completed' || (res.endDate != null && DateTime.now().isAfter(res.endDate!)),
+                  isInProgress: res.status == 'in_progress' || (res.startDate != null && res.endDate != null && DateTime.now().isAfter(res.startDate!) && DateTime.now().isBefore(res.endDate!)),
                 ),
               ),
             );
@@ -533,9 +690,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTasksList(List<Map<String, dynamic>> items) {
-    final taskItems = items.where((i) => i['type'] == 'Görev').toList();
-    if (taskItems.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Bugün için görev yok"));
+  Widget _buildTasksList(List<TaskModel> items) {
+    final taskItems = items.where((i) {
+      final t = i.type.toLowerCase();
+      return t == 'task' || t == 'görev';
+    }).toList();
+    
+    if (taskItems.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Bugün için görev yok", style: TextStyle(color: Colors.grey)));
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -545,21 +706,21 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Row(
           children: taskItems.map((task) {
-            final String calculatedStatus = DummyData.getCalculatedStatus(task);
+            final statusLabel = EventMapper.getStatusLabel(task.status);
             return Padding(
               padding: const EdgeInsets.only(right: 15),
               child: GestureDetector(
                 onTap: () => _showTaskActions(task),
                 child: _buildInfoCard(
-                  type: "Görev",
-                  title: task['title'],
-                  subtitle: "Öncelik: ${task['priority'].toString().toUpperCase()}",
-                  status: calculatedStatus,
-                  time: task['start_date'],
-                  icon: DummyData.getEventIcon(task['type']),
-                  color: DummyData.getEventColor(task['type']),
-                  isCompleted: calculatedStatus == 'TAMAMLANDI',
-                  isInProgress: calculatedStatus == 'İŞLEMDE',
+                  type: "GÖREV",
+                  title: task.title,
+                  subtitle: "Öncelik: ${task.priority.toString().toUpperCase()}",
+                  status: statusLabel,
+                  time: _formatTime(task.startDate),
+                  icon: EventMapper.getIcon(task.type),
+                  color: EventMapper.getColor(task.type),
+                  isCompleted: task.status == 'completed',
+                  isInProgress: task.status == 'in_progress',
                 ),
               ),
             );
@@ -569,9 +730,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildMeetingsList(List<Map<String, dynamic>> items) {
-    final meetingItems = items.where((i) => i['type'] == 'Toplantı').toList();
-    if (meetingItems.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Bugün toplantı yok"));
+  Widget _buildMeetingsList(List<TaskModel> items) {
+    final meetingItems = items.where((i) {
+      final t = i.type.toLowerCase();
+      return t == 'meeting' || t == 'toplantı';
+    }).toList();
+    
+    if (meetingItems.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Bugün toplantı yok", style: TextStyle(color: Colors.grey)));
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -581,21 +746,21 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Row(
           children: meetingItems.map((meeting) {
-            final String calculatedStatus = DummyData.getCalculatedStatus(meeting);
+            final statusLabel = EventMapper.getStatusLabel(meeting.status);
             return Padding(
               padding: const EdgeInsets.only(right: 15),
               child: GestureDetector(
                 onTap: () => _showTaskActions(meeting),
                 child: _buildInfoCard(
-                  type: "Online Toplantı",
-                  title: meeting['title'],
-                  subtitle: "Platform: Google Meet",
-                  status: calculatedStatus,
-                  time: meeting['start_date'],
-                  icon: DummyData.getEventIcon(meeting['type']),
-                  color: DummyData.getEventColor(meeting['type']),
-                  isCompleted: calculatedStatus == 'TAMAMLANDI',
-                  isInProgress: calculatedStatus == 'İŞLEMDE',
+                  type: "TOPLANTI",
+                  title: meeting.title,
+                  subtitle: meeting.description ?? "Detay bulunmuyor",
+                  status: statusLabel,
+                  time: _formatTime(meeting.startDate),
+                  icon: EventMapper.getIcon(meeting.type),
+                  color: EventMapper.getColor(meeting.type),
+                  isCompleted: meeting.status == 'completed',
+                  isInProgress: meeting.status == 'in_progress',
                 ),
               ),
             );

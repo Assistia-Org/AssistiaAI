@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/daily_program_provider.dart';
 
 class AddManualTaskPage extends ConsumerStatefulWidget {
   final DateTime initialDate;
@@ -73,13 +75,18 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       _startTime.minute,
     );
 
-    final DateTime combinedEnd = DateTime(
+    DateTime combinedEnd = DateTime(
       _selectedDate.year,
       _selectedDate.month,
       _selectedDate.day,
       _endTime.hour,
       _endTime.minute,
     );
+
+    // If end time is before start time, it means the task ends the next day
+    if (combinedEnd.isBefore(combinedStart)) {
+      combinedEnd = combinedEnd.add(const Duration(days: 1));
+    }
 
     final task = TaskModel(
       id: uuid.v4(),
@@ -97,6 +104,11 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
 
     try {
       await ref.read(taskControllerProvider).createTask(task);
+      
+      // Invalidate the daily program provider for the selected date
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      ref.invalidate(dailyProgramByDateProvider(dateStr));
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Görev başarıyla eklendi!')),
@@ -295,7 +307,19 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
-                Text(_formatTime(time), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                Row(
+                  children: [
+                    Text(_formatTime(time), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    if (!isStart && (_endTime.hour < _startTime.hour || (_endTime.hour == _startTime.hour && _endTime.minute < _startTime.minute)))
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          '+1 GÜN',
+                          style: GoogleFonts.inter(color: const Color(0xFFF43F5E), fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ],
