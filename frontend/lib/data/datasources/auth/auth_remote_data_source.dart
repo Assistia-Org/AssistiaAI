@@ -95,6 +95,28 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+    if (token == null) throw Exception('No access token found');
+
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authChangePassword}'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        ...AppConstants.authHeader(token),
+      },
+      body: jsonEncode({
+        'current_password': oldPassword,
+        'new_password': newPassword,
+        'confirm_password': newPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to change password: ${response.body}');
+    }
+  }
+
   Future<void> logout() async {
     await sharedPreferences.remove(AppConstants.accessTokenKey);
     await sharedPreferences.remove(AppConstants.refreshTokenKey);
