@@ -115,12 +115,32 @@ class AuthController {
     }
   }
 
-  Future<void> register(String name, String email, String password) async {
+  Future<void> register(String name, String email, String password, String verificationCode) async {
     ref.read(authLoadingProvider.notifier).setLoading(true);
     try {
       final registerUseCase = await ref.read(registerUseCaseProvider.future);
-      final user = await registerUseCase.execute(name: name, email: email, password: password);
+      final user = await registerUseCase.execute(name: name, email: email, password: password, verificationCode: verificationCode);
       ref.read(currentUserProvider.notifier).setUser(user);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> sendVerificationCode(String email) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final repository = await ref.read(authRepositoryProvider.future);
+      await repository.sendVerificationCode(email);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final repository = await ref.read(authRepositoryProvider.future);
+      await repository.verifyCode(email, code);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }

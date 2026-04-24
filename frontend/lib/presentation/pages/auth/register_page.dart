@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 
 import '../../widgets/custom_text_field.dart';
 import '../../../core/utils/validators.dart';
@@ -24,8 +25,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _codeController = TextEditingController();
+  final List<TextEditingController> _otpControllers = List.generate(6, (index) => TextEditingController());
+  final List<FocusNode> _otpFocusNodes = List.generate(6, (index) => FocusNode());
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -33,6 +36,36 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
 
   int _currentStep = 0;
   final int _totalSteps = 4;
+
+  Timer? _timer;
+  int _secondsRemaining = 180; // 3 minutes
+  bool _isTimerActive = false;
+
+  void _startTimer() {
+    _timer?.cancel();
+    setState(() {
+      _secondsRemaining = 180;
+      _isTimerActive = true;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining > 0) {
+        setState(() {
+          _secondsRemaining--;
+        });
+      } else {
+        setState(() {
+          _isTimerActive = false;
+        });
+        _timer?.cancel();
+      }
+    });
+  }
+
+  String _formatTime(int seconds) {
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
 
   @override
   void initState() {
@@ -61,16 +94,85 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
 
   @override
   void dispose() {
+    _timer?.cancel();
     _animationController.dispose();
     _nameController.dispose();
     _emailController.dispose();
-    _codeController.dispose();
+    for (var controller in _otpControllers) {
+      controller.dispose();
+    }
+    for (var node in _otpFocusNodes) {
+      node.dispose();
+    }
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _nextStep() {
+  void _nextStep() async {
     if (_formKeys[_currentStep].currentState!.validate()) {
+      if (_currentStep == 1) {
+        try {
+          await ref.read(authControllerProvider).sendVerificationCode(_emailController.text);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Doğrulama kodu e-postanıza gönderildi!'),
+                backgroundColor: Colors.blueAccent,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            _startTimer();
+            setState(() {
+              _currentStep++;
+            });
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Kod gönderilemedi: ${e.toString()}'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+        return;
+      }
+
+      if (_currentStep == 2) {
+        String code = _otpControllers.map((c) => c.text).join();
+        if (code.length < 6) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Lütfen 6 haneli kodu eksiksiz girin')),
+          );
+          return;
+        }
+        try {
+          await ref.read(authControllerProvider).verifyCode(
+                _emailController.text,
+                code,
+              );
+          if (mounted) {
+            setState(() {
+              _currentStep++;
+            });
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Geçersiz veya süresi dolmuş kod'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+        return;
+      }
+
       if (_currentStep < _totalSteps - 1) {
         setState(() {
           _currentStep++;
@@ -90,16 +192,18 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
   }
 
   void _register() async {
+    String code = _otpControllers.map((c) => c.text).join();
     try {
       await ref.read(authControllerProvider).register(
         _nameController.text,
         _emailController.text,
         _passwordController.text,
+        code,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Registration Successful!'),
+            content: Text('Kayıt Başarılı!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -110,7 +214,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Registration Failed: ${e.toString()}'),
+            content: Text('Kayıt Başarısız: ${e.toString()}'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -170,14 +274,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
             children: [
               CustomTextField(
                 controller: _nameController,
-                hintText: 'Full Name',
+                hintText: 'Ad Soyad',
                 prefixIcon: Icons.person_outline,
                 validator: (value) =>
-                    value == null || value.isEmpty ? 'Name is required' : null,
+                    value == null || value.isEmpty ? 'Ad alanı zorunludur' : null,
               ),
               const SizedBox(height: 16),
               Text(
-                'What should we call you?',
+                'Size nasıl hitap etmemizi istersiniz?',
                 style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
               ),
             ],
@@ -191,14 +295,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
             children: [
               CustomTextField(
                 controller: _emailController,
-                hintText: 'Email Address',
+                hintText: 'E-posta Adresi',
                 prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
                 validator: Validators.validateEmail,
               ),
               const SizedBox(height: 16),
               Text(
-                'We will send a verification code to this email.',
+                'Bu adrese bir doğrulama kodu göndereceğiz.',
                 style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
               ),
             ],
@@ -210,20 +314,67 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
           child: Column(
             key: const ValueKey(2),
             children: [
-              CustomTextField(
-                controller: _codeController,
-                hintText: 'Verification Code',
-                prefixIcon: Icons.verified_user_outlined,
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Code is required' : null,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(6, (index) {
+                  return SizedBox(
+                    width: 45,
+                    child: TextFormField(
+                      controller: _otpControllers[index],
+                      focusNode: _otpFocusNodes[index],
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      style: GoogleFonts.inter(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blueAccent,
+                      ),
+                      maxLength: 1,
+                      decoration: InputDecoration(
+                        counterText: "",
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        if (value.isNotEmpty && index < 5) {
+                          _otpFocusNodes[index + 1].requestFocus();
+                        } else if (value.isEmpty && index > 0) {
+                          _otpFocusNodes[index - 1].requestFocus();
+                        }
+                      },
+                    ),
+                  );
+                }),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
               Text(
-                'Enter the code sent to your email.\n(For now, enter any code to proceed)',
+                'E-postanıza gönderilen kodu girin.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
               ),
+              const SizedBox(height: 16),
+              if (_isTimerActive)
+                Text(
+                  'Kodun süresi doluyor: ${_formatTime(_secondsRemaining)}',
+                  style: GoogleFonts.inter(
+                    color: _secondsRemaining < 30 ? Colors.red : Colors.blueAccent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              else
+                TextButton(
+                  onPressed: () {
+                    _currentStep = 1; // Move back to email step to resend
+                    _nextStep(); // This will trigger resend
+                  },
+                  child: const Text('Kodu Tekrar Gönder'),
+                ),
             ],
           ),
         );
@@ -235,14 +386,61 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
             children: [
               CustomTextField(
                 controller: _passwordController,
-                hintText: 'Password',
+                hintText: 'Şifre',
                 prefixIcon: Icons.lock_outline,
                 isPassword: true,
+                onChanged: (val) => setState(() {}),
                 validator: Validators.validatePassword,
               ),
               const SizedBox(height: 16),
+              CustomTextField(
+                controller: _confirmPasswordController,
+                hintText: 'Şifreyi Onayla',
+                prefixIcon: Icons.lock_reset_outlined,
+                isPassword: true,
+                onChanged: (val) => setState(() {}),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Lütfen şifrenizi onaylayın';
+                  }
+                  if (value != _passwordController.text) {
+                    return 'Şifreler eşleşmiyor';
+                  }
+                  return null;
+                },
+              ),
+              if (_confirmPasswordController.text.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      _passwordController.text == _confirmPasswordController.text
+                          ? Icons.check_circle_outline
+                          : Icons.error_outline,
+                      size: 16,
+                      color: _passwordController.text == _confirmPasswordController.text
+                          ? Colors.green
+                          : Colors.red,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _passwordController.text == _confirmPasswordController.text
+                          ? 'Şifreler eşleşiyor'
+                          : 'Şifreler uyuşmuyor',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _passwordController.text == _confirmPasswordController.text
+                            ? Colors.green
+                            : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 16),
               Text(
-                'Choose a strong password with at least 6 characters.',
+                'En az 8 karakterli güçlü bir şifre belirleyin.',
                 style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
               ),
             ],
@@ -256,15 +454,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
   String get _buttonText {
     switch (_currentStep) {
       case 0:
-        return 'Next';
+        return 'İleri';
       case 1:
-        return 'Get Code';
+        return 'Kod Al';
       case 2:
-        return 'Verify';
+        return 'Doğrula';
       case 3:
-        return 'Sign Up';
+        return 'Kayıt Ol';
       default:
-        return 'Next';
+        return 'İleri';
     }
   }
 
@@ -277,7 +475,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: _currentStep > 0
+        leading: _currentStep > 0 && _currentStep < 3
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
                 onPressed: isLoading ? null : _previousStep,
@@ -313,7 +511,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                   
                   // Title
                   Text(
-                    'Create Account',
+                    'Hesap Oluştur',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 32,
@@ -386,7 +584,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "Already have an account?",
+                          "Zaten bir hesabınız var mı?",
                           style: GoogleFonts.inter(
                             color: Colors.grey[600],
                           ),
@@ -394,7 +592,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                         TextButton(
                           onPressed: _navigateToLogin,
                           child: Text(
-                            'Sign in',
+                            'Giriş Yap',
                             style: GoogleFonts.inter(
                               color: Colors.blueAccent,
                               fontWeight: FontWeight.bold,

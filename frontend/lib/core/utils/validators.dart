@@ -1,21 +1,21 @@
 class Validators {
   static String? validateEmail(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Email is required';
+      return 'E-posta alanı zorunludur';
     }
     final emailRegExp = RegExp(r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+");
     if (!emailRegExp.hasMatch(value)) {
-      return 'Please enter a valid email address';
+      return 'Lütfen geçerli bir e-posta adresi girin';
     }
     return null;
   }
 
   static String? validatePassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Password is required';
+      return 'Şifre alanı zorunludur';
     }
     if (value.length < 8) {
-      return 'Password must be at least 8 characters long';
+      return 'Şifre en az 8 karakter olmalıdır';
     }
     return null;
   }

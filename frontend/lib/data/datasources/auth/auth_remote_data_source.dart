@@ -18,6 +18,7 @@ class AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    required String verificationCode,
   }) async {
     const uuid = Uuid();
     final uniqueId = uuid.v4();
@@ -32,6 +33,7 @@ class AuthRemoteDataSource {
         'display_name': name,
         'email': email,
         'password': password,
+        'verification_code': verificationCode,
       }),
     );
 
@@ -92,6 +94,30 @@ class AuthRemoteDataSource {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to send password reset email: ${response.body}');
+    }
+  }
+
+  Future<void> sendVerificationCode(String email) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationRequest}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to send verification code: ${response.body}');
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationVerify}'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Invalid verification code');
     }
   }
 
