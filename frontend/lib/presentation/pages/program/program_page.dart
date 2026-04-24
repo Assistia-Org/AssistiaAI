@@ -629,7 +629,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         isTask ? (data as TaskModel).title : (data as ReservationModel).title;
     final String subtitle = isTask
         ? ((data as TaskModel).description ?? '')
-        : '${(data as ReservationModel).category} - ${(data as ReservationModel).status}';
+        : '${(data as ReservationModel).category} - ${EventMapper.getStatusLabel((data as ReservationModel).status)}';
 
     final Color color = EventMapper.getColor(type);
     final IconData icon = EventMapper.getIcon(type);
@@ -739,11 +739,11 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   _detailRow('AÇIKLAMA', data.description!, color),
                 _detailRow('TİP', data.type, color),
                 _detailRow('ÖNCELİK', data.priority, color),
-                _detailRow('DURUM', data.status, color),
+                _detailRow('DURUM', EventMapper.getStatusLabel(data.status), color),
               ] else ...[
                 _detailRow(
                     'KATEGORİ', (data as ReservationModel).category, color),
-                _detailRow('DURUM', data.status, color),
+                _detailRow('DURUM', EventMapper.getStatusLabel(data.status), color),
                 if (data.details['pnr'] != null)
                   _detailRow('PNR', data.details['pnr'].toString(), color),
               ],
@@ -1213,7 +1213,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           ),
           const SizedBox(width: 6),
           Text(
-            status,
+            EventMapper.getStatusLabel(status),
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w700,

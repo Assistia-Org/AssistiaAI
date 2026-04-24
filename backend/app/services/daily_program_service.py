@@ -15,6 +15,7 @@ from app.schemas.daily_program import (
     DailyProgramResponse
 )
 from app.core.messages.error_message import PROGRAM_NOT_FOUND
+from app.services.task_service import sync_task_status
 
 async def create_daily_program_service(data: DailyProgramCreate) -> DailyProgramResponse:
     """
@@ -49,6 +50,11 @@ async def get_program_by_date_service(user_id: str, search_date: date) -> DailyP
     
     # Fetch links manually if repository didn't or ensure model_validate handles it
     await program.fetch_all_links()
+    
+    # Sync task statuses
+    for task in program.items.tasks:
+        await sync_task_status(task)
+        
     return DailyProgramResponse.model_validate(program)
 
 async def list_user_programs_service(user_id: str) -> List[DailyProgramResponse]:
@@ -58,6 +64,9 @@ async def list_user_programs_service(user_id: str) -> List[DailyProgramResponse]
     programs = await list_programs_by_user(user_id)
     for p in programs:
         await p.fetch_all_links()
+        for task in p.items.tasks:
+            await sync_task_status(task)
+            
     return [DailyProgramResponse.model_validate(p) for p in programs]
 
 async def update_daily_program_service(program_id: str, data: DailyProgramUpdate) -> DailyProgramResponse:
@@ -78,6 +87,10 @@ async def update_daily_program_service(program_id: str, data: DailyProgramUpdate
         }
 
     updated_program = await update_daily_program(program, update_dict)
+    await updated_program.fetch_all_links()
+    for task in updated_program.items.tasks:
+        await sync_task_status(task)
+        
     return DailyProgramResponse.model_validate(updated_program)
 
 async def delete_daily_program_service(program_id: str) -> None:
