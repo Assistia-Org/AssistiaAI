@@ -53,6 +53,16 @@ class TaskController {
     final repository = await ref.read(taskRepositoryProvider.future);
     return await repository.getTasksByUserId(userId);
   }
+
+  Future<TaskModel> updateTaskStatus(String taskId, String status) async {
+    ref.read(taskLoadingProvider.notifier).setLoading(true);
+    try {
+      final repository = await ref.read(taskRepositoryProvider.future);
+      return await repository.updateTaskStatus(taskId, status);
+    } finally {
+      ref.read(taskLoadingProvider.notifier).setLoading(false);
+    }
+  }
 }
 
 final taskControllerProvider = Provider<TaskController>((ref) {

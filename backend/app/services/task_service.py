@@ -132,7 +132,6 @@ async def update_task_service(task_id: str, data: TaskUpdate) -> TaskResponse:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
     
     updated_task = await update_task(task, data.model_dump(exclude_unset=True))
-    updated_task = await sync_task_status(updated_task)
     return TaskResponse.model_validate(updated_task)
 
 

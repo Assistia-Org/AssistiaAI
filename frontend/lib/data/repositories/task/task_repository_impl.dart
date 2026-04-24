@@ -16,4 +16,9 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<List<TaskModel>> getTasksByUserId(String userId) {
     return remoteDataSource.getTasksByUserId(userId);
   }
+
+  @override
+  Future<TaskModel> updateTaskStatus(String taskId, String status) {
+    return remoteDataSource.updateTaskStatus(taskId, status);
+  }
 }
