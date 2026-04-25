@@ -417,47 +417,82 @@ class _HomePageState extends ConsumerState<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // ── Greeting ──────────────────────────────────
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
-                              child: Text(
-                                "$firstName'a Merhaba",
-                                style: GoogleFonts.inter(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Merhaba, $firstName 👋',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF1B232A),
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    DateFormat('d MMMM yyyy').format(DateTime.now()),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 25),
-                            // Daily Summaries Card
+
+                            const SizedBox(height: 24),
+
+                            // ── Daily Summaries Card ───────────────────────
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
                               child: Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(32),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [Color(0xFF1B232A), Color(0xFF2D3E4E)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(28),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.03),
-                                      blurRadius: 40,
-                                      offset: const Offset(0, 15),
+                                      color: const Color(0xFF1B232A).withValues(alpha: 0.25),
+                                      blurRadius: 30,
+                                      offset: const Offset(0, 12),
                                     ),
                                   ],
                                 ),
-                                padding: const EdgeInsets.all(24),
+                                padding: const EdgeInsets.all(22),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      "Günün Özetleri",
-                                      style: GoogleFonts.inter(
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(7),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: const Icon(Icons.bar_chart_rounded, color: Colors.cyanAccent, size: 16),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'Günün Özeti',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 25),
+                                    const SizedBox(height: 20),
                                     _buildDailySummaries(
                                       tasksDone: tasksDone,
                                       meetingsDone: meetingsDone,
@@ -468,41 +503,44 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 ),
                               ),
                             ),
-                            
-                            const SizedBox(height: 35),
+
+                            const SizedBox(height: 32),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
                               child: _buildSectionHeader(
-                                "Rezervasyonlarım",
-                                onTap: () => _navigateToListing("Rezervasyonlarım", reservations: reservations),
+                                'Rezervasyonlarım',
+                                icon: Icons.confirmation_num_rounded,
+                                onTap: () => _navigateToListing('Rezervasyonlarım', reservations: reservations),
                               ),
                             ),
-                            const SizedBox(height: 15),
+                            const SizedBox(height: 14),
                             _buildReservationsList(reservations),
-    
-                            const SizedBox(height: 35),
+
+                            const SizedBox(height: 32),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
                               child: _buildSectionHeader(
-                                "Görevlerim",
-                                onTap: () => _navigateToListing("Görevlerim", tasks: tasks.where((t) => t.type.toLowerCase() != 'meeting' && t.type.toLowerCase() != 'toplantı').toList()),
+                                'Görevlerim',
+                                icon: Icons.task_alt_rounded,
+                                onTap: () => _navigateToListing('Görevlerim', tasks: tasks.where((t) => t.type.toLowerCase() != 'meeting' && t.type.toLowerCase() != 'toplantı').toList()),
                               ),
                             ),
-                            const SizedBox(height: 15),
+                            const SizedBox(height: 14),
                             _buildTasksList(tasks),
-    
-                            const SizedBox(height: 35),
+
+                            const SizedBox(height: 32),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
                               child: _buildSectionHeader(
-                                "Toplantılarım",
-                                onTap: () => _navigateToListing("Toplantılarım", tasks: tasks.where((t) => t.type.toLowerCase() == 'meeting' || t.type.toLowerCase() == 'toplantı').toList()),
+                                'Toplantılarım',
+                                icon: Icons.video_camera_front_rounded,
+                                onTap: () => _navigateToListing('Toplantılarım', tasks: tasks.where((t) => t.type.toLowerCase() == 'meeting' || t.type.toLowerCase() == 'toplantı').toList()),
                               ),
                             ),
-                            const SizedBox(height: 15),
+                            const SizedBox(height: 14),
                             _buildMeetingsList(tasks),
-    
-                            const SizedBox(height: 60),
+
+                            const SizedBox(height: 70),
                           ],
                         ),
                       ),
@@ -517,22 +555,58 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildSectionHeader(String title, {VoidCallback? onTap}) {
+  Widget _buildSectionHeader(String title, {VoidCallback? onTap, IconData? icon}) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+          Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1B232A).withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 15, color: const Color(0xFF1B232A)),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1B232A),
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B232A).withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Tümü',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1B232A).withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_forward_rounded, size: 13, color: const Color(0xFF1B232A).withValues(alpha: 0.7)),
+              ],
             ),
           ),
-          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         ],
       ),
     );
@@ -592,7 +666,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       {'icon': Icons.business_center_rounded, 'is_done': meetingsDone},
       {'icon': Icons.auto_graph_rounded, 'is_done': resDone},
       {'icon': Icons.calendar_today_rounded, 'is_done': everythingDone},
-      {'icon': Icons.more_horiz_rounded, 'is_last': true},
     ];
 
     return Row(
@@ -654,7 +727,10 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   Widget _buildReservationsList(List<ReservationModel> items) {
-    if (items.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Yakınlarda rezervasyon yok", style: TextStyle(color: Colors.grey)));
+    if (items.isEmpty) return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: _buildEmptyChip('Yakınlarda rezervasyon yok', Icons.confirmation_num_outlined),
+    );
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -693,10 +769,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildTasksList(List<TaskModel> items) {
     final taskItems = items.where((i) {
       final t = i.type.toLowerCase();
-      return t == 'task' || t == 'görev';
+      return t != 'meeting' && t != 'toplantı';
     }).toList();
     
-    if (taskItems.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Bugün için görev yok", style: TextStyle(color: Colors.grey)));
+    if (taskItems.isEmpty) return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: _buildEmptyChip('Bugün için görev yok', Icons.task_outlined),
+    );
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -712,7 +791,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               child: GestureDetector(
                 onTap: () => _showTaskActions(task),
                 child: _buildInfoCard(
-                  type: "GÖREV",
+                  type: EventMapper.getLabel(task.type),
                   title: task.title,
                   subtitle: "Öncelik: ${task.priority.toString().toUpperCase()}",
                   status: statusLabel,
@@ -736,7 +815,10 @@ class _HomePageState extends ConsumerState<HomePage> {
       return t == 'meeting' || t == 'toplantı';
     }).toList();
     
-    if (meetingItems.isEmpty) return const Padding(padding: EdgeInsets.symmetric(horizontal: 25), child: Text("Bugün toplantı yok", style: TextStyle(color: Colors.grey)));
+    if (meetingItems.isEmpty) return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: _buildEmptyChip('Bugün toplantı yok', Icons.video_camera_front_outlined),
+    );
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -770,6 +852,32 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  Widget _buildEmptyChip(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[400]),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInfoCard({
     required String type,
     required String title,
@@ -781,61 +889,92 @@ class _HomePageState extends ConsumerState<HomePage> {
     required bool isCompleted,
     bool isInProgress = false,
   }) {
+    // Status colors
+    final Color statusBg = isCompleted
+        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+        : isInProgress
+            ? const Color(0xFF3B82F6).withValues(alpha: 0.12)
+            : Colors.grey.withValues(alpha: 0.1);
+    final Color statusFg = isCompleted
+        ? const Color(0xFF065F46)
+        : isInProgress
+            ? const Color(0xFF1D4ED8)
+            : Colors.grey.shade600;
+
     return Container(
-      width: 230,
+      width: 220,
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(28),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: isInProgress ? color.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.06),
-            blurRadius: isInProgress ? 25 : 20,
-            offset: const Offset(0, 10),
+            color: isInProgress
+                ? color.withValues(alpha: 0.18)
+                : Colors.black.withValues(alpha: 0.07),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
           ),
         ],
+        border: isInProgress
+            ? Border.all(color: color.withValues(alpha: 0.3), width: 1.5)
+            : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Vibrant Color + Icon + Time
+          // ── Coloured top strip with icon ──────────────────
           Container(
-            height: 90,
+            height: 100,
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color,
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [color, color.withValues(alpha: 0.85)],
+                colors: [color, color.withValues(alpha: 0.75)],
               ),
             ),
             child: Stack(
               children: [
-                Center(
-                  child: Icon(icon, color: Colors.white, size: 32),
-                ),
-                // Integrated Time (High Contrast)
+                // Large background icon (watermark)
                 Positioned(
-                  bottom: 0,
-                  right: 0,
+                  right: -10,
+                  bottom: -10,
+                  child: Icon(icon, size: 80, color: Colors.white.withValues(alpha: 0.12)),
+                ),
+                // Centered icon
+                Positioned(
+                  top: 18,
+                  left: 18,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: Colors.white, size: 20),
+                  ),
+                ),
+                // Time pill
+                Positioned(
+                  bottom: 12,
+                  right: 14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.access_time_filled_rounded, size: 12, color: Colors.white),
-                        const SizedBox(width: 5),
+                        const Icon(Icons.schedule_rounded, size: 11, color: Colors.white),
+                        const SizedBox(width: 4),
                         Text(
                           time,
                           style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
                         ),
@@ -843,72 +982,84 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ),
                 ),
+                // Completed overlay
+                if (isCompleted)
+                  Positioned(
+                    top: 10,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check, size: 10, color: Colors.white),
+                    ),
+                  ),
               ],
             ),
           ),
-          
-          // White Area: Title, Subtitle, Status
+
+          // ── Content area ──────────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Type label + Status pill
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Text(
-                        type.toUpperCase(),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: color,
-                          letterSpacing: 0.8,
-                        ),
+                    Text(
+                      type.toUpperCase(),
+                      style: GoogleFonts.inter(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                        letterSpacing: 1.0,
                       ),
                     ),
-                    // Proportional Status Pill
+                    const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isCompleted 
-                          ? const Color(0xFF10B981).withValues(alpha: 0.1) 
-                          : (isInProgress ? Colors.blue.withValues(alpha: 0.1) : Colors.grey[100]),
+                        color: statusBg,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         status,
                         style: GoogleFonts.inter(
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                          color: isCompleted 
-                            ? const Color(0xFF065F46) 
-                            : (isInProgress ? Colors.blue[700] : Colors.grey[500]),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: statusFg,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 7),
                 Text(
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1B232A),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isCompleted
+                        ? Colors.grey.shade400
+                        : const Color(0xFF1B232A),
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.grey.shade400,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 5),
                 Text(
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
+                    color: Colors.grey.shade500,
                   ),
                 ),
               ],
