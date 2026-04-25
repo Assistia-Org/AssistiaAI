@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// If StateProvider is still missing, it might be due to an environment issue.
+// Using a simple Notifier as an alternative if needed.
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +17,21 @@ import 'community_provider.dart';
 import 'invitation_provider.dart';
 import 'sse_provider.dart';
 // --- Dependecy Injection via Riverpod ---
+
+enum AuthPageType { login, register }
+
+class AuthPageNotifier extends Notifier<AuthPageType> {
+  @override
+  AuthPageType build() => AuthPageType.login;
+
+  void setPage(AuthPageType type) {
+    state = type;
+  }
+}
+
+final authPageProvider = NotifierProvider<AuthPageNotifier, AuthPageType>(() {
+  return AuthPageNotifier();
+});
 
 final sharedPrefsProvider = FutureProvider<SharedPreferences>((ref) async {
   return await SharedPreferences.getInstance();
@@ -126,7 +143,7 @@ class AuthController {
     try {
       final registerUseCase = await ref.read(registerUseCaseProvider.future);
       final user = await registerUseCase.execute(name: name, email: email, password: password);
-      ref.read(currentUserProvider.notifier).setUser(user);
+      // ref.read(currentUserProvider.notifier).setUser(user); // Don't login automatically
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
@@ -141,6 +158,7 @@ class AuthController {
       ref.invalidate(myCommunitiesProvider);
       ref.invalidate(myInvitationsProvider);
       ref.read(currentUserProvider.notifier)._clearState();
+      ref.read(authPageProvider.notifier).setPage(AuthPageType.login);
       ref.read(sseServiceProvider).disconnect();
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
