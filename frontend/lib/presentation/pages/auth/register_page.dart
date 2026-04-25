@@ -258,24 +258,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
   }
 
   void _navigateToLogin() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const LoginPage(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(-1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.easeInOutCubic;
-
-          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 600),
-      ),
-    );
+    ref.read(authPageProvider.notifier).setPage(AuthPageType.login);
   }
 
   Widget _buildStepIndicator() {

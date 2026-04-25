@@ -48,4 +48,39 @@ class TaskRemoteDataSource {
       throw Exception('Görevler yüklenemedi: ${response.statusCode}');
     }
   }
+
+  Future<TaskModel> updateTaskStatus(String taskId, String status) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+
+    final response = await client.patch(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tasks}$taskId'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
+      },
+      body: jsonEncode({'status': status}),
+    );
+
+    if (response.statusCode == 200) {
+      return TaskModel.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Görev durumu güncellenemedi: ${response.statusCode}');
+    }
+  }
+
+  Future<void> deleteTask(String taskId) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+
+    final response = await client.delete(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tasks}$taskId'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
+      },
+    );
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Görev silinemedi: ${response.statusCode}');
+    }
+  }
 }

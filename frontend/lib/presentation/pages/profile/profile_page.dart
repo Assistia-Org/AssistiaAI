@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
 import 'account_info_page.dart';
+import 'change_password_page.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -207,7 +208,14 @@ class ProfilePage extends ConsumerWidget {
             },
           ),
           _buildSettingItem(Icons.notifications_none_rounded, 'Bildirimler'),
-          _buildSettingItem(Icons.security_rounded, 'Güvenlik'),
+          _buildSettingItem(Icons.security_rounded, 'Güvenlik',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
+              );
+            },
+          ),
           _buildSettingItem(Icons.palette_outlined, 'Görünüm'),
           _buildSettingItem(Icons.help_outline_rounded, 'Yardım & Destek'),
           const SizedBox(height: 20),

@@ -7,7 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import '../../../core/constants/dummy_data.dart';
 import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
+import '../../providers/daily_program_provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 class AddFlightReservationPage extends ConsumerStatefulWidget {
   const AddFlightReservationPage({super.key});
@@ -454,6 +456,10 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
                 );
 
                 await ref.read(reservationControllerProvider).addReservation(reservation);
+
+                // Invalidate the daily program provider for today
+                final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+                ref.invalidate(dailyProgramByDateProvider(dateStr));
 
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
