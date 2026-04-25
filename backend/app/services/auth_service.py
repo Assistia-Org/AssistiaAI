@@ -39,7 +39,6 @@ from app.core.messages.success_message import (
 )
 from app.utils.email import send_password_reset_email
 from app.utils.validators import validate_password_strength
-from app.services.verification_service import verify_code_service, delete_verification_code_service
 
 async def change_password_service(user: User, data: ChangePasswordRequest) -> dict:
     """
@@ -130,9 +129,6 @@ async def register_user_service(data: UserCreate) -> UserResponse:
     Handle user registration.
     Checks for duplicate email and hashes password before storage.
     """
-    # Verify email code before proceeding
-    await verify_code_service(data.email, data.verification_code)
-    
     # Validate password strength
     validate_password_strength(data.password)
     
@@ -144,16 +140,10 @@ async def register_user_service(data: UserCreate) -> UserResponse:
         )
     
     user_data = data.model_dump(exclude_none=True)
-    # Remove verification_code before saving
-    user_data.pop("verification_code", None)
     # Replace plain password with hashed version
     user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
     
     user = await create_user(user_data)
-    
-    # Delete code after successful registration
-    await delete_verification_code_service(data.email)
-    
     return UserResponse.model_validate(user)
 
 async def login_service(data: LoginSchema) -> Token:

@@ -13,7 +13,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    verification_code: str
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None

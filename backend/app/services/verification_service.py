@@ -40,7 +40,6 @@ async def request_verification_service(email: str) -> str:
     await set_redis_value(code_key, code, expire=300)
     
     # 3. Send email
-    print(f"DEBUG: [{email}] için doğrulama kodu: {code}")
     sent = send_verification_code_email(email, code)
     if not sent:
         raise HTTPException(status_code=500, detail=EMAIL_SEND_FAILED)
@@ -62,9 +61,7 @@ async def verify_code_service(email: str, code: str) -> str:
     if stored_code != code:
         raise HTTPException(status_code=400, detail=INVALID_VERIFICATION_CODE)
         
-    return EMAIL_VERIFIED
-
-async def delete_verification_code_service(email: str) -> None:
-    """Delete the verification code from Redis."""
-    code_key = f"verification:code:{email}"
+    # Mark as used (delete from Redis)
     await delete_redis_value(code_key)
+    
+    return EMAIL_VERIFIED
