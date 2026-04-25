@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:async';
 
 import '../../widgets/custom_text_field.dart';
 import '../../../core/utils/validators.dart';
@@ -25,10 +26,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _codeController = TextEditingController();
   final List<TextEditingController> _otpControllers = List.generate(6, (index) => TextEditingController());
   final List<FocusNode> _otpFocusNodes = List.generate(6, (index) => FocusNode());
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+
+  Timer? _timer;
+  int _secondsRemaining = 300; // 5 minutes
+  bool _isTimerActive = false;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -36,36 +42,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
 
   int _currentStep = 0;
   final int _totalSteps = 4;
-
-  Timer? _timer;
-  int _secondsRemaining = 180; // 3 minutes
-  bool _isTimerActive = false;
-
-  void _startTimer() {
-    _timer?.cancel();
-    setState(() {
-      _secondsRemaining = 180;
-      _isTimerActive = true;
-    });
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_secondsRemaining > 0) {
-        setState(() {
-          _secondsRemaining--;
-        });
-      } else {
-        setState(() {
-          _isTimerActive = false;
-        });
-        _timer?.cancel();
-      }
-    });
-  }
-
-  String _formatTime(int seconds) {
-    int minutes = seconds ~/ 60;
-    int remainingSeconds = seconds % 60;
-    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
-  }
 
   @override
   void initState() {
@@ -98,6 +74,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
     _animationController.dispose();
     _nameController.dispose();
     _emailController.dispose();
+    _codeController.dispose();
     for (var controller in _otpControllers) {
       controller.dispose();
     }
@@ -109,11 +86,68 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
     super.dispose();
   }
 
-  void _nextStep() async {
+  void _startTimer() {
+    _timer?.cancel();
+    setState(() {
+      _secondsRemaining = 300;
+      _isTimerActive = true;
+    });
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_secondsRemaining > 0) {
+        setState(() {
+          _secondsRemaining--;
+        });
+      } else {
+        setState(() {
+          _isTimerActive = false;
+        });
+        _timer?.cancel();
+      }
+    });
+  }
+
+  String _formatTime(int seconds) {
+    int minutes = seconds ~/ 60;
+    int remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _resendCode() async {
+    try {
+      await ref.read(authControllerProvider).requestVerification(_emailController.text);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Doğrulama kodu yeniden gönderildi!'),
+            backgroundColor: Colors.blueAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        for (var controller in _otpControllers) {
+          controller.clear();
+        }
+        _codeController.clear();
+        _startTimer();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Kod gönderilemedi: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _nextStep() async {
     if (_formKeys[_currentStep].currentState!.validate()) {
       if (_currentStep == 1) {
+        // Step 1: Email -> Request Code
         try {
-          await ref.read(authControllerProvider).sendVerificationCode(_emailController.text);
+          await ref.read(authControllerProvider).requestVerification(_emailController.text);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -138,27 +172,30 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
             );
           }
         }
-        return;
-      }
-
-      if (_currentStep == 2) {
+      } else if (_currentStep == 2) {
+        // Step 2: Verification Code -> Verify
         String code = _otpControllers.map((c) => c.text).join();
         if (code.length < 6) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Lütfen 6 haneli kodu eksiksiz girin')),
+            const SnackBar(
+              content: Text('Lütfen 6 haneli doğrulama kodunu eksiksiz giriniz.'),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        if (!_isTimerActive && _secondsRemaining == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Kodun süresi doldu. Lütfen yeni bir kod isteyin.'), backgroundColor: Colors.orange),
           );
           return;
         }
         try {
-          await ref.read(authControllerProvider).verifyCode(
-                _emailController.text,
-                code,
-              );
-          if (mounted) {
-            setState(() {
-              _currentStep++;
-            });
-          }
+          await ref.read(authControllerProvider).verifyCode(_emailController.text, code);
+          setState(() {
+            _currentStep++;
+          });
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -170,10 +207,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
             );
           }
         }
-        return;
-      }
-
-      if (_currentStep < _totalSteps - 1) {
+      } else if (_currentStep < _totalSteps - 1) {
         setState(() {
           _currentStep++;
         });
@@ -264,6 +298,66 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
     );
   }
 
+  Widget _buildOTPInput() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(6, (index) {
+        return SizedBox(
+          width: 45,
+          height: 56,
+          child: TextFormField(
+            controller: _otpControllers[index],
+            focusNode: _otpFocusNodes[index],
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+            ],
+            maxLength: 1,
+            style: GoogleFonts.inter(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+            decoration: InputDecoration(
+              counterText: "",
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!, width: 2),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+              ),
+              fillColor: Colors.grey[50],
+              filled: true,
+            ),
+            onChanged: (value) {
+              if (value.isNotEmpty) {
+                if (index < 5) {
+                  _otpFocusNodes[index + 1].requestFocus();
+                } else {
+                  _otpFocusNodes[index].unfocus();
+                }
+              } else {
+                if (index > 0) {
+                  _otpFocusNodes[index - 1].requestFocus();
+                }
+              }
+              
+              // Update hidden _codeController
+              String fullCode = "";
+              for (var controller in _otpControllers) {
+                fullCode += controller.text;
+              }
+              _codeController.text = fullCode;
+            },
+          ),
+        );
+      }),
+    );
+  }
+
   Widget _buildCurrentStepContent() {
     switch (_currentStep) {
       case 0:
@@ -314,51 +408,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
           child: Column(
             key: const ValueKey(2),
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(6, (index) {
-                  return SizedBox(
-                    width: 45,
-                    child: TextFormField(
-                      controller: _otpControllers[index],
-                      focusNode: _otpFocusNodes[index],
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blueAccent,
-                      ),
-                      maxLength: 1,
-                      decoration: InputDecoration(
-                        counterText: "",
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[300]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value.isNotEmpty && index < 5) {
-                          _otpFocusNodes[index + 1].requestFocus();
-                        } else if (value.isEmpty && index > 0) {
-                          _otpFocusNodes[index - 1].requestFocus();
-                        }
-                      },
-                    ),
-                  );
-                }),
-              ),
+              _buildOTPInput(),
               const SizedBox(height: 24),
-              Text(
-                'E-postanıza gönderilen kodu girin.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
-              ),
-              const SizedBox(height: 16),
               if (_isTimerActive)
                 Text(
                   'Kodun süresi doluyor: ${_formatTime(_secondsRemaining)}',
@@ -369,12 +420,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                 )
               else
                 TextButton(
-                  onPressed: () {
-                    _currentStep = 1; // Move back to email step to resend
-                    _nextStep(); // This will trigger resend
-                  },
+                  onPressed: _resendCode,
                   child: const Text('Kodu Tekrar Gönder'),
                 ),
+              const SizedBox(height: 16),
+              Text(
+                'E-postanıza gönderilen kodu girin.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13),
+              ),
             ],
           ),
         );
@@ -458,7 +512,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
       case 1:
         return 'Kod Al';
       case 2:
-        return 'Doğrula';
+        return _isTimerActive ? 'Doğrula' : 'Yeni Kod İste';
       case 3:
         return 'Kayıt Ol';
       default:
@@ -549,7 +603,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: isLoading ? null : _nextStep,
+                      onPressed: isLoading ? null : () {
+                        if (_currentStep == 2 && !_isTimerActive) {
+                          _resendCode();
+                        } else {
+                          _nextStep();
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
                         shape: RoundedRectangleBorder(

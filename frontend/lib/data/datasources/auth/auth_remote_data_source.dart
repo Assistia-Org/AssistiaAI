@@ -97,32 +97,54 @@ class AuthRemoteDataSource {
     }
   }
 
-  Future<void> sendVerificationCode(String email) async {
+  Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+    if (token == null) throw Exception('No access token found');
+
     final response = await client.post(
-      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationRequest}'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email}),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authChangePassword}'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        ...AppConstants.authHeader(token),
+      },
+      body: jsonEncode({
+        'current_password': oldPassword,
+        'new_password': newPassword,
+        'confirm_password': newPassword,
+      }),
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to send verification code: ${response.body}');
-    }
-  }
-
-  Future<void> verifyCode(String email, String code) async {
-    final response = await client.post(
-      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationVerify}'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'code': code}),
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Invalid verification code');
+      throw Exception('Failed to change password: ${response.body}');
     }
   }
 
   Future<void> logout() async {
     await sharedPreferences.remove(AppConstants.accessTokenKey);
     await sharedPreferences.remove(AppConstants.refreshTokenKey);
+  }
+
+  Future<void> requestVerification(String email) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationRequest}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'email': email}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to request verification: ${response.body}');
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationVerify}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Verification failed: ${response.body}');
+    }
   }
 }

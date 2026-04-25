@@ -33,12 +33,17 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> sendVerificationCode(String email) {
-    return remoteDataSource.sendVerificationCode(email);
+  Future<void> changePassword({required String oldPassword, required String newPassword}) {
+    return remoteDataSource.changePassword(oldPassword: oldPassword, newPassword: newPassword);
   }
 
   @override
-  Future<void> verifyCode(String email, String code) {
+  Future<void> requestVerification(String email) {
+    return remoteDataSource.requestVerification(email);
+  }
+
+  @override
+  Future<void> verifyCode({required String email, required String code}) {
     return remoteDataSource.verifyCode(email, code);
   }
 }
