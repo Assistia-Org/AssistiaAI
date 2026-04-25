@@ -18,6 +18,7 @@ class AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    required String verificationCode,
   }) async {
     const uuid = Uuid();
     final uniqueId = uuid.v4();
@@ -32,6 +33,7 @@ class AuthRemoteDataSource {
         'display_name': name,
         'email': email,
         'password': password,
+        'verification_code': verificationCode,
       }),
     );
 
@@ -120,5 +122,29 @@ class AuthRemoteDataSource {
   Future<void> logout() async {
     await sharedPreferences.remove(AppConstants.accessTokenKey);
     await sharedPreferences.remove(AppConstants.refreshTokenKey);
+  }
+
+  Future<void> requestVerification(String email) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationRequest}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'email': email}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to request verification: ${response.body}');
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationVerify}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Verification failed: ${response.body}');
+    }
   }
 }

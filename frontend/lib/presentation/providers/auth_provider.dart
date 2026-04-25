@@ -11,11 +11,14 @@ import '../../domain/usecases/auth/logout_usecase.dart';
 import '../../domain/usecases/auth/get_me_usecase.dart';
 import '../../domain/usecases/auth/forgot_password_usecase.dart';
 import '../../domain/usecases/auth/change_password_usecase.dart';
+import '../../domain/usecases/auth/request_verification_usecase.dart';
+import '../../domain/usecases/auth/verify_code_usecase.dart';
 import '../../data/datasources/auth/auth_remote_data_source.dart';
 import '../../data/repositories/auth/auth_repository_impl.dart';
 import 'community_provider.dart';
 import 'invitation_provider.dart';
 import 'sse_provider.dart';
+
 // --- Dependecy Injection via Riverpod ---
 
 enum AuthPageType { login, register }
@@ -82,6 +85,16 @@ final changePasswordUseCaseProvider = FutureProvider<ChangePasswordUseCase>((ref
   return ChangePasswordUseCase(repository);
 });
 
+final requestVerificationUseCaseProvider = FutureProvider<RequestVerificationUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return RequestVerificationUseCase(repository);
+});
+
+final verifyCodeUseCaseProvider = FutureProvider<VerifyCodeUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return VerifyCodeUseCase(repository);
+});
+
 
 // --- State Management ---
 
@@ -138,12 +151,12 @@ class AuthController {
     }
   }
 
-  Future<void> register(String name, String email, String password) async {
+  Future<void> register(String name, String email, String password, String verificationCode) async {
     ref.read(authLoadingProvider.notifier).setLoading(true);
     try {
       final registerUseCase = await ref.read(registerUseCaseProvider.future);
-      final user = await registerUseCase.execute(name: name, email: email, password: password);
-      // ref.read(currentUserProvider.notifier).setUser(user); // Don't login automatically
+      final user = await registerUseCase.execute(name: name, email: email, password: password, verificationCode: verificationCode);
+      ref.read(currentUserProvider.notifier).setUser(user);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
@@ -199,6 +212,26 @@ class AuthController {
     try {
       final changePasswordUseCase = await ref.read(changePasswordUseCaseProvider.future);
       await changePasswordUseCase.execute(oldPassword: oldPassword, newPassword: newPassword);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> requestVerification(String email) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final useCase = await ref.read(requestVerificationUseCaseProvider.future);
+      await useCase.execute(email);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final useCase = await ref.read(verifyCodeUseCaseProvider.future);
+      await useCase.execute(email: email, code: code);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }

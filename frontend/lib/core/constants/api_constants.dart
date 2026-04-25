@@ -6,6 +6,10 @@ class ApiConstants {
   static const String authLogin = '/auth/login';
   static const String authChangePassword = '/auth/change-password';
 
+  // Verification endpoints
+  static const String verificationRequest = '/verification/request';
+  static const String verificationVerify = '/verification/verify';
+
   // User endpoints
   static const String userMe = '/users/me';
   static String userById(String id) => '/users/$id';
