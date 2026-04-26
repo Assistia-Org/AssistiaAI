@@ -18,19 +18,23 @@ class CommunityRemoteDataSource {
   Future<CommunityModel> createCommunity({
     required String name,
     required String type,
+    String? description,
   }) async {
     final token = sharedPreferences.getString(AppConstants.accessTokenKey);
     
+    final Map<String, dynamic> bodyMap = {
+      'name': name,
+      'type': type,
+      if (description != null && description.isNotEmpty) 'description': description,
+    };
+
     final response = await client.post(
       Uri.parse('${ApiConstants.baseUrl}${ApiConstants.communities}'),
       headers: {
         ...AppConstants.baseHeaders,
         if (token != null) ...AppConstants.authHeader(token),
       },
-      body: jsonEncode({
-        'name': name,
-        'type': type,
-      }),
+      body: jsonEncode(bodyMap),
     );
 
     if (response.statusCode == 201) {
@@ -81,6 +85,7 @@ class CommunityRemoteDataSource {
     required String id,
     String? name,
     String? type,
+    String? description,
     List<CommunityMemberModel>? members,
   }) async {
     final token = sharedPreferences.getString(AppConstants.accessTokenKey);
@@ -88,6 +93,7 @@ class CommunityRemoteDataSource {
     final Map<String, dynamic> body = {};
     if (name != null) body['name'] = name;
     if (type != null) body['type'] = type;
+    if (description != null) body['description'] = description;
     if (members != null) {
       body['members'] = members.map((m) => m.toJson()).toList();
     }
