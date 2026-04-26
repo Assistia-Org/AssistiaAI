@@ -13,8 +13,13 @@ class CommunityRepositoryImpl implements CommunityRepository {
   Future<Community> createCommunity({
     required String name,
     required String type,
+    String? description,
   }) async {
-    return await remoteDataSource.createCommunity(name: name, type: type);
+    return await remoteDataSource.createCommunity(
+      name: name,
+      type: type,
+      description: description,
+    );
   }
 
   @override
@@ -32,6 +37,7 @@ class CommunityRepositoryImpl implements CommunityRepository {
     required String id,
     String? name,
     String? type,
+    String? description,
     List<CommunityMember>? members,
   }) async {
     List<CommunityMemberModel>? memberModels;
@@ -57,6 +63,7 @@ class CommunityRepositoryImpl implements CommunityRepository {
       id: id,
       name: name,
       type: type,
+      description: description,
       members: memberModels,
     );
   }

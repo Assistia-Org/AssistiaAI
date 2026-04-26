@@ -33,7 +33,6 @@ class _MyAppState extends ConsumerState<MyApp> {
     final authPage = ref.watch(authPageProvider);
 
     return MaterialApp(
-      key: ValueKey(currentUser?.id ?? 'logged_out'),
       title: 'Assistia AI',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

@@ -155,8 +155,8 @@ class AuthController {
     ref.read(authLoadingProvider.notifier).setLoading(true);
     try {
       final registerUseCase = await ref.read(registerUseCaseProvider.future);
-      final user = await registerUseCase.execute(name: name, email: email, password: password, verificationCode: verificationCode);
-      ref.read(currentUserProvider.notifier).setUser(user);
+      // Sadece kayıt yap, oturum açma — kullanıcı login sayfasından giriş yapacak
+      await registerUseCase.execute(name: name, email: email, password: password, verificationCode: verificationCode);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }

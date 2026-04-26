@@ -29,6 +29,7 @@ class CommunityModel extends Community {
     required super.type,
     required super.ownerId,
     required List<CommunityMemberModel> super.members,
+    super.description,
   });
 
   factory CommunityModel.fromJson(Map<String, dynamic> json) {
@@ -37,6 +38,7 @@ class CommunityModel extends Community {
       name: json['name'] as String,
       type: json['type'] as String,
       ownerId: json['owner_id'] as String,
+      description: json['description'] as String?,
       members: (json['members'] as List? ?? [])
           .map((m) => CommunityMemberModel.fromJson(m))
           .toList(),
@@ -49,6 +51,7 @@ class CommunityModel extends Community {
       'name': name,
       'type': type,
       'owner_id': ownerId,
+      if (description != null) 'description': description,
       'members': members.map((m) => (m as CommunityMemberModel).toJson()).toList(),
     };
   }

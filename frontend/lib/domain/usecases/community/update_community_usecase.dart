@@ -10,12 +10,14 @@ class UpdateCommunityUseCase {
     required String id,
     String? name,
     String? type,
+    String? description,
     List<CommunityMember>? members,
   }) {
     return repository.updateCommunity(
       id: id,
       name: name,
       type: type,
+      description: description,
       members: members,
     );
   }

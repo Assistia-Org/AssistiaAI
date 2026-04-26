@@ -1,29 +1,37 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/community_provider.dart';
 import '../../providers/invitation_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../../core/constants/api_constants.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../domain/entities/community/community.dart';
 import '../../../domain/entities/user/user.dart';
 import '../../widgets/custom_text_field.dart';
+import 'community_edit_sheet.dart';
 
 class CommunityDetailPage extends ConsumerWidget {
   final Community community;
 
   const CommunityDetailPage({super.key, required this.community});
 
+  Color _typeColor(String type) {
+    switch (type) {
+      case 'Aile':
+        return const Color(0xFF0EA5E9);
+      case 'Teknoloji':
+        return const Color(0xFF8B5CF6);
+      case 'Seyahat':
+        return const Color(0xFFF59E0B);
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final communitiesAsync = ref.watch(myCommunitiesProvider);
     final currentCommunity = communitiesAsync.when<Community>(
       data: (list) {
-        // Manual search to avoid all Generic variance issues with firstWhere/orElse
         Community? found;
         for (final item in list) {
           if (item.id == community.id) {
@@ -36,139 +44,248 @@ class CommunityDetailPage extends ConsumerWidget {
       loading: () => community,
       error: (_, __) => community,
     );
+    final currentUser = ref.watch(currentUserProvider);
+    final isOwner = currentUser != null && currentCommunity.isOwner(currentUser.id);
+    final accentColor = _typeColor(currentCommunity.type);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          currentCommunity.name,
-          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFEAEFF5),
+      body: Stack(
         children: [
-          _buildHeader(currentCommunity),
-          Padding(
-            padding: const EdgeInsets.all(25),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Üyeler (${currentCommunity.members.length})",
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+          // Dark header background
+          Positioned(
+            top: 0, left: 0, right: 0,
+            child: Container(
+              height: 280,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF1B232A),
+                    Color.lerp(const Color(0xFF1B232A), accentColor, 0.25)!,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Content
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // --- App Bar ---
+              SliverAppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                pinned: false,
+                leading: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    margin: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white, size: 18),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _showAddMemberSheet(context, ref, currentCommunity),
-                  icon: const Icon(Icons.person_add, color: Colors.blue),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              itemCount: currentCommunity.members.length,
-              itemBuilder: (context, index) {
-                final member = currentCommunity.members[index];
-                return _buildMemberTile(context, ref, currentCommunity, member);
-              },
-            ),
-          ),
-          // --- Action Buttons ---
-          Padding(
-            padding: const EdgeInsets.all(25),
-            child: Consumer(
-              builder: (context, ref, child) {
-                final currentUser = ref.watch(currentUserProvider);
-                if (currentUser == null) return const SizedBox.shrink();
-
-                final isOwner = currentCommunity.isOwner(currentUser.id);
-
-                return SizedBox(
-                  width: double.infinity,
-                  height: 55,
-                  child: ElevatedButton(
-                    onPressed: () => isOwner 
-                      ? _confirmDeleteCommunity(context, ref, currentCommunity)
-                      : _confirmLeaveCommunity(context, ref, currentCommunity),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
-                      foregroundColor: Colors.redAccent,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3)),
+                actions: [
+                  // Settings button
+                  GestureDetector(
+                    onTap: () => _showSettingsMenu(context, ref, currentCommunity, isOwner),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: const Icon(Icons.settings_rounded,
+                          color: Colors.white, size: 20),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(isOwner ? Icons.delete_outline : Icons.exit_to_app),
-                        const SizedBox(width: 8),
-                        Text(
-                          isOwner ? 'Grubu Sil' : 'Gruptan Ayrıl',
+                  ),
+                ],
+              ),
+
+              // --- Hero Header ---
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Type badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: accentColor.withValues(alpha: 0.4)),
+                        ),
+                        child: Text(
+                          currentCommunity.type.toUpperCase(),
                           style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: accentColor,
+                            letterSpacing: 1,
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        currentCommunity.name,
+                        style: GoogleFonts.inter(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        currentCommunity.description?.isNotEmpty == true
+                            ? currentCommunity.description!
+                            : 'Henüz bir açıklama eklenmedi.',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: Colors.white60,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+
+                      // Stats Row
+                      Row(
+                        children: [
+                          _buildStatChip(
+                            icon: Icons.people_alt_rounded,
+                            label: '${currentCommunity.members.length} Üye',
+                            color: accentColor,
+                          ),
+                          const SizedBox(width: 12),
+                          _buildStatChip(
+                            icon: Icons.verified_rounded,
+                            label: isOwner ? 'Yönetici' : 'Üye',
+                            color: isOwner ? const Color(0xFFF59E0B) : const Color(0xFF64748B),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
+                ),
+              ),
+
+              // --- White card body ---
+              SliverToBoxAdapter(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEAEFF5),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(40),
+                      topRight: Radius.circular(40),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(25),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Members header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Üyeler',
+                              style: GoogleFonts.inter(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1B232A),
+                              ),
+                            ),
+                            if (isOwner)
+                              GestureDetector(
+                                onTap: () => _showAddMemberSheet(context, ref, currentCommunity),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1B232A),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.person_add_alt_1_rounded,
+                                          color: Colors.white, size: 16),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Davet Et',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              ),
+
+              // --- Members list ---
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final member = currentCommunity.members[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: _buildMemberTile(context, ref, currentCommunity, member, accentColor, isOwner),
+                    );
+                  },
+                  childCount: currentCommunity.members.length,
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(Community community) {
+  Widget _buildStatChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(25),
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      ),
+      child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              community.type.toUpperCase(),
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-          ),
-          const SizedBox(height: 15),
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 6),
           Text(
-            "Topluluk Hakkında",
+            label,
             style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[700],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Bu topluluk ${community.name} üyeleri için oluşturulmuştur. Burada paylaşımlar yapabilir ve etkinlikler düzenleyebilirsiniz.",
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: Colors.grey[600],
-              height: 1.5,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
             ),
           ),
         ],
@@ -181,24 +298,57 @@ class CommunityDetailPage extends ConsumerWidget {
     WidgetRef ref,
     Community community,
     CommunityMember member,
+    Color accentColor,
+    bool isOwner,
   ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
+    final isOwnerMember = member.role == 'owner';
+    final canRemove = isOwner && !isOwnerMember;
+    return GestureDetector(
+      onTap: canRemove
+          ? () => _showMemberOptions(context, ref, community, member)
+          : null,
+      child: Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundImage: member.user.avatarUrl != null
-                ? NetworkImage(member.user.avatarUrl!)
-                : null,
-            child: member.user.avatarUrl == null
-                ? Text(member.user.displayName[0])
-                : null,
+          // Avatar
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isOwnerMember ? accentColor : Colors.grey.shade200,
+                width: 2,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 22,
+              backgroundColor: accentColor.withValues(alpha: 0.15),
+              backgroundImage: member.user.avatarUrl != null
+                  ? NetworkImage(member.user.avatarUrl!)
+                  : null,
+              child: member.user.avatarUrl == null
+                  ? Text(
+                      member.user.displayName[0].toUpperCase(),
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: accentColor,
+                      ),
+                    )
+                  : null,
+            ),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -207,10 +357,242 @@ class CommunityDetailPage extends ConsumerWidget {
               children: [
                 Text(
                   member.user.displayName,
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: const Color(0xFF1B232A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    if (isOwnerMember)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Yönetici',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: accentColor,
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        'Üye',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (canRemove)
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.redAccent,
+              size: 20,
+            ),
+        ],
+      ),
+    ),
+    );
+  }
+
+  void _showMemberOptions(
+    BuildContext context,
+    WidgetRef ref,
+    Community community,
+    CommunityMember member,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Member info row
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundImage: member.user.avatarUrl != null
+                      ? NetworkImage(member.user.avatarUrl!)
+                      : null,
+                  child: member.user.avatarUrl == null
+                      ? Text(member.user.displayName[0].toUpperCase())
+                      : null,
+                ),
+                const SizedBox(width: 14),
+                Text(
+                  member.user.displayName,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1B232A),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: () async {
+                Navigator.pop(ctx);
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24)),
+                    title: const Text('Üyeyi Çıkar'),
+                    content: Text(
+                        '${member.user.displayName} adlı üyeyi gruptan çıkarmak istediğinize emin misiniz?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('İptal'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Çıkar'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  await _removeMember(ref, community, member);
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.15)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.person_remove_alt_1_rounded,
+                          color: Colors.redAccent, size: 22),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Gruptan Çıkar',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.redAccent,
+                          ),
+                        ),
+                        Text(
+                          'Üye gruptan kaldırılacak',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsOption({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final bg = isDestructive
+        ? Colors.red.withValues(alpha: 0.06)
+        : const Color(0xFFF7F8FA);
+    final borderColor = isDestructive
+        ? Colors.red.withValues(alpha: 0.15)
+        : Colors.grey.withValues(alpha: 0.15);
+    final iconBg = isDestructive
+        ? Colors.red.withValues(alpha: 0.1)
+        : color.withValues(alpha: 0.1);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isDestructive ? Colors.redAccent : const Color(0xFF1B232A),
+                  ),
                 ),
                 Text(
-                  member.role,
+                  subtitle,
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: Colors.grey[500],
@@ -218,17 +600,112 @@ class CommunityDetailPage extends ConsumerWidget {
                 ),
               ],
             ),
-          ),
-          if (member.role != 'owner')
-            IconButton(
-              onPressed: () => _removeMember(ref, community, member),
-              icon: const Icon(
-                Icons.remove_circle_outline,
-                color: Colors.redAccent,
-                size: 20,
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditSheet(
+    BuildContext context,
+    WidgetRef ref,
+    Community community,
+    CommunityEditMode mode,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => CommunityEditSheet(
+        ref: ref,
+        community: community,
+        mode: mode,
+      ),
+    );
+  }
+
+  void _showSettingsMenu(
+    BuildContext context,
+    WidgetRef ref,
+    Community community,
+    bool isOwner,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
-        ],
+            const SizedBox(height: 20),
+            Text(
+              'Ayarlar',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF1B232A),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Edit options — only for owner
+            if (isOwner) ...[
+              _buildSettingsOption(
+                icon: Icons.edit_rounded,
+                label: 'Grup Adını Değiştir',
+                subtitle: 'Topluluk ismini güncelle',
+                color: const Color(0xFF1B232A),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showEditSheet(context, ref, community, CommunityEditMode.name);
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildSettingsOption(
+                icon: Icons.description_rounded,
+                label: 'Açıklamayı Değiştir',
+                subtitle: 'Topluluk açıklamasını güncelle',
+                color: const Color(0xFF1B232A),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showEditSheet(context, ref, community, CommunityEditMode.description);
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Delete / Leave option
+            _buildSettingsOption(
+              icon: isOwner ? Icons.delete_forever_rounded : Icons.exit_to_app_rounded,
+              label: isOwner ? 'Grubu Sil' : 'Gruptan Ayrıl',
+              subtitle: isOwner ? 'Grup kalıcı olarak silinecek' : 'Bu gruptan ayrılırsın',
+              color: Colors.redAccent,
+              isDestructive: true,
+              onTap: () {
+                Navigator.pop(ctx);
+                if (isOwner) {
+                  _confirmDeleteCommunity(context, ref, community);
+                } else {
+                  _confirmLeaveCommunity(context, ref, community);
+                }
+              },
+            ),
+            const SizedBox(height: 30),
+          ],
+        ),
       ),
     );
   }
@@ -245,7 +722,139 @@ class CommunityDetailPage extends ConsumerWidget {
       builder: (context) => _AddMemberSheet(ref: ref, community: community),
     );
   }
+
+  Future<void> _removeMember(
+    WidgetRef ref,
+    Community community,
+    CommunityMember memberToRemove,
+  ) async {
+    try {
+      await ref
+          .read(communityControllerProvider)
+          .removeCommunityMember(community.id, memberToRemove.user.id);
+      ref.invalidate(myCommunitiesProvider);
+    } catch (e) {
+      debugPrint('Error removing member: $e');
+    }
+  }
+
+  Future<void> _confirmDeleteCommunity(
+    BuildContext context,
+    WidgetRef ref,
+    Community community,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent),
+            ),
+            const SizedBox(width: 12),
+            const Text('Grubu Sil'),
+          ],
+        ),
+        content: const Text('Bu grubu silmek istediğinize emin misiniz?\nBu işlem geri alınamaz.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Evet, Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (!context.mounted) return;
+      try {
+        await ref.read(communityControllerProvider).deleteCommunity(community.id);
+        ref.invalidate(myCommunitiesProvider);
+        if (context.mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Grup başarıyla silindi.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          final msg = e.toString().replaceFirst('Exception: ', '');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Silme işlemi başarısız: $msg')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _confirmLeaveCommunity(
+    BuildContext context,
+    WidgetRef ref,
+    Community community,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Gruptan Ayrıl'),
+        content: const Text('Bu gruptan ayrılmak istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Ayrıl'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (!context.mounted) return;
+      try {
+        await ref.read(communityControllerProvider).leaveCommunity(community.id);
+        ref.invalidate(myCommunitiesProvider);
+        if (context.mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gruptan başarıyla ayrıldınız.')),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          final msg = e.toString().replaceFirst('Exception: ', '');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ayrılma işlemi başarısız: $msg')),
+          );
+        }
+      }
+    }
+  }
 }
+
+// ─── Add Member Sheet ─────────────────────────────────────────────────────────
 
 class _AddMemberSheet extends StatefulWidget {
   final WidgetRef ref;
@@ -289,8 +898,7 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
           children: [
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(10),
@@ -308,62 +916,49 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 18),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 20),
             Text(
               'Davet etmek istediğiniz kullanıcının e-posta adresini girin.',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600]),
             ),
             const SizedBox(height: 25),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: CustomTextField(
-                    hintText: 'E-posta adresi',
-                    prefixIcon: Icons.email_outlined,
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    onChanged: (_) {
-                      if (_emailError != null) {
-                        setState(() {
-                          _emailError = null;
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ],
+            CustomTextField(
+              hintText: 'E-posta adresi',
+              prefixIcon: Icons.email_outlined,
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              onChanged: (_) {
+                if (_emailError != null) setState(() => _emailError = null);
+              },
             ),
-            // Error message
-            if (_emailError != null) ...
-              [
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const Icon(Icons.error_outline,
-                        color: Colors.redAccent, size: 16),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        _emailError!,
-                        style: GoogleFonts.inter(
-                          color: Colors.redAccent,
-                          fontSize: 13,
-                        ),
-                      ),
+            if (_emailError != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _emailError!,
+                      style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 13),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 25),
             SizedBox(
               width: double.infinity,
@@ -401,9 +996,7 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
     if (email.isEmpty) return;
 
     if (!_emailRegex.hasMatch(email)) {
-      setState(() {
-        _emailError = 'Geçersiz e-posta formatı.';
-      });
+      setState(() => _emailError = 'Geçersiz e-posta formatı.');
       return;
     }
 
@@ -413,14 +1006,12 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
     });
 
     try {
-
       await widget.ref
           .read(invitationControllerProvider.notifier)
           .sendInvitation(
             communityId: widget.community.id,
             inviteeEmail: email,
           );
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -432,121 +1023,10 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
       }
     } catch (e) {
       if (mounted) {
-        String msg = e.toString().replaceFirst('Exception: ', '');
-        
-        setState(() {
-          _emailError = msg;
-        });
+        setState(() => _emailError = e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 }
-
-  Future<void> _removeMember(
-    WidgetRef ref,
-    Community community,
-    CommunityMember memberToRemove,
-  ) async {
-    try {
-      await ref
-          .read(communityControllerProvider)
-          .removeCommunityMember(community.id, memberToRemove.user.id);
-      ref.invalidate(myCommunitiesProvider);
-    } catch (e) {
-      debugPrint('Error removing member: $e');
-    }
-  }
-
-  Future<void> _confirmDeleteCommunity(
-    BuildContext context,
-    WidgetRef ref,
-    Community community,
-  ) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Grubu Sil'),
-        content: const Text('Bu grubu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('İptal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Sil'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      if (!context.mounted) return;
-      try {
-        await ref.read(communityControllerProvider).deleteCommunity(community.id);
-        ref.invalidate(myCommunitiesProvider);
-        if (context.mounted) {
-          Navigator.of(context).pop(); // Go back to prev screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Grup başarıyla silindi.')),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          final msg = e.toString().replaceFirst('Exception: ', '');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Silme işlemi başarısız: $msg')),
-          );
-        }
-      }
-    }
-  }
-
-  Future<void> _confirmLeaveCommunity(
-    BuildContext context,
-    WidgetRef ref,
-    Community community,
-  ) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Gruptan Ayrıl'),
-        content: const Text('Bu gruptan ayrılmak istediğinize emin misiniz?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('İptal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Ayrıl'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      if (!context.mounted) return;
-      try {
-        await ref.read(communityControllerProvider).leaveCommunity(community.id);
-        ref.invalidate(myCommunitiesProvider);
-        if (context.mounted) {
-          Navigator.of(context).pop(); // Go back
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gruptan başarıyla ayrıldınız.')),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          final msg = e.toString().replaceFirst('Exception: ', '');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ayrılma işlemi başarısız: $msg')),
-          );
-        }
-      }
-    }
-  }

@@ -11,8 +11,22 @@ import '../../../domain/entities/user/user.dart';
 import 'community_detail_page.dart';
 import '../../widgets/custom_text_field.dart';
 
-class CommunitiesPage extends ConsumerWidget {
+class CommunitiesPage extends ConsumerStatefulWidget {
   const CommunitiesPage({super.key});
+
+  @override
+  ConsumerState<CommunitiesPage> createState() => _CommunitiesPageState();
+}
+
+class _CommunitiesPageState extends ConsumerState<CommunitiesPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Widget _buildEmptyState(BuildContext context) {
     return Container(
@@ -64,7 +78,7 @@ class CommunitiesPage extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final communitiesAsync = ref.watch(myCommunitiesProvider);
     const Color globalBg = Color(0xFFEAEFF5);
 
@@ -119,7 +133,7 @@ class CommunitiesPage extends ConsumerWidget {
                               ),
                               communitiesAsync.when(
                                 data: (list) => Text(
-                                  "${list.length}",
+                                  "${_searchQuery.isEmpty ? list.length : list.where((c) => c.name.toLowerCase().contains(_searchQuery.toLowerCase())).length}",
                                   style: GoogleFonts.inter(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -141,16 +155,25 @@ class CommunitiesPage extends ConsumerWidget {
                         const SizedBox(height: 25),
                         communitiesAsync.when(
                           data: (communities) {
-                            if (communities.isEmpty) {
-                              return _buildEmptyState(context);
+                            final filtered = _searchQuery.isEmpty
+                                ? communities
+                                : communities
+                                    .where((c) => c.name
+                                        .toLowerCase()
+                                        .contains(_searchQuery.toLowerCase()))
+                                    .toList();
+                            if (filtered.isEmpty) {
+                              return _searchQuery.isNotEmpty
+                                  ? _buildNoResultsState(context)
+                                  : _buildEmptyState(context);
                             }
                             return ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               padding: const EdgeInsets.symmetric(horizontal: 25),
-                              itemCount: communities.length,
+                              itemCount: filtered.length,
                               itemBuilder: (context, index) {
-                                final comm = communities[index];
+                                final comm = filtered[index];
                                 final Color communityColor = _getCommunityColor(
                                   comm.type,
                                 );
@@ -182,6 +205,27 @@ class CommunitiesPage extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 60, left: 40, right: 40),
+      child: Column(
+        children: [
+          Icon(Icons.search_off_rounded, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 20),
+          Text(
+            '"$_searchQuery" için sonuç bulunamadı',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black54,
             ),
           ),
         ],
@@ -225,6 +269,8 @@ class CommunitiesPage extends ConsumerWidget {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
               ),
               child: TextField(
+                controller: _searchController,
+                onChanged: (val) => setState(() => _searchQuery = val),
                 style: GoogleFonts.inter(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: 'Topluluk ara...',
@@ -237,6 +283,19 @@ class CommunitiesPage extends ConsumerWidget {
                     color: Colors.white38,
                     size: 20,
                   ),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white38,
+                            size: 18,
+                          ),
+                        )
+                      : null,
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 17),
                 ),
@@ -326,7 +385,18 @@ class CommunitiesPage extends ConsumerWidget {
     required Community community,
     required Color color,
   }) {
-    return Container(
+    void navigateToCommunity() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CommunityDetailPage(community: community),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: navigateToCommunity,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -373,53 +443,7 @@ class CommunitiesPage extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        PopupMenuButton(
-                          icon: const Icon(
-                            Icons.more_horiz,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Text('Topluluğu Sil'),
-                            ),
-                          ],
-                          onSelected: (value) async {
-                            if (value == 'delete') {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Topluluğu Sil'),
-                                  content: const Text(
-                                    'Bu topluluğu silmek istediğinizden emin misiniz?',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('İptal'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text(
-                                        'Sil',
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirm == true) {
-                                await ref
-                                    .read(communityControllerProvider)
-                                    .deleteCommunity(community.id);
-                                ref.invalidate(myCommunitiesProvider);
-                              }
-                            }
-                          },
-                        ),
+
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -433,7 +457,9 @@ class CommunitiesPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Henüz bir açıklama eklenmedi.',
+                      community.description?.isNotEmpty == true
+                          ? community.description!
+                          : 'Henüz bir açıklama eklenmedi.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.inter(
@@ -495,6 +521,7 @@ class CommunitiesPage extends ConsumerWidget {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -757,6 +784,9 @@ class _CreateCommunitySheetState extends State<_CreateCommunitySheet> {
       await widget.ref.read(communityControllerProvider).createCommunity(
             name: _nameController.text,
             type: _selectedType,
+            description: _descController.text.trim().isEmpty
+                ? null
+                : _descController.text.trim(),
           );
       widget.ref.invalidate(myCommunitiesProvider);
       if (mounted) Navigator.pop(context);

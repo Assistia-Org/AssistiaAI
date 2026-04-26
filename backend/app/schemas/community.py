@@ -13,6 +13,7 @@ class CommunityMemberResponse(BaseModel):
 class CommunityBase(BaseModel):
     name: str
     type: str
+    description: Optional[str] = None
 
 class CommunityCreate(CommunityBase):
     """Schema for creating a community."""
@@ -21,12 +22,14 @@ class CommunityCreate(CommunityBase):
 class CommunityUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[str] = None
+    description: Optional[str] = None
     members: Optional[List[CommunityMemberResponse]] = None
 
 class CommunityResponse(CommunityBase, BaseSchema):
     id: str
     owner_id: str
     members: List[CommunityMemberResponse] = []
+    description: Optional[str] = None
 
     class Config:
         from_attributes = True

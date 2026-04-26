@@ -15,6 +15,7 @@ class Community(BaseDocument):
     type: str
     owner_id: str
     members: List[CommunityMember] = Field(default_factory=list)
+    description: Optional[str] = None
 
     class Settings:
         name = "communities"

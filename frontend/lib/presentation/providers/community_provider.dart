@@ -105,11 +105,12 @@ class CommunityController {
   Future<Community> createCommunity({
     required String name,
     required String type,
+    String? description,
   }) async {
     ref.read(communityLoadingProvider.notifier).setLoading(true);
     try {
       final useCase = await ref.read(createCommunityUseCaseProvider.future);
-      return await useCase.call(name: name, type: type);
+      return await useCase.call(name: name, type: type, description: description);
     } finally {
       ref.read(communityLoadingProvider.notifier).setLoading(false);
     }
@@ -129,6 +130,7 @@ class CommunityController {
     required String id,
     String? name,
     String? type,
+    String? description,
     List<CommunityMember>? members,
   }) async {
     ref.read(communityLoadingProvider.notifier).setLoading(true);
@@ -138,6 +140,7 @@ class CommunityController {
         id: id,
         name: name,
         type: type,
+        description: description,
         members: members,
       );
     } finally {

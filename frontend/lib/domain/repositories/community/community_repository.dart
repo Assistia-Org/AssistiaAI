@@ -4,6 +4,7 @@ abstract class CommunityRepository {
   Future<Community> createCommunity({
     required String name,
     required String type,
+    String? description,
   });
 
   Future<List<Community>> getMyCommunities();
@@ -14,6 +15,7 @@ abstract class CommunityRepository {
     required String id,
     String? name,
     String? type,
+    String? description,
     List<CommunityMember>? members,
   });
 
