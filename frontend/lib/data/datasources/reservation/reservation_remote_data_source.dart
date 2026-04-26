@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/reservation/reservation_model.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/constants/app_constants.dart';
 
 class ReservationRemoteDataSource {
-  final String baseUrl = 'http://10.0.2.2:8000/api/v1';
   final http.Client client;
   final SharedPreferences sharedPreferences;
 
@@ -18,13 +19,13 @@ class ReservationRemoteDataSource {
   Future<ReservationModel> createReservation(
     ReservationModel reservation,
   ) async {
-    final token = sharedPreferences.getString('access_token');
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
 
     final response = await client.post(
-      Uri.parse('$baseUrl/reservations/'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.reservations}'),
       headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
       },
       body: jsonEncode(reservation.toJson()),
     );
@@ -37,14 +38,14 @@ class ReservationRemoteDataSource {
   }
 
   Future<List<ReservationModel>> getMyReservations() async {
-    final token = sharedPreferences.getString('access_token');
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
 
     // We don't need user_id in URL as backend gets it from token
     final response = await client.get(
-      Uri.parse('$baseUrl/reservations/'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.reservations}'),
       headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
       },
     );
 
@@ -57,15 +58,15 @@ class ReservationRemoteDataSource {
   }
 
   Future<Map<String, dynamic>> analyzeTicket(File file, String mimeType) async {
-    final token = sharedPreferences.getString('access_token');
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
 
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$baseUrl/reservations/analyze'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.reservationsAnalyze}'),
     );
 
     if (token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
+      request.headers.addAll(AppConstants.authHeader(token));
     }
 
     request.files.add(
@@ -94,12 +95,11 @@ class ReservationRemoteDataSource {
 
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('$baseUrl/reservations/analyze-bus'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.reservationsAnalyzeBus}'),
     );
 
     if (token != null) {
-      request.headers['Authorization'] =
-          'Bearer $token'; // ignore: unnecessary_null_comparison
+      request.headers.addAll(AppConstants.authHeader(token));
     }
 
     request.files.add(

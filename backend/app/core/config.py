@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Assistant AI"
     MONGODB_URL: str
+    REDIS_URL: str = ""
     DATABASE_NAME: str = "assistant_ai"
     
     FIRST_SUPERUSER: str
@@ -11,6 +12,9 @@ class Settings(BaseSettings):
     MONGO_ROOT_USER: str
     MONGO_ROOT_PASSWORD: str
     OPENROUTER_API_KEY: str = ""
+    RESEND_API_KEY: str = ""
+    EMAILS_FROM_EMAIL: str = ""
+    BACKEND_URL: str = ""
 
     # JWT Settings
     SECRET_KEY: str = "your-complex-secret-key-for-development"  # In production, use env

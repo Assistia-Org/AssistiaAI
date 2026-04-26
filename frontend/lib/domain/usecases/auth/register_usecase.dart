@@ -6,7 +6,7 @@ class RegisterUseCase {
 
   RegisterUseCase(this.repository);
 
-  Future<User> execute({required String name, required String email, required String password}) {
-    return repository.register(name: name, email: email, password: password);
+  Future<User> execute({required String name, required String email, required String password, required String verificationCode}) {
+    return repository.register(name: name, email: email, password: password, verificationCode: verificationCode);
   }
 }

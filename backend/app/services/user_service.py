@@ -1,20 +1,26 @@
 from fastapi import HTTPException
-from app.core.security import get_password_hash
 from app.core.messages.error_message import USER_NOT_FOUND, DUPLICATE_EMAIL
 from app.repositories.user import (
-    create_user,
     delete_user,
     get_user_by_email,
     get_user_by_id,
     list_users,
     update_user,
 )
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserResponse, UserUpdate
 
 
 async def get_user_service(user_id: str) -> UserResponse:
     """Orchestrate user retrieval."""
     user = await get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
+    return UserResponse.model_validate(user)
+
+
+async def get_user_by_email_service(email: str) -> UserResponse:
+    """Orchestrate user retrieval by email."""
+    user = await get_user_by_email(email)
     if not user:
         raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
     return UserResponse.model_validate(user)
@@ -38,12 +44,14 @@ async def update_user_service(user_id: str, data: UserUpdate) -> UserResponse:
             raise HTTPException(status_code=400, detail=DUPLICATE_EMAIL)
     
     update_data = data.model_dump(exclude_unset=True)
-    if "password" in update_data:
-        # Use centralized security utility
-        update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
         
     updated_user = await update_user(user, update_data)
     return UserResponse.model_validate(updated_user)
+
+
+async def update_me_service(current_user_id: str, data: UserUpdate) -> UserResponse:
+    """Update the currently authenticated user."""
+    return await update_user_service(current_user_id, data)
 
 
 async def delete_user_service(user_id: str) -> None:

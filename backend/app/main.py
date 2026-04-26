@@ -1,12 +1,16 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.api.dependencies.database import init_db
+from app.core.redis import RedisClient
 from app.api.routes.community import router as community_router
 from app.api.routes.reservation import router as reservation_router
 from app.api.routes.task import router as task_router
 from app.api.routes.user import router as user_router
 from app.api.routes.daily_program import router as daily_program_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.invitation import router as invitation_router
+from app.api.routes.verification import router as verification_router
+from app.api.routes.sse import router as sse_router
 from app.core.config import settings
 
 @asynccontextmanager
@@ -16,7 +20,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
     # Shutdown
-    # (Add cleanup logic here if needed)
+    await RedisClient.close()
 
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +49,9 @@ def create_app() -> FastAPI:
     app.include_router(user_router, prefix="/api/v1")
     app.include_router(daily_program_router, prefix="/api/v1")
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(invitation_router, prefix="/api/v1")
+    app.include_router(verification_router, prefix="/api/v1")
+    app.include_router(sse_router, prefix="/api/v1")
 
     @app.get("/health", tags=["health"])
     async def health_check():

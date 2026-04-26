@@ -2,22 +2,23 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/task/task_model.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/constants/app_constants.dart';
 
 class TaskRemoteDataSource {
-  final String baseUrl = 'http://10.0.2.2:8000/api/v1';
   final http.Client client;
   final SharedPreferences sharedPreferences;
 
   TaskRemoteDataSource({required this.client, required this.sharedPreferences});
 
   Future<TaskModel> createTask(TaskModel task) async {
-    final token = sharedPreferences.getString('access_token');
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
 
     final response = await client.post(
-      Uri.parse('$baseUrl/tasks/'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tasks}'),
       headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
       },
       body: jsonEncode(task.toJson()),
     );
@@ -33,10 +34,10 @@ class TaskRemoteDataSource {
     final token = sharedPreferences.getString('access_token');
 
     final response = await client.get(
-      Uri.parse('$baseUrl/tasks/user/$userId'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tasksByUserId(userId)}'),
       headers: {
-        'Content-Type': 'application/json',
-        if (token != null) 'Authorization': 'Bearer $token',
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
       },
     );
 
@@ -45,6 +46,41 @@ class TaskRemoteDataSource {
       return data.map((json) => TaskModel.fromJson(json)).toList();
     } else {
       throw Exception('Görevler yüklenemedi: ${response.statusCode}');
+    }
+  }
+
+  Future<TaskModel> updateTaskStatus(String taskId, String status) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+
+    final response = await client.patch(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tasks}$taskId'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
+      },
+      body: jsonEncode({'status': status}),
+    );
+
+    if (response.statusCode == 200) {
+      return TaskModel.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Görev durumu güncellenemedi: ${response.statusCode}');
+    }
+  }
+
+  Future<void> deleteTask(String taskId) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+
+    final response = await client.delete(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.tasks}$taskId'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
+      },
+    );
+
+    if (response.statusCode != 204 && response.statusCode != 200) {
+      throw Exception('Görev silinemedi: ${response.statusCode}');
     }
   }
 }

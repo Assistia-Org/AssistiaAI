@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from app.schemas.base import BaseSchema
+from app.models.task import TaskStatus
 
 class TaskBase(BaseModel):
     creator_id: str
@@ -14,11 +15,11 @@ class TaskBase(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     priority: str = "medium"
-    status: str = "pending"
+    status: TaskStatus = TaskStatus.PENDING
     tags: List[str] = []
 
 class TaskCreate(TaskBase):
-    id: str
+    pass
 
 class TaskUpdate(BaseModel):
     assigned_to: Optional[List[str]] = None
@@ -28,7 +29,7 @@ class TaskUpdate(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     priority: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[TaskStatus] = None
     tags: Optional[List[str]] = None
 
 class TaskResponse(TaskBase, BaseSchema):

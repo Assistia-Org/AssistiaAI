@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
+import 'account_info_page.dart';
+import 'change_password_page.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -195,9 +197,25 @@ class ProfilePage extends ConsumerWidget {
               ),
             ),
           ),
-          _buildSettingItem(Icons.person_outline_rounded, 'Hesap Bilgileri'),
+          _buildSettingItem(
+            Icons.person_outline_rounded, 
+            'Hesap Bilgileri',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AccountInfoPage()),
+              );
+            },
+          ),
           _buildSettingItem(Icons.notifications_none_rounded, 'Bildirimler'),
-          _buildSettingItem(Icons.security_rounded, 'Güvenlik'),
+          _buildSettingItem(Icons.security_rounded, 'Güvenlik',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
+              );
+            },
+          ),
           _buildSettingItem(Icons.palette_outlined, 'Görünüm'),
           _buildSettingItem(Icons.help_outline_rounded, 'Yardım & Destek'),
           const SizedBox(height: 20),
@@ -206,7 +224,53 @@ class ProfilePage extends ConsumerWidget {
             'Çıkış Yap', 
             color: Colors.redAccent,
             onTap: () {
-              ref.read(authControllerProvider).logout();
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  title: Text(
+                    'Çıkış Yap',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                  ),
+                  content: Text(
+                    'Hesabınızdan çıkış yapmak istediğinizden emin misiniz?',
+                    style: GoogleFonts.inter(color: Colors.grey[600]),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(
+                        'İptal',
+                        style: GoogleFonts.inter(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        ref.read(authControllerProvider).logout();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Çıkış Yap',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],

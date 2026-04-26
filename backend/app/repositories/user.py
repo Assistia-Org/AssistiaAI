@@ -1,4 +1,5 @@
 from typing import List, Optional
+from pydantic import BaseModel
 from app.models.user import User, CommunityRoleModel, PersonalSettingsModel
 
 async def create_user(user_data: dict) -> User:
@@ -17,6 +18,10 @@ async def get_user_by_email(email: str) -> Optional[User]:
 async def get_user_by_username(username: str) -> Optional[User]:
     """Return user by username or None if not found."""
     return await User.find_one(User.username == username)
+
+async def get_user_by_reset_token(token: str) -> Optional[User]:
+    """Return user by reset token or None if not found."""
+    return await User.find_one(User.reset_token == token)
 
 async def list_users() -> List[User]:
     """Return all users."""
@@ -72,11 +77,21 @@ async def update_avatar(user_id: str, avatar_url: Optional[str]) -> bool:
 
 async def update_user(user: User, data: dict) -> User:
     """Update user document with provided data."""
-    # This is used in user_service.py: update_user(user, data)
-    # Beanie supports updating the object directly then saving
+    
     for key, value in data.items():
         if hasattr(user, key):
-            setattr(user, key, value)
+            current_attr = getattr(user, key)
+            
+            # Eğer güncellenen alan bir Pydantic alt modeliyse (personal_settings gibi)
+            if isinstance(current_attr, BaseModel) and isinstance(value, dict):
+                # Mevcut ayarları koruyarak sadece gelen kısımları güncelle
+                updated_sub_model = current_attr.model_copy(update=value)
+                setattr(user, key, updated_sub_model)
+            else:
+                # Normal alanları (username, display_name vb.) direkt set et
+                setattr(user, key, value)
+    
+    # Beanie burada nesnedeki tüm değişiklikleri DB'ye yazar
     return await user.save()
 
 async def delete_user(user: User) -> bool:

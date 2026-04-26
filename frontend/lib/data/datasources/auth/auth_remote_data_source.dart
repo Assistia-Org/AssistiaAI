@@ -5,11 +5,10 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/user/user_model.dart';
 import '../../../domain/entities/user/user.dart';
+import '../../../core/constants/api_constants.dart';
+import '../../../core/constants/app_constants.dart';
 
 class AuthRemoteDataSource {
-  // Use 10.0.2.2 for Android Emulator, localhost for iOS/Web
-  // The plan requested to be tested on Chrome, so we use localhost
-  final String baseUrl = 'http://10.0.2.2:8000/api/v1';
   final http.Client client;
   final SharedPreferences sharedPreferences;
 
@@ -19,20 +18,22 @@ class AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    required String verificationCode,
   }) async {
     const uuid = Uuid();
     final uniqueId = uuid.v4();
 
     // The backend uses 'display_name' and 'username', we map 'name' to both for simplicity.
     final response = await client.post(
-      Uri.parse('$baseUrl/auth/register'),
-      headers: {'Content-Type': 'application/json'},
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authRegister}'),
+      headers: AppConstants.baseHeaders,
       body: jsonEncode({
         'id': uniqueId,
         'username': name.replaceAll(' ', '').toLowerCase(),
         'display_name': name,
         'email': email,
         'password': password,
+        'verification_code': verificationCode,
       }),
     );
 
@@ -45,8 +46,8 @@ class AuthRemoteDataSource {
 
   Future<User> login({required String email, required String password}) async {
     final response = await client.post(
-      Uri.parse('$baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/json'},
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authLogin}'),
+      headers: AppConstants.baseHeaders,
       body: jsonEncode({'email': email, 'password': password}),
     );
 
@@ -56,9 +57,9 @@ class AuthRemoteDataSource {
       final refreshToken = data['refresh_token'];
 
       // Save tokens
-      await sharedPreferences.setString('access_token', accessToken);
+      await sharedPreferences.setString(AppConstants.accessTokenKey, accessToken);
       if (refreshToken != null) {
-        await sharedPreferences.setString('refresh_token', refreshToken);
+        await sharedPreferences.setString(AppConstants.refreshTokenKey, refreshToken);
       }
 
       // Now fetch user details
@@ -70,10 +71,10 @@ class AuthRemoteDataSource {
 
   Future<User> getMe(String token) async {
     final response = await client.get(
-      Uri.parse('$baseUrl/users/me'),
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.userMe}'),
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
+        ...AppConstants.baseHeaders,
+        ...AppConstants.authHeader(token),
       },
     );
 
@@ -84,8 +85,66 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> forgotPassword(String email) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}/auth/forgot-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to send password reset email: ${response.body}');
+    }
+  }
+
+  Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+    if (token == null) throw Exception('No access token found');
+
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authChangePassword}'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        ...AppConstants.authHeader(token),
+      },
+      body: jsonEncode({
+        'current_password': oldPassword,
+        'new_password': newPassword,
+        'confirm_password': newPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to change password: ${response.body}');
+    }
+  }
+
   Future<void> logout() async {
-    await sharedPreferences.remove('access_token');
-    await sharedPreferences.remove('refresh_token');
+    await sharedPreferences.remove(AppConstants.accessTokenKey);
+    await sharedPreferences.remove(AppConstants.refreshTokenKey);
+  }
+
+  Future<void> requestVerification(String email) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationRequest}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'email': email}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to request verification: ${response.body}');
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationVerify}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Verification failed: ${response.body}');
+    }
   }
 }

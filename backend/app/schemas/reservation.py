@@ -15,7 +15,7 @@ class ReservationBase(BaseModel):
     status: str
 
 class ReservationCreate(ReservationBase):
-    id: str
+    pass
 
 class ReservationUpdate(BaseModel):
     title: Optional[str] = None

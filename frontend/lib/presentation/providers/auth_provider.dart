@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// If StateProvider is still missing, it might be due to an environment issue.
+// Using a simple Notifier as an alternative if needed.
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,10 +9,32 @@ import '../../domain/usecases/auth/login_usecase.dart';
 import '../../domain/usecases/auth/register_usecase.dart';
 import '../../domain/usecases/auth/logout_usecase.dart';
 import '../../domain/usecases/auth/get_me_usecase.dart';
+import '../../domain/usecases/auth/forgot_password_usecase.dart';
+import '../../domain/usecases/auth/change_password_usecase.dart';
+import '../../domain/usecases/auth/request_verification_usecase.dart';
+import '../../domain/usecases/auth/verify_code_usecase.dart';
 import '../../data/datasources/auth/auth_remote_data_source.dart';
 import '../../data/repositories/auth/auth_repository_impl.dart';
+import 'community_provider.dart';
+import 'invitation_provider.dart';
+import 'sse_provider.dart';
 
 // --- Dependecy Injection via Riverpod ---
+
+enum AuthPageType { login, register }
+
+class AuthPageNotifier extends Notifier<AuthPageType> {
+  @override
+  AuthPageType build() => AuthPageType.login;
+
+  void setPage(AuthPageType type) {
+    state = type;
+  }
+}
+
+final authPageProvider = NotifierProvider<AuthPageNotifier, AuthPageType>(() {
+  return AuthPageNotifier();
+});
 
 final sharedPrefsProvider = FutureProvider<SharedPreferences>((ref) async {
   return await SharedPreferences.getInstance();
@@ -49,6 +73,26 @@ final logoutUseCaseProvider = FutureProvider<LogoutUseCase>((ref) async {
 final getMeUseCaseProvider = FutureProvider<GetMeUseCase>((ref) async {
   final repository = await ref.watch(authRepositoryProvider.future);
   return GetMeUseCase(repository);
+});
+
+final forgotPasswordUseCaseProvider = FutureProvider<ForgotPasswordUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return ForgotPasswordUseCase(repository);
+});
+
+final changePasswordUseCaseProvider = FutureProvider<ChangePasswordUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return ChangePasswordUseCase(repository);
+});
+
+final requestVerificationUseCaseProvider = FutureProvider<RequestVerificationUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return RequestVerificationUseCase(repository);
+});
+
+final verifyCodeUseCaseProvider = FutureProvider<VerifyCodeUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return VerifyCodeUseCase(repository);
 });
 
 
@@ -95,17 +139,24 @@ class AuthController {
       final loginUseCase = await ref.read(loginUseCaseProvider.future);
       final user = await loginUseCase.execute(email: email, password: password);
       ref.read(currentUserProvider.notifier).setUser(user);
+      
+      // Connect SSE
+      final prefs = await ref.read(sharedPrefsProvider.future);
+      final token = prefs.getString('access_token');
+      if (token != null) {
+        ref.read(sseServiceProvider).connect(token);
+      }
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
   }
 
-  Future<void> register(String name, String email, String password) async {
+  Future<void> register(String name, String email, String password, String verificationCode) async {
     ref.read(authLoadingProvider.notifier).setLoading(true);
     try {
       final registerUseCase = await ref.read(registerUseCaseProvider.future);
-      final user = await registerUseCase.execute(name: name, email: email, password: password);
-      ref.read(currentUserProvider.notifier).setUser(user);
+      // Sadece kayıt yap, oturum açma — kullanıcı login sayfasından giriş yapacak
+      await registerUseCase.execute(name: name, email: email, password: password, verificationCode: verificationCode);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
@@ -116,7 +167,12 @@ class AuthController {
     try {
       final logoutUseCase = await ref.read(logoutUseCaseProvider.future);
       await logoutUseCase.execute();
+      // Clear all cached user data
+      ref.invalidate(myCommunitiesProvider);
+      ref.invalidate(myInvitationsProvider);
       ref.read(currentUserProvider.notifier)._clearState();
+      ref.read(authPageProvider.notifier).setPage(AuthPageType.login);
+      ref.read(sseServiceProvider).disconnect();
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
@@ -131,10 +187,53 @@ class AuthController {
         final getMeUseCase = await ref.read(getMeUseCaseProvider.future);
         final user = await getMeUseCase.execute(token);
         ref.read(currentUserProvider.notifier).setUser(user);
+        
+        // Connect SSE on app launch
+        ref.read(sseServiceProvider).connect(token);
       } catch (e) {
         // If token is invalid or expired, logout
         await logout();
       }
+    }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final forgotPasswordUseCase = await ref.read(forgotPasswordUseCaseProvider.future);
+      await forgotPasswordUseCase.execute(email);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final changePasswordUseCase = await ref.read(changePasswordUseCaseProvider.future);
+      await changePasswordUseCase.execute(oldPassword: oldPassword, newPassword: newPassword);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> requestVerification(String email) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final useCase = await ref.read(requestVerificationUseCaseProvider.future);
+      await useCase.execute(email);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      final useCase = await ref.read(verifyCodeUseCaseProvider.future);
+      await useCase.execute(email: email, code: code);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
     }
   }
 }
