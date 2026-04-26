@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
 from pydantic import Field
 from enum import Enum
 from app.models.base import BaseDocument
