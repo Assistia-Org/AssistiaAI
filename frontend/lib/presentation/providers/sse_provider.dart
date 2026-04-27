@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/sse/sse_client.dart';
 import 'invitation_provider.dart';
+import 'notification_provider.dart';
 
 // Provides the raw SSEClient instance
 final sseClientProvider = Provider<SSEClient>((ref) {
@@ -25,6 +26,9 @@ class SSEService {
     if (type == 'new_invitation') {
       // Refresh incoming requests
       ref.invalidate(myInvitationsProvider);
+    } else if (type == 'new_notification') {
+      // Refresh notification list
+      ref.invalidate(notificationProvider);
     }
   }
 
