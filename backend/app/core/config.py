@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     EMAILS_FROM_EMAIL: str = ""
     BACKEND_URL: str = ""
+    FIREBASE_CREDENTIALS_PATH: str = ""  # Path to Firebase service account JSON
 
     # JWT Settings
     SECRET_KEY: str = "your-complex-secret-key-for-development"  # In production, use env

@@ -33,4 +33,13 @@ class ApiConstants {
   static String communityDetail(String id) => '/communities/$id';
   static String communityLeave(String id) => '/communities/$id/leave';
   static String communityRemoveMember(String communityId, String userId) => '/communities/$communityId/members/$userId';
+
+  // Notification endpoints
+  static const String notifications = '/notifications/';
+  static String notificationMarkRead(String id) => '/notifications/$id/read';
+  static const String notificationsReadAll = '/notifications/read-all';
+  static String notificationDelete(String id) => '/notifications/$id';
+
+  // FCM token endpoint
+  static const String fcmToken = '/users/me/fcm-token';
 }

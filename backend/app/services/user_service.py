@@ -6,6 +6,7 @@ from app.repositories.user import (
     get_user_by_id,
     list_users,
     update_user,
+    update_fcm_token,
 )
 from app.schemas.user import UserResponse, UserUpdate
 
@@ -60,3 +61,13 @@ async def delete_user_service(user_id: str) -> None:
     if not user:
         raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
     await delete_user(user)
+
+
+async def update_fcm_token_service(user_id: str, fcm_token: str) -> None:
+    """
+    Save or refresh the FCM device token for the authenticated user.
+    Called by Flutter after every successful login.
+    """
+    updated = await update_fcm_token(user_id, fcm_token)
+    if not updated:
+        raise HTTPException(status_code=404, detail=USER_NOT_FOUND)

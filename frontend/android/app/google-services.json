@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723403638991",
+    "project_id": "assistia-ai",
+    "storage_bucket": "assistia-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723403638991:android:0ac2651a5e3ab95821cfba",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsW_qTWnYWd_eqvpq7t0ky1lwdbQ9pH5M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
