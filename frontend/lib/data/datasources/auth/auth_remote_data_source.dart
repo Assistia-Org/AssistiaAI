@@ -126,6 +126,9 @@ class AuthRemoteDataSource {
       body: jsonEncode({'email': email}),
     );
 
+    if (response.statusCode == 409) {
+      throw Exception('Bu e-posta adresiyle kayıtlı bir hesap zaten mevcut.');
+    }
     if (response.statusCode != 200) {
       throw Exception('Failed to request verification: ${response.body}');
     }
