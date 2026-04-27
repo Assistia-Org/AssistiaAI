@@ -114,6 +114,20 @@ final authLoadingProvider = NotifierProvider<AuthLoadingNotifier, bool>(() {
   return AuthLoadingNotifier();
 });
 
+// Login başarı splash ekranı için state
+class ShowLoginSplashNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void show() => state = true;
+  void hide() => state = false;
+}
+
+final showLoginSplashProvider =
+    NotifierProvider<ShowLoginSplashNotifier, bool>(() {
+  return ShowLoginSplashNotifier();
+});
+
 class CurrentUserNotifier extends Notifier<User?> {
   @override
   User? build() => null;
@@ -142,7 +156,10 @@ class AuthController {
       final loginUseCase = await ref.read(loginUseCaseProvider.future);
       final user = await loginUseCase.execute(email: email, password: password);
       ref.read(currentUserProvider.notifier).setUser(user);
-      
+
+      // Login başarı splash ekranını göster (3 saniye)
+      ref.read(showLoginSplashProvider.notifier).show();
+
       // Connect SSE
       final prefs = await ref.read(sharedPrefsProvider.future);
       final token = prefs.getString('access_token');
