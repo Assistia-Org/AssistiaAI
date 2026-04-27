@@ -8,7 +8,6 @@ import '../../../core/constants/dummy_data.dart';
 import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import '../../providers/daily_program_provider.dart';
-import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
 class AddFlightReservationPage extends ConsumerStatefulWidget {
@@ -444,11 +443,9 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
             isSaving ? "Kaydediliyor..." : "Onayla ve Kaydet",
             onTap: isSaving ? () {} : () async {
               try {
-                const uuid = Uuid();
                 final data = _extractedData!;
                 
                 final reservation = Reservation(
-                  id: uuid.v4(),
                   category: "flight",
                   title: "Uçuş: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
                   details: data,

@@ -14,7 +14,7 @@ class TaskModel {
   final List<String> tags;
 
   TaskModel({
-    required this.id,
+    this.id = '',
     required this.creatorId,
     required this.assignedTo,
     this.communityId,
@@ -55,7 +55,6 @@ class TaskModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'creator_id': creatorId,
       'assigned_to': assignedTo,
       'community_id': communityId,

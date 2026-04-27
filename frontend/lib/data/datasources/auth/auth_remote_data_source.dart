@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../models/user/user_model.dart';
 import '../../../domain/entities/user/user.dart';
@@ -20,15 +19,11 @@ class AuthRemoteDataSource {
     required String password,
     required String verificationCode,
   }) async {
-    const uuid = Uuid();
-    final uniqueId = uuid.v4();
-
     // The backend uses 'display_name' and 'username', we map 'name' to both for simplicity.
     final response = await client.post(
       Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authRegister}'),
       headers: AppConstants.baseHeaders,
       body: jsonEncode({
-        'id': uniqueId,
         'username': name.replaceAll(' ', '').toLowerCase(),
         'display_name': name,
         'email': email,
