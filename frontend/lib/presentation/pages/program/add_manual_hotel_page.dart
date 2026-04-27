@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import '../../providers/daily_program_provider.dart';
@@ -97,8 +96,6 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
   Future<void> _saveReservation() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final uuid = const Uuid();
-    
     final details = {
       "hotel_name": _hotelNameController.text,
       "address": _selectedCity,
@@ -128,7 +125,6 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
     );
 
     final reservation = Reservation(
-      id: uuid.v4(),
       category: "hotel",
       title: "Otel: ${_hotelNameController.text}",
       details: details,

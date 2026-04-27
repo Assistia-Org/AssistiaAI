@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/daily_program_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class AddManualTaskPage extends ConsumerStatefulWidget {
   final DateTime initialDate;
@@ -66,7 +66,8 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final uuid = const Uuid();
+    final currentUser = ref.read(currentUserProvider);
+
     final DateTime combinedStart = DateTime(
       _selectedDate.year,
       _selectedDate.month,
@@ -83,15 +84,14 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       _endTime.minute,
     );
 
-    // If end time is before start time, it means the task ends the next day
+    // Bitiş saati başlangıçtan önceyse ertesi güne taşır
     if (combinedEnd.isBefore(combinedStart)) {
       combinedEnd = combinedEnd.add(const Duration(days: 1));
     }
 
     final task = TaskModel(
-      id: uuid.v4(),
-      creatorId: 'user_123', // Hardcoded for now
-      assignedTo: ['user_123'],
+      creatorId: currentUser?.id ?? '',
+      assignedTo: [currentUser?.id ?? ''],
       type: _selectedType,
       title: _titleController.text,
       description: _descriptionController.text,

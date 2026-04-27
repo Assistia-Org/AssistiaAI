@@ -7,7 +7,6 @@ import 'package:file_picker/file_picker.dart';
 import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import '../../providers/daily_program_provider.dart';
-import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 
 class AddBusReservationPage extends ConsumerStatefulWidget {
@@ -459,11 +458,9 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
                 ? () {}
                 : () async {
                     try {
-                      const uuid = Uuid();
                       final data = _extractedData!;
 
                       final reservation = Reservation(
-                        id: uuid.v4(),
                         category: "bus",
                         title:
                             "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",

@@ -11,7 +11,7 @@ class Reservation {
   final String status;
 
   Reservation({
-    required this.id,
+    this.id = '',
     this.userId,
     this.communityId,
     required this.category,
