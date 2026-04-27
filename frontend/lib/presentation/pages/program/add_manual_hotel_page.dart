@@ -17,6 +17,7 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
   final _hotelNameController = TextEditingController();
   final _pnrController = TextEditingController();
   final _guestController = TextEditingController();
+  bool _isSubmitting = false;
   
   String _selectedCity = 'İstanbul';
   static const List<String> _cities = [
@@ -95,6 +96,8 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
 
   Future<void> _saveReservation() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
 
     final details = {
       "hotel_name": _hotelNameController.text,
@@ -155,6 +158,10 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
             backgroundColor: Colors.redAccent,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }

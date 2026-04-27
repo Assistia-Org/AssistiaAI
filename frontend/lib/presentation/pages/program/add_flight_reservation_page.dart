@@ -20,6 +20,7 @@ class AddFlightReservationPage extends ConsumerStatefulWidget {
 class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationPage> {
   Map<String, dynamic>? _extractedData;
   final ImagePicker _picker = ImagePicker();
+  bool _isSubmitting = false;
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -442,6 +443,8 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
           child: _buildPrimaryButton(
             isSaving ? "Kaydediliyor..." : "Onayla ve Kaydet",
             onTap: isSaving ? () {} : () async {
+              if (_isSubmitting) return;
+              setState(() => _isSubmitting = true);
               try {
                 final data = _extractedData!;
                 
@@ -475,6 +478,10 @@ class _AddFlightReservationPageState extends ConsumerState<AddFlightReservationP
                       backgroundColor: Colors.redAccent,
                     ),
                   );
+                }
+              } finally {
+                if (mounted) {
+                  setState(() => _isSubmitting = false);
                 }
               }
             },
