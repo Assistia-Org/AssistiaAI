@@ -20,6 +20,7 @@ class AddBusReservationPage extends ConsumerStatefulWidget {
 class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
   Map<String, dynamic>? _extractedData;
   final ImagePicker _picker = ImagePicker();
+  bool _isSubmitting = false;
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -456,48 +457,54 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
             isSaving ? "Kaydediliyor..." : "Onayla ve Kaydet",
             onTap: isSaving
                 ? () {}
-                : () async {
-                    try {
-                      final data = _extractedData!;
+                  : () async {
+                      if (_isSubmitting) return;
+                      setState(() => _isSubmitting = true);
+                      try {
+                        final data = _extractedData!;
 
-                      final reservation = Reservation(
-                        category: "bus",
-                        title:
-                            "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
-                        details: data,
-                        status: "confirmed",
-                      );
+                        final reservation = Reservation(
+                          category: "bus",
+                          title:
+                              "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
+                          details: data,
+                          status: "confirmed",
+                        );
 
-                      await ref
-                          .read(reservationControllerProvider)
-                          .addReservation(reservation);
+                        await ref
+                            .read(reservationControllerProvider)
+                            .addReservation(reservation);
 
-                      // Invalidate the daily program provider for today
-                      final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-                      ref.invalidate(dailyProgramByDateProvider(dateStr));
+                        // Invalidate the daily program provider for today
+                        final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+                        ref.invalidate(dailyProgramByDateProvider(dateStr));
 
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Otobüs rezervasyonu başarıyla kaydedildi!",
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Otobüs rezervasyonu başarıyla kaydedildi!",
+                              ),
+                              backgroundColor: Colors.green,
                             ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                        Navigator.pop(context);
+                          );
+                          Navigator.pop(context);
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Kaydedilemedi: ${e.toString()}"),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() => _isSubmitting = false);
+                        }
                       }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Kaydedilemedi: ${e.toString()}"),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                      }
-                    }
-                  },
+                    },
           ),
         ),
       ],

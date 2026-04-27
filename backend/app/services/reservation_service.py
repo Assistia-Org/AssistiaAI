@@ -122,8 +122,34 @@ async def update_reservation_service(reservation_id: str, data: ReservationUpdat
 
 
 async def delete_reservation_service(reservation_id: str) -> None:
-    """Orchestrate reservation deletion."""
+    """Orchestrate reservation deletion and remove from all linked daily programs."""
     reservation = await get_reservation_by_id(reservation_id)
     if not reservation:
         raise HTTPException(status_code=404, detail=RESERVATION_NOT_FOUND)
+
+    user_id = reservation.user_id
+
+    # Rezervasyonu sil
     await delete_reservation(reservation)
+
+    # Bu kullanıcının tüm programlarını getir ve rezervasyonu barındıranlardan çıkar
+    from app.models.daily_program import DailyProgram
+    programs = await DailyProgram.find(DailyProgram.kullanici_id == user_id).to_list()
+    
+    for program in programs:
+        target_links = []
+        for r in program.items.etkinlikler:
+            # Beanie Link objesi (ref) veya direkt döküman olabilir
+            link_id = getattr(r.ref, "id", None) if hasattr(r, "ref") else getattr(r, "id", None)
+            if str(link_id) == str(reservation_id):
+                target_links.append(r)
+                
+        if target_links:
+            for r in target_links:
+                program.items.etkinlikler.remove(r)
+            
+            program.ozet.etkinlik_sayisi -= len(target_links)
+            if program.ozet.etkinlik_sayisi < 0:
+                program.ozet.etkinlik_sayisi = 0
+                
+            await program.save()

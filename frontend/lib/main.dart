@@ -15,7 +15,6 @@ import 'presentation/providers/auth_provider.dart';
 /// Background FCM handler — must be a top-level function (not inside a class)
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Firebase must be initialized here too for background isolate
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 }
 
@@ -67,8 +66,9 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
+
+    // Startup splash + auth init (minimum 3 saniye göster)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // initAuth + en az 3 saniye → ikisi de bitince startup splash kapanır
       await Future.wait([
         ref.read(authControllerProvider).initAuth(),
         Future.delayed(const Duration(seconds: 3)),
@@ -76,10 +76,6 @@ class _MyAppState extends ConsumerState<MyApp> {
       if (mounted) {
         setState(() => _isInitializing = false);
       }
-
-    // Initialize auth state only once on startup
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authControllerProvider).initAuth();
     });
 
     // 🔔 Uygulama AÇIKKEN gelen FCM push → SnackBar göster
@@ -94,8 +90,7 @@ class _MyAppState extends ConsumerState<MyApp> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title,
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
               if (body.isNotEmpty) Text(body),
             ],
           ),

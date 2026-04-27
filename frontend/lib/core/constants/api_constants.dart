@@ -17,6 +17,7 @@ class ApiConstants {
 
   // Reservation endpoints
   static const String reservations = '/reservations/';
+  static String reservationById(String id) => '/reservations/$id';
   static const String reservationsAnalyze = '/reservations/analyze';
   static const String reservationsAnalyzeBus = '/reservations/analyze-bus';
 

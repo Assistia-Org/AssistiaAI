@@ -104,6 +104,12 @@ class ReservationController {
       ref.read(reservationLoadingProvider.notifier).setLoading(false);
     }
   }
+
+  Future<void> deleteReservation(String reservationId) async {
+    final dataSource =
+        await ref.read(reservationRemoteDataSourceProvider.future);
+    await dataSource.deleteReservation(reservationId);
+  }
 }
 
 final reservationControllerProvider = Provider<ReservationController>((ref) {

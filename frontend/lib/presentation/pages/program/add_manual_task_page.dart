@@ -23,6 +23,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   String _selectedType = 'Görev';
   String _selectedPriority = 'medium';
   late DateTime _selectedDate;
+  bool _isSubmitting = false;
   TimeOfDay _startTime = const TimeOfDay(hour: 10, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 11, minute: 0);
 
@@ -65,6 +66,8 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
 
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
 
     final currentUser = ref.read(currentUserProvider);
 
@@ -120,6 +123,10 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: $e')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }

@@ -119,4 +119,22 @@ class ReservationRemoteDataSource {
       throw Exception('Analiz hatası (Otobüs): ${response.statusCode}');
     }
   }
+
+  Future<void> deleteReservation(String reservationId) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+
+    final response = await client.delete(
+      Uri.parse(
+        '${ApiConstants.baseUrl}${ApiConstants.reservationById(reservationId)}',
+      ),
+      headers: {
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
+      },
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw Exception('Rezervasyon silinemedi: ${response.body}');
+    }
+  }
 }
