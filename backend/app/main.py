@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.api.dependencies.database import init_db
 from app.core.redis import RedisClient
+from app.core.firebase import init_firebase
 from app.api.routes.community import router as community_router
 from app.api.routes.reservation import router as reservation_router
 from app.api.routes.task import router as task_router
@@ -11,6 +12,7 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.invitation import router as invitation_router
 from app.api.routes.verification import router as verification_router
 from app.api.routes.sse import router as sse_router
+from app.api.routes.notification import router as notification_router
 from app.core.config import settings
 
 @asynccontextmanager
@@ -18,6 +20,7 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
     # Startup
     await init_db()
+    init_firebase()
     yield
     # Shutdown
     await RedisClient.close()
@@ -52,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(invitation_router, prefix="/api/v1")
     app.include_router(verification_router, prefix="/api/v1")
     app.include_router(sse_router, prefix="/api/v1")
+    app.include_router(notification_router, prefix="/api/v1")
 
     @app.get("/health", tags=["health"])
     async def health_check():

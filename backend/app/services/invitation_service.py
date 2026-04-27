@@ -23,6 +23,8 @@ from app.models.community import CommunityMember
 from app.models.user import CommunityRoleModel, User
 from app.schemas.invitation import InvitationCreate, InvitationResponse, InvitationFilter
 from app.core.events import event_manager
+from app.models.notification import NotificationType
+from app.services.notification_service import create_notification_service
 
 async def send_invitation_service(current_user: User, data: InvitationCreate) -> InvitationResponse:
     """
@@ -65,9 +67,16 @@ async def send_invitation_service(current_user: User, data: InvitationCreate) ->
     # Ensure links are fetched for response
     await invitation.fetch_all_links()
     
-    # Notify invitee via SSE
+    # Notify invitee via SSE (kept for backward compat) + persist notification
     await event_manager.publish(str(invitee.id), "new_invitation", {"invitation_id": str(invitation.id)})
-    
+    await create_notification_service(
+        user_id=str(invitee.id),
+        type=NotificationType.INVITATION,
+        title="Yeni topluluk daveti",
+        body=f"{current_user.display_name} seni bir topluluğa davet etti.",
+        metadata={"invitation_id": str(invitation.id), "community_id": str(community.id)},
+    )
+
     return InvitationResponse.model_validate(invitation)
 
 
@@ -116,6 +125,16 @@ async def accept_invitation_service(current_user: User, invitation_id: str) -> I
     )
     await add_community_role(str(current_user.id), role_data)
     
+    # Notify inviter that invitation was accepted
+    inviter_id = str(getattr(invitation.inviter, "id", invitation.inviter))
+    await create_notification_service(
+        user_id=inviter_id,
+        type=NotificationType.INVITATION_ACCEPTED,
+        title="Davet kabul edildi",
+        body=f"{current_user.display_name} daveti kabul etti.",
+        metadata={"invitation_id": str(invitation.id), "community_id": community_id},
+    )
+
     return InvitationResponse.model_validate(invitation)
 
 
@@ -129,4 +148,15 @@ async def reject_invitation_service(current_user: User, invitation_id: str) -> I
         raise HTTPException(status_code=400, detail="Invitation is no longer pending.")
     
     await update_invitation(invitation, {"status": InvitationStatus.REJECTED})
+
+    # Notify inviter that invitation was rejected
+    inviter_id = str(getattr(invitation.inviter, "id", invitation.inviter))
+    await create_notification_service(
+        user_id=inviter_id,
+        type=NotificationType.INVITATION_REJECTED,
+        title="Davet reddedildi",
+        body=f"{current_user.display_name} daveti reddetti.",
+        metadata={"invitation_id": str(invitation.id)},
+    )
+
     return InvitationResponse.model_validate(invitation)

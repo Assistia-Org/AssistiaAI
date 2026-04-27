@@ -13,3 +13,4 @@ python-multipart
 httpx
 resend
 redis
+firebase-admin

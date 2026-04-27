@@ -26,6 +26,7 @@ class User(BaseDocument):
     personal_settings: PersonalSettingsModel = Field(default_factory=PersonalSettingsModel)
     reset_token: Optional[str] = None
     reset_token_expires_at: Optional[datetime] = None
+    fcm_token: Optional[str] = None
 
     class Settings:
         name = "users"
