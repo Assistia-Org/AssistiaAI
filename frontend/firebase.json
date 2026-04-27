@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"assistia-ai","appId":"1:723403638991:android:0ac2651a5e3ab95821cfba","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"assistia-ai","configurations":{"android":"1:723403638991:android:0ac2651a5e3ab95821cfba","ios":"1:723403638991:ios:232c3776948b65ce21cfba"}}}}}}
