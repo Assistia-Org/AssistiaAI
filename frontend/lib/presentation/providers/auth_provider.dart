@@ -20,6 +20,8 @@ import '../../data/repositories/auth/auth_repository_impl.dart';
 import '../../data/datasources/notification/notification_remote_datasource.dart';
 import 'community_provider.dart';
 import 'invitation_provider.dart';
+import 'daily_program_provider.dart';
+import 'notification_provider.dart';
 import 'sse_provider.dart';
 
 // --- Dependecy Injection via Riverpod ---
@@ -192,6 +194,8 @@ class AuthController {
       // Clear all cached user data
       ref.invalidate(myCommunitiesProvider);
       ref.invalidate(myInvitationsProvider);
+      ref.invalidate(dailyProgramByDateProvider);
+      ref.invalidate(notificationProvider);
       ref.read(currentUserProvider.notifier)._clearState();
       ref.read(authPageProvider.notifier).setPage(AuthPageType.login);
       ref.read(sseServiceProvider).disconnect();

@@ -6,6 +6,7 @@ import '../../../data/models/task/task_model.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/daily_program_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/assignment_selector.dart';
 
 class AddManualTaskPage extends ConsumerStatefulWidget {
   final DateTime initialDate;
@@ -26,6 +27,8 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   bool _isSubmitting = false;
   TimeOfDay _startTime = const TimeOfDay(hour: 10, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 11, minute: 0);
+  String? _communityId;
+  List<String> _assignedTo = [];
 
   final List<String> _types = ['Görev', 'Toplantı', 'Yemek', 'Spor', 'Eğlence', 'Diğer'];
 
@@ -94,7 +97,8 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
 
     final task = TaskModel(
       creatorId: currentUser?.id ?? '',
-      assignedTo: [currentUser?.id ?? ''],
+      assignedTo: _communityId == null && _assignedTo.isEmpty ? [currentUser?.id ?? ''] : _assignedTo,
+      communityId: _communityId,
       type: _selectedType,
       title: _titleController.text,
       description: _descriptionController.text,
@@ -177,6 +181,15 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
               _buildSectionTitle('DETAYLAR'),
               const SizedBox(height: 16),
               _buildPrioritySelector(),
+              const SizedBox(height: 24),
+              AssignmentSelector(
+                onChanged: (communityId, assignedTo) {
+                  setState(() {
+                    _communityId = communityId;
+                    _assignedTo = assignedTo;
+                  });
+                },
+              ),
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _descriptionController,
