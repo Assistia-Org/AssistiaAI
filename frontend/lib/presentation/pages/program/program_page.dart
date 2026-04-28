@@ -868,14 +868,41 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        label,
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: color,
-                          letterSpacing: 1.1,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              label,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: color,
+                                letterSpacing: 1.1,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (isTask ? (data as TaskModel).communityId : (data as ReservationModel).communityId) != null
+                                  ? const Color(0xFF6366F1).withOpacity(0.1)
+                                  : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              (isTask ? (data as TaskModel).communityName : (data as ReservationModel).communityName) ?? 'Kişisel',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: (isTask ? (data as TaskModel).communityId : (data as ReservationModel).communityId) != null
+                                    ? const Color(0xFF6366F1)
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(

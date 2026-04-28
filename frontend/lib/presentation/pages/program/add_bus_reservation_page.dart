@@ -8,6 +8,7 @@ import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import '../../providers/daily_program_provider.dart';
 import 'package:intl/intl.dart';
+import '../../widgets/assignment_selector.dart';
 
 class AddBusReservationPage extends ConsumerStatefulWidget {
   const AddBusReservationPage({super.key});
@@ -21,6 +22,8 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
   Map<String, dynamic>? _extractedData;
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
+  String? _communityId;
+  List<String> _assignedTo = [];
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -268,6 +271,15 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
             ],
           ),
 
+          const SizedBox(height: 24),
+          AssignmentSelector(
+            onChanged: (communityId, assignedTo) {
+              setState(() {
+                _communityId = communityId;
+                _assignedTo = assignedTo;
+              });
+            },
+          ),
           const SizedBox(height: 32),
           _buildActionButtons(),
           const SizedBox(height: 40),
@@ -468,6 +480,8 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
                           title:
                               "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
                           details: data,
+                          communityId: _communityId,
+                          assignedTo: _assignedTo,
                           status: "confirmed",
                         );
 
