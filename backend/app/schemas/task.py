@@ -34,6 +34,7 @@ class TaskUpdate(BaseModel):
 
 class TaskResponse(TaskBase, BaseSchema):
     id: str
+    community_name: Optional[str] = None
 
     class Config:
         from_attributes = True

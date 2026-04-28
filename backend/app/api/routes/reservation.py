@@ -24,7 +24,7 @@ async def create_reservation(
     Rezervasyon oluşturma endpoint'i.
     Yeni bir uçuş, otel veya araç kiralama rezervasyonunu detaylarıyla kaydeder.
     """
-    return await create_reservation_service(str(current_user.id), data)
+    return await create_reservation_service(current_user, data)
 
 
 @router.post("/analyze", status_code=status.HTTP_200_OK)

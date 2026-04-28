@@ -28,11 +28,12 @@ async def send_invitation(
 
 @router.post("/me", response_model=List[InvitationResponse], status_code=status.HTTP_200_OK)
 async def get_my_invitations(
-    status: Optional[InvitationFilter] = "pending",
+    filter_data: Optional[InvitationFilter] = Body(None),
     current_user: User = Depends(get_current_user)
 ) -> List[InvitationResponse]:
     """Get all invitations for the logged-in user."""
-    filter_data = InvitationFilter(status=status) if status else None
+    if not filter_data:
+        filter_data = InvitationFilter(status=InvitationStatus.PENDING)
     return await get_my_invitations_service(current_user, filter_data)
 
 @router.patch("/{invitation_id}/accept", response_model=InvitationResponse, status_code=status.HTTP_200_OK)
