@@ -508,18 +508,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25),
                               child: _buildSectionHeader(
-                                'Rezervasyonlarım',
-                                icon: Icons.confirmation_num_rounded,
-                                onTap: () => _navigateToListing('Rezervasyonlarım', reservations: reservations),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            _buildReservationsList(reservations),
-
-                            const SizedBox(height: 32),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 25),
-                              child: _buildSectionHeader(
                                 'Görevlerim',
                                 icon: Icons.task_alt_rounded,
                                 onTap: () => _navigateToListing('Görevlerim', tasks: tasks.where((t) => t.type.toLowerCase() != 'meeting' && t.type.toLowerCase() != 'toplantı').toList()),
@@ -539,6 +527,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                             ),
                             const SizedBox(height: 14),
                             _buildMeetingsList(tasks),
+
+                            const SizedBox(height: 32),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 25),
+                              child: _buildSectionHeader(
+                                'Rezervasyonlarım',
+                                icon: Icons.confirmation_num_rounded,
+                                onTap: () => _navigateToListing('Rezervasyonlarım', reservations: reservations),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _buildReservationsList(reservations),
 
                             const SizedBox(height: 70),
                           ],
