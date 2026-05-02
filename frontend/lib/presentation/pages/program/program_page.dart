@@ -52,6 +52,197 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     });
   }
 
+  void _goToDate(DateTime date) {
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final targetWeekStart = _getStartOfWeek(normalizedDate);
+
+    setState(() {
+      _selectedDate = normalizedDate;
+      _firstDayOfCurrentWeek = targetWeekStart;
+      _monthYearText = DateFormat('MM / yyyy').format(normalizedDate);
+    });
+
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(500);
+    }
+  }
+
+  Future<void> _showMonthYearPicker() async {
+    final monthLabels = const [
+      'Ocak',
+      'Şubat',
+      'Mart',
+      'Nisan',
+      'Mayıs',
+      'Haziran',
+      'Temmuz',
+      'Ağustos',
+      'Eylül',
+      'Ekim',
+      'Kasım',
+      'Aralık',
+    ];
+    int tempMonth = _selectedDate.month;
+    int tempYear = _selectedDate.year;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1B232A),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 42,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 22),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.18),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          'Ay ve Yıl Seç',
+                          style: GoogleFonts.inter(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          tooltip: 'Önceki yıl',
+                          onPressed: () {
+                            setModalState(() => tempYear--);
+                          },
+                          icon: const Icon(
+                            Icons.chevron_left_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          '$tempYear',
+                          style: GoogleFonts.inter(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.cyanAccent,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Sonraki yıl',
+                          onPressed: () {
+                            setModalState(() => tempYear++);
+                          },
+                          icon: const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10,
+                        childAspectRatio: 2.55,
+                      ),
+                      itemCount: monthLabels.length,
+                      itemBuilder: (context, index) {
+                        final month = index + 1;
+                        final selected = tempMonth == month;
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            setModalState(() => tempMonth = month);
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? Colors.cyanAccent
+                                  : Colors.white.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: selected
+                                    ? Colors.cyanAccent
+                                    : Colors.white.withOpacity(0.08),
+                              ),
+                            ),
+                            child: Text(
+                              monthLabels[index],
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: selected
+                                    ? const Color(0xFF0F172A)
+                                    : Colors.white,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _goToDate(DateTime(tempYear, tempMonth, 1));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.cyanAccent,
+                          foregroundColor: const Color(0xFF0F172A),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Uygula',
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _toggleExpand(String id) {
     setState(() {
       _expandedId = (_expandedId == id) ? null : id;
@@ -182,13 +373,43 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         children: [
           Padding(
             padding: const EdgeInsets.only(right: 24, bottom: 10),
-            child: Text(
-              _monthYearText,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white70,
-                letterSpacing: 1.0,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: _showMonthYearPicker,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.calendar_month_rounded,
+                      size: 16,
+                      color: Colors.cyanAccent,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      _monthYearText,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: Colors.white70,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -230,10 +451,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
   Widget _buildDayChip(DateTime date, bool isSelected) {
     const labels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     return GestureDetector(
-      onTap: () {
-        setState(() => _selectedDate = date);
-        _updateMonthYearText(date);
-      },
+      onTap: () => _goToDate(date),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: 44,
