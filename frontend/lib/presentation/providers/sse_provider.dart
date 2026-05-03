@@ -27,8 +27,13 @@ class SSEService {
       // Refresh incoming requests
       ref.invalidate(myInvitationsProvider);
     } else if (type == 'new_notification') {
-      // Refresh notification list
-      ref.invalidate(notificationProvider);
+      // Toggle kapalıysa UI'ya yansıtma (backend bağlantısı sürüyor)
+      final isEnabled = ref
+          .read(notificationsEnabledProvider)
+          .whenOrNull(data: (v) => v) ?? true;
+      if (isEnabled) {
+        ref.invalidate(notificationProvider);
+      }
     }
   }
 

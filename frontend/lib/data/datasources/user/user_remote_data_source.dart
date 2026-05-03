@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/user/user_model.dart';
 import '../../../domain/entities/user/user.dart';
+import '../../../domain/entities/user/user_settings.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/constants/app_constants.dart';
 
@@ -54,6 +55,36 @@ class UserRemoteDataSource {
       return UserModel.fromJson(jsonDecode(response.body));
     } else {
       throw Exception('Failed to update user: ${response.body}');
+    }
+  }
+
+  Future<User> updateSettings(UserSettings settings) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+    if (token == null) throw Exception('No access token found');
+
+    final currentUser = await getMe(token);
+
+    final body = {
+      'personal_settings': {
+        'theme': settings.theme,
+        'notifications': settings.notifications,
+        'language': settings.language,
+      },
+    };
+
+    final response = await client.patch(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.userById(currentUser.id)}'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        ...AppConstants.authHeader(token),
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      return UserModel.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to update settings: ${response.body}');
     }
   }
 }
