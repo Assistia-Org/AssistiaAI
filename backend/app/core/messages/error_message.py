@@ -25,3 +25,5 @@ OWNER_CANNOT_LEAVE = "As the owner, you cannot leave the community. Please delet
 TOO_MANY_VERIFICATION_REQUESTS = "Too many verification requests. Please wait 5 minutes before trying again."
 INVALID_VERIFICATION_CODE = "Invalid or expired verification code."
 NOTIFICATION_NOT_FOUND = "Notification not found."
+INVALID_GOOGLE_TOKEN = "Invalid or expired Google ID token."
+GOOGLE_AUTH_FAILED = "Google authentication failed."

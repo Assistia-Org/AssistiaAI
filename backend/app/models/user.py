@@ -19,7 +19,8 @@ class User(BaseDocument):
     username: str
     display_name: str
     email: EmailStr
-    hashed_password: str
+    hashed_password: Optional[str] = None
+    google_id: Optional[str] = None
     is_active: bool = True
     avatar_url: Optional[str] = None
     joined_communities: List[CommunityRoleModel] = Field(default_factory=list)

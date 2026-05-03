@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from app.core.config import settings
 from app.repositories.user import get_user_by_reset_token
 from app.utils.templates import get_reset_password_html, get_reset_error_html
-from app.schemas.auth import LoginSchema, Token, TokenRefresh, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest
+from app.schemas.auth import LoginSchema, Token, TokenRefresh, ForgotPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, GoogleAuthRequest
 from app.schemas.user import UserCreate, UserResponse
 from app.services.auth_service import (
     register_user_service, 
@@ -13,7 +13,8 @@ from app.services.auth_service import (
     refresh_token_service,
     forgot_password_service,
     reset_password_service,
-    change_password_service
+    change_password_service,
+    google_auth_service,
 )
 from app.api.dependencies.auth import get_current_user
 from app.models.user import User
@@ -70,3 +71,8 @@ async def reset_password_page(token: str):
         return HTMLResponse(content=get_reset_error_html("Bu bağlantının süresi dolmuş."))
 
     return HTMLResponse(content=get_reset_password_html(token))
+
+@router.post("/google", response_model=Token, status_code=status.HTTP_200_OK)
+async def google_login(data: GoogleAuthRequest) -> Token:
+    """Authenticate or register with a Google Firebase ID token."""
+    return await google_auth_service(data)
