@@ -48,6 +48,10 @@ app.*.map.json
 .env
 .env.*
 
+# Firebase config (contains sensitive API keys — never commit)
+google-services.json
+GoogleService-Info.plist
+
 # Android Gradle cache & local paths
 android/.gradle/
 android/local.properties
