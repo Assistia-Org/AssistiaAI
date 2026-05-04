@@ -1,9 +1,12 @@
+import 'user_settings.dart';
+
 class User {
   final String id;
   final String username;
   final String email;
   final String displayName;
   final String? avatarUrl;
+  final UserSettings? personalSettings;
 
   User({
     required this.id,
@@ -11,5 +14,6 @@ class User {
     required this.email,
     required this.displayName,
     this.avatarUrl,
+    this.personalSettings,
   });
 }
