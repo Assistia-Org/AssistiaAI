@@ -46,4 +46,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> verifyCode({required String email, required String code}) {
     return remoteDataSource.verifyCode(email, code);
   }
+
+  @override
+  Future<User> googleAuth(String idToken) {
+    return remoteDataSource.googleAuth(idToken: idToken);
+  }
 }

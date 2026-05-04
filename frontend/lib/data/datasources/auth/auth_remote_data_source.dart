@@ -114,6 +114,32 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<User> googleAuth({required String idToken, String? fcmToken}) async {
+    final body = <String, dynamic>{'id_token': idToken};
+    if (fcmToken != null) body['fcm_token'] = fcmToken;
+
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}/auth/google'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final accessToken = data['access_token'];
+      final refreshToken = data['refresh_token'];
+
+      await sharedPreferences.setString(AppConstants.accessTokenKey, accessToken);
+      if (refreshToken != null) {
+        await sharedPreferences.setString(AppConstants.refreshTokenKey, refreshToken);
+      }
+
+      return await getMe(accessToken);
+    } else {
+      throw Exception('Google ile giriş başarısız: ${response.body}');
+    }
+  }
+
   Future<void> logout() async {
     await sharedPreferences.remove(AppConstants.accessTokenKey);
     await sharedPreferences.remove(AppConstants.refreshTokenKey);

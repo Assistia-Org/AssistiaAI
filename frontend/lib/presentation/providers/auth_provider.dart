@@ -1,8 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// If StateProvider is still missing, it might be due to an environment issue.
-// Using a simple Notifier as an alternative if needed.
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +15,7 @@ import '../../domain/usecases/auth/forgot_password_usecase.dart';
 import '../../domain/usecases/auth/change_password_usecase.dart';
 import '../../domain/usecases/auth/request_verification_usecase.dart';
 import '../../domain/usecases/auth/verify_code_usecase.dart';
+import '../../domain/usecases/auth/google_auth_usecase.dart';
 import '../../data/datasources/auth/auth_remote_data_source.dart';
 import '../../data/repositories/auth/auth_repository_impl.dart';
 import '../../data/datasources/notification/notification_remote_datasource.dart';
@@ -98,6 +99,11 @@ final requestVerificationUseCaseProvider = FutureProvider<RequestVerificationUse
 final verifyCodeUseCaseProvider = FutureProvider<VerifyCodeUseCase>((ref) async {
   final repository = await ref.watch(authRepositoryProvider.future);
   return VerifyCodeUseCase(repository);
+});
+
+final googleAuthUseCaseProvider = FutureProvider<GoogleAuthUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return GoogleAuthUseCase(repository);
 });
 
 
@@ -261,6 +267,51 @@ class AuthController {
     try {
       final useCase = await ref.read(verifyCodeUseCaseProvider.future);
       await useCase.execute(email: email, code: code);
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      // 1. Google hesabı seç
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return; // Kullanıcı iptal etti
+
+      // 2. Firebase credential oluştur ve Firebase'e sign-in yap
+      final googleAuth = await googleUser.authentication;
+      final credential = firebase_auth.GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential = await firebase_auth.FirebaseAuth.instance
+          .signInWithCredential(credential);
+
+      // 3. Firebase ID Token al (kendi backend'imiz için)
+      final idToken = await userCredential.user?.getIdToken();
+      if (idToken == null) throw Exception('Firebase ID token alınamadı.');
+
+      // 4. FCM token al (opsiyonel)
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessagingInstance._instance.getToken();
+      } catch (_) {}
+
+      // 5. Backend datasource üzerinden doğrudan googleAuth çağır (fcmToken ile)
+      final prefs = await ref.read(sharedPrefsProvider.future);
+      final client = ref.read(httpClientProvider);
+      final ds = AuthRemoteDataSource(client: client, sharedPreferences: prefs);
+      final user = await ds.googleAuth(idToken: idToken, fcmToken: fcmToken);
+
+      ref.read(currentUserProvider.notifier).setUser(user);
+      ref.read(showLoginSplashProvider.notifier).show();
+
+      // SSE bağla
+      final token = prefs.getString('access_token');
+      if (token != null) {
+        ref.read(sseServiceProvider).connect(token);
+      }
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
