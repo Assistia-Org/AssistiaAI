@@ -9,6 +9,7 @@ import '../../providers/auth_provider.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../../data/models/reservation/reservation_model.dart';
 import '../../../data/models/daily_program/daily_program_model.dart';
+import '../assistant/assistant_chat_page.dart';
 import 'category_listing_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -619,17 +620,37 @@ class _HomePageState extends ConsumerState<HomePage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [Color(0xFF2D3E4E), Color(0xFF1A2A3A)],
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  opaque: false,
+                  pageBuilder: (context, animation, secondaryAnimation) {
+                    return const AssistantChatPage();
+                  },
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(0.0, 1.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeOutQuart;
+                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                    var offsetAnimation = animation.drive(tween);
+                    return SlideTransition(position: offsetAnimation, child: child);
+                  },
+                ),
+              );
+            },
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFF2D3E4E), Color(0xFF1A2A3A)],
+                ),
               ),
-            ),
-            child: const Center(
-              child: Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 30),
+              child: const Center(
+                child: Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 30),
+              ),
             ),
           ),
           const SizedBox(width: 15),
