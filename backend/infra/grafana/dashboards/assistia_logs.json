@@ -1,0 +1,341 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_CLICKHOUSE",
+      "label": "ClickHouse",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "grafana-clickhouse-datasource",
+      "pluginName": "ClickHouse"
+    }
+  ],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.4.2" },
+    { "type": "datasource", "id": "grafana-clickhouse-datasource", "name": "ClickHouse", "version": "4.0.0" },
+    { "type": "panel", "id": "timeseries", "name": "Time series", "version": "" },
+    { "type": "panel", "id": "piechart", "name": "Pie chart", "version": "" },
+    { "type": "panel", "id": "stat", "name": "Stat", "version": "" },
+    { "type": "panel", "id": "table", "name": "Table", "version": "" },
+    { "type": "panel", "id": "bargauge", "name": "Bar gauge", "version": "" }
+  ],
+  "annotations": { "list": [] },
+  "description": "AssistiaAI uygulama log izleme panosu",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "📊 Genel Bakış",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 100 },
+            { "color": "red", "value": 500 }
+          ]},
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Toplam Log (son 1s)",
+      "type": "stat",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT count() as value FROM assistia_logs.logs WHERE timestamp >= now() - INTERVAL 1 HOUR",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 10 },
+            { "color": "red", "value": 50 }
+          ]},
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Hata Sayısı (son 1s)",
+      "type": "stat",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT count() as value FROM assistia_logs.logs WHERE level IN ('ERROR','CRITICAL') AND timestamp >= now() - INTERVAL 1 HOUR",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 50 },
+            { "color": "red", "value": 200 }
+          ]},
+          "unit": "ms"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["mean"] }, "textMode": "auto" },
+      "title": "Ort. Yanıt Süresi",
+      "type": "stat",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT avg(duration_ms) as value FROM assistia_logs.logs WHERE timestamp >= now() - INTERVAL 1 HOUR AND duration_ms > 0",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 100 }
+          ]},
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Aktif Kullanıcı (son 24s)",
+      "type": "stat",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT uniqExact(user_id) as value FROM assistia_logs.logs WHERE timestamp >= now() - INTERVAL 24 HOUR AND user_id != '' AND user_id != '-'",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 101,
+      "title": "📈 Zaman Serisi",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "ERROR" }, "properties": [{ "id": "color", "value": { "fixedColor": "#F2495C", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "CRITICAL" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF0000", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "WARNING" }, "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "INFO" }, "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "DEBUG" }, "properties": [{ "id": "color", "value": { "fixedColor": "#8AB8FF", "mode": "fixed" } }] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 6 },
+      "id": 5,
+      "options": { "tooltip": { "mode": "multi" } },
+      "title": "Log Seviyesi Dağılımı (zaman serisi)",
+      "type": "timeseries",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT toStartOfMinute(timestamp) as time, level, count() as value FROM assistia_logs.logs WHERE $__timeFilter(timestamp) GROUP BY time, level ORDER BY time ASC",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" } } },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 6 },
+      "id": 6,
+      "options": { "displayLabels": ["name", "percent"], "legend": { "displayMode": "table", "placement": "bottom", "values": ["value", "percent"] }, "pieType": "donut" },
+      "title": "Olay Türü Dağılımı",
+      "type": "piechart",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT event_type, count() as value FROM assistia_logs.logs WHERE $__timeFilter(timestamp) GROUP BY event_type ORDER BY value DESC LIMIT 15",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 102,
+      "title": "🔐 Kimlik Doğrulama",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": {
+        "defaults": { "custom": { "lineWidth": 2, "fillOpacity": 15 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "AUTH_LOGIN" }, "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "AUTH_REGISTER" }, "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "AUTH_LOGIN_FAIL" }, "properties": [{ "id": "color", "value": { "fixedColor": "#F2495C", "mode": "fixed" } }] }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 15 },
+      "id": 7,
+      "title": "Giriş / Kayıt Aktivitesi",
+      "type": "timeseries",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT toStartOfMinute(timestamp) as time, event_type, count() as value FROM assistia_logs.logs WHERE event_type IN ('AUTH_LOGIN','AUTH_REGISTER','AUTH_LOGIN_FAIL','AUTH_GOOGLE') AND $__timeFilter(timestamp) GROUP BY time, event_type ORDER BY time ASC",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 15 },
+      "id": 8,
+      "options": { "sortBy": [{ "displayName": "olay_sayisi", "desc": true }], "footer": { "show": false } },
+      "title": "En Aktif Kullanıcılar (son 24s)",
+      "type": "table",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT user_id, argMax(username, timestamp) as username, argMax(email, timestamp) as email, count() as olay_sayisi FROM assistia_logs.logs WHERE timestamp >= now() - INTERVAL 24 HOUR AND user_id != '' AND user_id != '-' GROUP BY user_id ORDER BY olay_sayisi DESC LIMIT 20",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 103,
+      "title": "⚡ API Performansı",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": { "defaults": { "custom": { "lineWidth": 2 }, "unit": "ms" } },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 23 },
+      "id": 9,
+      "title": "Endpoint Yanıt Süreleri (P50 / P95 / P99)",
+      "type": "timeseries",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT toStartOfMinute(timestamp) as time, quantile(0.50)(duration_ms) as P50, quantile(0.95)(duration_ms) as P95, quantile(0.99)(duration_ms) as P99 FROM assistia_logs.logs WHERE $__timeFilter(timestamp) AND duration_ms > 0 GROUP BY time ORDER BY time ASC",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "path" }, "properties": [{ "id": "custom.width", "value": 250 }] },
+          { "matcher": { "id": "byName", "options": "istek_sayisi" }, "properties": [{ "id": "custom.width", "value": 120 }] }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 23 },
+      "id": 10,
+      "options": { "sortBy": [{ "displayName": "istek_sayisi", "desc": true }] },
+      "title": "En Çok Çağrılan Endpoint'ler",
+      "type": "table",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT path, count() as istek_sayisi, avg(duration_ms) as ort_sure_ms, max(duration_ms) as max_sure_ms FROM assistia_logs.logs WHERE $__timeFilter(timestamp) AND path != '' GROUP BY path ORDER BY istek_sayisi DESC LIMIT 20",
+        "refId": "A",
+        "format": "table"
+      }]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
+      "id": 104,
+      "title": "🚨 Hatalar",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 31 },
+      "id": 11,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "title": "Son Hata Kayıtları (Detaylı Hata İzi - Traceback)",
+      "type": "logs",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT timestamp as time, level as severity, concat('[', event_type, '] Kullanıcı: ', if(username != '', username, if(user_id != '', user_id, '-')), if(email != '', concat(' (', email, ')'), ''), if(path != '', concat(' | İstek: ', path), ''), if(status_code > 0, concat(' | HTTP: ', toString(status_code)), ''), '\n\n', msg) as line, event_type, username, email, user_id, path, status_code FROM assistia_logs.logs WHERE level IN ('ERROR','CRITICAL','WARNING') AND $__timeFilter(timestamp) ORDER BY timestamp DESC LIMIT 200",
+        "refId": "A",
+        "format": "logs"
+      }]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 },
+      "id": 106,
+      "title": "📄 Tüm Loglar",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+      "gridPos": { "h": 14, "w": 24, "x": 0, "y": 57 },
+      "id": 13,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "title": "Tüm Loglar (Detaylı Görünüm)",
+      "type": "logs",
+      "targets": [{
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "assistia-clickhouse" },
+        "rawSql": "SELECT timestamp as time, level as severity, concat('[', event_type, '] Kullanıcı: ', if(username != '', username, if(user_id != '', user_id, '-')), if(email != '', concat(' (', email, ')'), ''), if(path != '', concat(' | İstek: ', path), ''), if(status_code > 0, concat(' | HTTP: ', toString(status_code)), ''), if(duration_ms > 0, concat(' | Süre: ', toString(duration_ms), 'ms'), ''), '\n\n', msg) as line, event_type, username, email, user_id, path, status_code, duration_ms FROM assistia_logs.logs WHERE $__timeFilter(timestamp) ORDER BY timestamp DESC LIMIT 500",
+        "refId": "A",
+        "format": "logs"
+      }]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["assistia", "logs", "monitoring"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "AssistiaAI — Log İzleme",
+  "uid": "assistia-logs-v1",
+  "version": 3
+}
