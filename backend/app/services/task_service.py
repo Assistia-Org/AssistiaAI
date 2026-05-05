@@ -104,8 +104,13 @@ async def create_task_service(current_user: User, data: TaskCreate) -> TaskRespo
     if not data.community_id and creator_id not in target_users:
         target_users.add(creator_id)
 
-    # 2. Determine target date (due_date or today)
-    target_date = data.due_date.date() if data.due_date else date.today()
+    # 2. Determine target date (due_date, start_date or today)
+    if data.due_date:
+        target_date = data.due_date.date()
+    elif data.start_date:
+        target_date = data.start_date.date()
+    else:
+        target_date = date.today()
 
     # 3. Save Task
     data.creator_id = creator_id

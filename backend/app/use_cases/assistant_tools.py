@@ -60,6 +60,7 @@ async def handle_create_task(current_user: User, args: Dict[str, Any]) -> Dict[s
     data = TaskCreate(
         creator_id=str(current_user.id),
         title=args.get("title", "Görev"),
+        type=args.get("type", "Görev"),
         description=args.get("description"),
         due_date=_parse_iso(args.get("due_date")),
         start_date=_parse_iso(args.get("start_date")),
@@ -87,17 +88,16 @@ async def handle_update_task(current_user: User, args: Dict[str, Any]) -> Dict[s
     if not task_id:
         raise HTTPException(status_code=400, detail="task_id is required for update_task.")
 
-    data = TaskUpdate(
-        title=args.get("title"),
-        description=args.get("description"),
-        due_date=_parse_iso(args.get("due_date")),
-        start_date=_parse_iso(args.get("start_date")),
-        end_date=_parse_iso(args.get("end_date")),
-        priority=args.get("priority"),
-        status=args.get("status"),
-        assigned_to=args.get("assigned_to"),
-        tags=args.get("tags"),
-    )
+    update_data = {}
+    for key in ["title", "description", "priority", "status", "assigned_to", "tags"]:
+        if key in args and args[key] is not None:
+            update_data[key] = args[key]
+            
+    for key in ["due_date", "start_date", "end_date"]:
+        if key in args and args[key] is not None:
+            update_data[key] = _parse_iso(args[key])
+
+    data = TaskUpdate(**update_data)
     result = await update_task_service(task_id, data)
     return result.model_dump(mode="json")
 
@@ -320,6 +320,7 @@ async def handle_assign_task_to_community(current_user: User, args: Dict[str, An
     data = TaskCreate(
         creator_id=str(current_user.id),
         title=args.get("title", "Topluluk Görevi"),
+        type=args.get("type", "Topluluk Görevi"),
         description=args.get("description"),
         due_date=_parse_iso(args.get("due_date")),
         start_date=_parse_iso(args.get("start_date")),
@@ -327,7 +328,6 @@ async def handle_assign_task_to_community(current_user: User, args: Dict[str, An
         priority=args.get("priority", "medium"),
         community_id=community_id,
         assigned_to=args.get("assigned_to", []),
-        type="Topluluk Görevi",
         tags=args.get("tags", []),
     )
     result = await create_task_service(current_user, data)
@@ -335,13 +335,13 @@ async def handle_assign_task_to_community(current_user: User, args: Dict[str, An
 
 
 # ---------------------------------------------------------------------------
-# Tool: get_today_briefing
+# Tool: get_daily_briefing
 # ---------------------------------------------------------------------------
 
 
-async def handle_get_today_briefing(current_user: User, args: Dict[str, Any]) -> Dict[str, Any]:
+async def handle_get_daily_briefing(current_user: User, args: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Fetch today's daily program (tasks + reservations) for the current user.
+    Fetch the daily program (tasks + reservations) for the current user for a specific date.
 
     Returns a structured summary that the LLM uses to produce a natural-language
     briefing of the user's day — e.g. "Bugün 3 görevin ve 1 rezervasyonun var..."
@@ -354,9 +354,10 @@ async def handle_get_today_briefing(current_user: User, args: Dict[str, Any]) ->
     from app.services.task_service import sync_task_status
 
     user_id = str(current_user.id)
-    today = date.today()
+    target_date_str = args.get("target_date")
+    target_date = _parse_iso(target_date_str).date() if target_date_str and _parse_iso(target_date_str) else date.today()
 
-    program = await get_program_by_user_and_date(user_id, today)
+    program = await get_program_by_user_and_date(user_id, target_date)
 
     tasks_summary: List[Dict[str, Any]] = []
     reservations_summary: List[Dict[str, Any]] = []
@@ -393,7 +394,7 @@ async def handle_get_today_briefing(current_user: User, args: Dict[str, Any]) ->
         all_tasks = await list_tasks_by_user_service(user_id)
         for t in all_tasks:
             due = t.due_date
-            if due and due.date() == today if hasattr(due, "date") else due == today:
+            if due and due.date() == target_date if hasattr(due, "date") else due == target_date:
                 tasks_summary.append({
                     "id": t.id,
                     "title": t.title,
@@ -406,7 +407,7 @@ async def handle_get_today_briefing(current_user: User, args: Dict[str, Any]) ->
         all_reservations = await list_reservations_by_user_service(user_id)
         for r in all_reservations:
             start = r.start_date
-            if start and (start.date() == today if hasattr(start, "date") else start == today):
+            if start and (start.date() == target_date if hasattr(start, "date") else start == target_date):
                 reservations_summary.append({
                     "id": r.id,
                     "title": r.title,
@@ -416,7 +417,7 @@ async def handle_get_today_briefing(current_user: User, args: Dict[str, Any]) ->
                 })
 
     return {
-        "date": today.isoformat(),
+        "date": target_date.isoformat(),
         "task_count": len(tasks_summary),
         "reservation_count": len(reservations_summary),
         "tasks": tasks_summary,
@@ -440,7 +441,7 @@ TOOL_HANDLERS = {
     "list_my_reservations": handle_list_my_reservations,
     "list_my_communities": handle_list_my_communities,
     "get_community_members": handle_get_community_members,
-    "get_today_briefing": handle_get_today_briefing,
+    "get_daily_briefing": handle_get_daily_briefing,
 }
 
 

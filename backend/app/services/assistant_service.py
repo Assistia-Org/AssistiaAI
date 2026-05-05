@@ -46,14 +46,18 @@ TOOLS: List[Dict[str, Any]] = [
         "function": {
             "name": "create_task",
             "description": (
-                "Yeni bir görev oluşturur. Kullanıcı bir iş, görev ya da yapılacak şey "
-                "belirttiğinde bu aracı kullan. Topluluk görevi ise önce list_my_communities "
-                "çağır, topluluğu kullanıcıya sor, ardından community_id ile tekrar çağır."
+                "Kullanıcının günlük hayatındaki her türlü iş, kişisel etkinlik (spor, tenis, yemek, yürüyüş vb.), toplantı veya görevi oluşturur. "
+                "Kullanıcı 'randevu' veya 'etkinlik' dese bile, eğer uçak/otel/araç kiralama gibi resmi bir biletleme değilse KESİNLİKLE bu aracı kullan. (type='Etkinlik', 'Spor', 'Görev' vs. yapabilirsin). "
+                "Topluluk görevi ise önce list_my_communities çağır, topluluğu sor."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "title": {"type": "string", "description": "Görevin başlığı."},
+                    "title": {"type": "string", "description": "Görev veya toplantı başlığı."},
+                    "type": {
+                        "type": "string",
+                        "description": "Tür. Toplantı ise 'Toplantı', standart görev ise 'Görev' yaz.",
+                    },
                     "description": {"type": "string", "description": "Opsiyonel açıklama."},
                     "due_date": {
                         "type": "string",
@@ -134,9 +138,8 @@ TOOLS: List[Dict[str, Any]] = [
         "function": {
             "name": "create_reservation",
             "description": (
-                "Yeni bir rezervasyon oluşturur. Toplantı salonu, uçuş, otel, araç kiralama "
-                "veya herhangi bir etkinlik rezervasyonu için kullan. Topluluk rezervasyonu "
-                "ise önce list_my_communities çağır, topluluğu sor."
+                "SADECE resmi dış mekan biletlemeleri ve rezervasyonları (uçuş, otel, araç kiralama, restoran) oluşturur. "
+                "DİKKAT: Spor, tenis, kişisel buluşmalar, arkadaş randevuları, ofis/iş 'toplantıları' veya günlük aktiviteler için BURAYI DEĞİL, KESİNLİKLE 'create_task' aracını kullan!"
             ),
             "parameters": {
                 "type": "object",
@@ -247,9 +250,9 @@ TOOLS: List[Dict[str, Any]] = [
         "function": {
             "name": "assign_task_to_community",
             "description": (
-                "Bir topluluk için görev oluşturur ve belirli üyelere atar. "
-                "Kullanıcı 'takıma görev ver', 'topluluğa at' gibi ifadeler kullandığında çağır. "
-                "Aksiş: 1) list_my_communities → topluluk seç "
+                "Bir topluluk için görev veya toplantı oluşturur ve belirli üyelere atar. "
+                "Kullanıcı 'takıma görev/toplantı ver' gibi ifadeler kullandığında çağır. "
+                "Akış: 1) list_my_communities → topluluk seç "
                 "2) get_community_members → kullanıcıya kime atanacağını sor "
                 "3) bu tool'u community_id + assigned_to ile çağır."
             ),
@@ -257,7 +260,8 @@ TOOLS: List[Dict[str, Any]] = [
                 "type": "object",
                 "properties": {
                     "community_id": {"type": "string", "description": "Topluluk ID'si."},
-                    "title": {"type": "string", "description": "Görev başlığı."},
+                    "title": {"type": "string", "description": "Görev/Toplantı başlığı."},
+                    "type": {"type": "string", "description": "Tür: 'Toplantı' veya 'Görev'."},
                     "description": {"type": "string", "description": "Opsiyonel açıklama."},
                     "due_date": {"type": "string", "description": "Son tarih, ISO 8601."},
                     "start_date": {"type": "string", "description": "Başlangıç tarihi, ISO 8601."},
@@ -277,13 +281,18 @@ TOOLS: List[Dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "get_today_briefing",
+            "name": "get_daily_briefing",
             "description": (
-                "Bugünün görevlerini, rezervasyonlarını ve programını getirir. "
-                "Kullanıcı 'bugün ne var', 'günüm nasıl', 'programım ne', 'bugünkü görevlerim' "
+                "Belirli bir günün (bugün, yarın vb.) görevlerini, rezervasyonlarını ve programını getirir. "
+                "Kullanıcı 'bugün ne var', 'yarın programım ne', 'gelecek salı görevlerim' "
                 "gibi sorular sorduğunda çağır. Veriyi aldıktan sonra doğal, çarpıcı bir Türkçe özet yaz."
             ),
-            "parameters": {"type": "object", "properties": {}},
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "target_date": {"type": "string", "description": "Programı istenen günün tarihi, ISO 8601 formatında (YYYY-MM-DD). Boş bırakılırsa bugün kabul edilir."}
+                }
+            },
         },
     },
 ]
@@ -295,11 +304,37 @@ TOOLS: List[Dict[str, Any]] = [
 
 def _build_system_prompt(current_user: User, timezone_offset: str, now_local: datetime) -> str:
     """Construct the system prompt injected at the start of every LLM call."""
+    days_tr = {
+        "Monday": "Pazartesi",
+        "Tuesday": "Salı",
+        "Wednesday": "Çarşamba",
+        "Thursday": "Perşembe",
+        "Friday": "Cuma",
+        "Saturday": "Cumartesi",
+        "Sunday": "Pazar"
+    }
+    day_name = days_tr.get(now_local.strftime("%A"), "")
+    
+    upcoming_days = []
+    for i in range(8):
+        dt = now_local + timedelta(days=i)
+        d_name = days_tr.get(dt.strftime("%A"), "")
+        if i == 0:
+            upcoming_days.append(f"Bugün: {dt.strftime('%Y-%m-%d')} {d_name}")
+        elif i == 1:
+            upcoming_days.append(f"Yarın: {dt.strftime('%Y-%m-%d')} {d_name}")
+        else:
+            upcoming_days.append(f"{dt.strftime('%Y-%m-%d')} {d_name}")
+            
+    calendar_str = "\n".join(upcoming_days)
+    
     return f"""Sen AssistiaAI'nin Türkçe konuşan akıllı asistanısın. Kullanıcıların günlük programını, görevlerini ve rezervasyonlarını yönetmelerine yardımcı olursun.
 
 Mevcut kullanıcı: {current_user.display_name} (ID: {current_user.id})
-Şu anki tarih/saat: {now_local.strftime('%Y-%m-%d %H:%M')} (UTC{timezone_offset})
-Bugün: {now_local.strftime('%A, %d %B %Y')} (Türkçe günler: Pazartesi, Salı, Çarşamba, Perşembe, Cuma, Cumartesi, Pazar)
+Şu anki saat: {now_local.strftime('%H:%M')} (UTC{timezone_offset})
+
+TAKAVİM (Göreceli tarihler için bu takvimi kullan):
+{calendar_str}
 
 GÖREV VE DAVRANIŞ KURALLARI:
 1. Her zaman Türkçe yanıt ver.
@@ -314,12 +349,14 @@ GÖREV VE DAVRANIŞ KURALLARI:
    b) get_community_members(community_id) → üye listesini göster, kime atanacağını sor
    c) assign_task_to_community(community_id, assigned_to=[...]) ile görevi oluştur.
    d) Kullanıcı tüm topluluğa atanmasını istiyorsa assigned_to boş bırak.
-6. Kullanıcı "bugün ne var", "günüm nasıl", "programım ne", "bugünkü görevlerim/rezervasyonlarım" gibi sorular sorarsa get_today_briefing çağır, sonra zengin bir günlük özet sun.
+6. Kullanıcı "bugün ne var", "yarın ne var", "programım ne" gibi sorular sorarsa get_daily_briefing çağır (gerekirse target_date vererek), sonra zengin bir özet sun.
 7. Kullanıcı bir görevi güncellemek/tamamlamak isteyip ID vermemişse, önce list_my_tasks çağır, doğru görevi bul.
 8. Bir araç çağrısı başarılı olduğunda doğal ve kısa bir onay mesajı yaz (emojili olabilir ✓).
 9. Hata durumunda nazikçe kullanıcıyı bilgilendir.
 10. Hiçbir zaman hassas kullanıcı verilerini (şifre, token vb.) tekrarlama.
 11. Sadece sana verilen araçlarla yapabileceğin şeyleri yap; diğer istekleri nazikçe reddet.
+12. KRİTİK: Sana gönderilen konuşma geçmişinde daha önce yaptığın işlemlerin araç (tool) çağrıları gizlenmiş olabilir ve sadece verdiğin düz metin cevaplar görünebilir. Bunu görüp "demek ki araç çağırmadan sadece 'oluşturdum' diyebilirim" diye DÜŞÜNME. Yeni bir işlem (görev, toplantı vb.) istendiğinde KESİNLİKLE VE HER ZAMAN ilgili aracı (tool) çağırarak işlemi gerçekleştir.
+13. KRİTİK ZİNCİRLEME: Zincirleme işlemlerde (Örn: Önce görevleri listele, ID bul, sonra güncelle) ASLA kullanıcıdan onay, izin veya cevap bekleme! "Sorgu yapıyorum", "ID'yi buldum, güncelleyeyim mi?" gibi ara raporlar VERME! Tüm adımları tek nefeste arka arkaya (otomatik loop içinde) hallet ve kullanıcıya SADECE işlem tamamen bittiğinde "Güncellendi" yaz.
 """
 
 
@@ -366,8 +403,12 @@ async def process_assistant_message(
     for turn in request.conversation_history:
         messages.append({"role": turn.role, "content": turn.content})
 
-    # Append current user message
-    messages.append({"role": "user", "content": request.message})
+    # Append current user message with a strong reminder
+    user_msg_content = request.message
+    if len(request.conversation_history) > 0:
+        user_msg_content += "\n\n[Sistem Notu: Eğer yukarıdaki isteğim bir görev, toplantı veya işlem gerektiriyorsa, sadece metinle cevap verme! MUTLAKA ilgili aracı (tool) çağır. Geçmişteki yazışmalara aldanıp aracı çağırmadan 'oluşturdum' deme.]"
+        
+    messages.append({"role": "user", "content": user_msg_content})
 
     headers = {
         "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
@@ -384,10 +425,11 @@ async def process_assistant_message(
     async with httpx.AsyncClient(timeout=60.0) as client:
         for round_idx in range(MAX_TOOL_ROUNDS):
             payload: Dict[str, Any] = {
-                "model": "google/gemini-2.0-flash-001",
+                "model": "google/gemini-3.1-flash-lite-preview",
                 "messages": messages,
                 "tools": TOOLS,
                 "tool_choice": "auto",
+                "max_tokens": 2048,
             }
 
             response = await client.post(
