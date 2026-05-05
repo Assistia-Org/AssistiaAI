@@ -123,6 +123,24 @@ async def handle_complete_task(current_user: User, args: Dict[str, Any]) -> Dict
 
 
 # ---------------------------------------------------------------------------
+# Tool: delete_task
+# ---------------------------------------------------------------------------
+
+
+async def handle_delete_task(current_user: User, args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Delete a task using its task_id.
+    """
+    from app.services.task_service import delete_task_service
+    task_id: Optional[str] = args.get("task_id")
+    if not task_id:
+        raise HTTPException(status_code=400, detail="task_id is required for delete_task.")
+
+    await delete_task_service(task_id)
+    return {"status": "success", "message": "Görev silindi."}
+
+
+# ---------------------------------------------------------------------------
 # Tool: create_reservation
 # ---------------------------------------------------------------------------
 
@@ -193,6 +211,24 @@ async def handle_update_reservation(current_user: User, args: Dict[str, Any]) ->
     )
     result = await update_reservation_service(reservation_id, data)
     return result.model_dump(mode="json")
+
+
+# ---------------------------------------------------------------------------
+# Tool: delete_reservation
+# ---------------------------------------------------------------------------
+
+
+async def handle_delete_reservation(current_user: User, args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Delete a reservation using its reservation_id.
+    """
+    from app.services.reservation_service import delete_reservation_service
+    reservation_id: Optional[str] = args.get("reservation_id")
+    if not reservation_id:
+        raise HTTPException(status_code=400, detail="reservation_id is required for delete_reservation.")
+
+    await delete_reservation_service(reservation_id)
+    return {"status": "success", "message": "Rezervasyon silindi."}
 
 
 # ---------------------------------------------------------------------------
@@ -434,9 +470,11 @@ TOOL_HANDLERS = {
     "create_task": handle_create_task,
     "update_task": handle_update_task,
     "complete_task": handle_complete_task,
+    "delete_task": handle_delete_task,
     "assign_task_to_community": handle_assign_task_to_community,
     "create_reservation": handle_create_reservation,
     "update_reservation": handle_update_reservation,
+    "delete_reservation": handle_delete_reservation,
     "list_my_tasks": handle_list_my_tasks,
     "list_my_reservations": handle_list_my_reservations,
     "list_my_communities": handle_list_my_communities,

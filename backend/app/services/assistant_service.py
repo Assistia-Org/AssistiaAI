@@ -281,6 +281,34 @@ TOOLS: List[Dict[str, Any]] = [
     {
         "type": "function",
         "function": {
+            "name": "delete_task",
+            "description": "Var olan bir görevi (task) siler. Silinecek görevin ID'sini gerektirir. Kullanıcı bir görevi silmek istediğinde çağır.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id": {"type": "string", "description": "Silinecek görevin ID'si."},
+                },
+                "required": ["task_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_reservation",
+            "description": "Var olan bir rezervasyonu siler. Silinecek rezervasyonun ID'sini gerektirir. Kullanıcı bir rezervasyonu silmek/iptal etmek istediğinde çağır.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reservation_id": {"type": "string", "description": "Silinecek rezervasyonun ID'si."},
+                },
+                "required": ["reservation_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "get_daily_briefing",
             "description": (
                 "Belirli bir günün (bugün, yarın vb.) görevlerini, rezervasyonlarını ve programını getirir. "
@@ -350,7 +378,7 @@ GÖREV VE DAVRANIŞ KURALLARI:
    c) assign_task_to_community(community_id, assigned_to=[...]) ile görevi oluştur.
    d) Kullanıcı tüm topluluğa atanmasını istiyorsa assigned_to boş bırak.
 6. Kullanıcı "bugün ne var", "yarın ne var", "programım ne" gibi sorular sorarsa get_daily_briefing çağır (gerekirse target_date vererek), sonra zengin bir özet sun.
-7. Kullanıcı bir görevi güncellemek/tamamlamak isteyip ID vermemişse, önce list_my_tasks çağır, doğru görevi bul.
+7. Kullanıcı bir görevi güncellemek/tamamlamak/silmek isteyip ID vermemişse, önce list_my_tasks çağır, doğru görevi bul. Rezervasyon silmek için list_my_reservations kullan.
 8. Bir araç çağrısı başarılı olduğunda doğal ve kısa bir onay mesajı yaz (emojili olabilir ✓).
 9. Hata durumunda nazikçe kullanıcıyı bilgilendir.
 10. Hiçbir zaman hassas kullanıcı verilerini (şifre, token vb.) tekrarlama.
