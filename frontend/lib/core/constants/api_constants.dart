@@ -43,4 +43,7 @@ class ApiConstants {
 
   // FCM token endpoint
   static const String fcmToken = '/users/me/fcm-token';
+
+  // Assistant endpoints
+  static const String assistantChat = '/assistant/chat';
 }
