@@ -114,3 +114,8 @@ class AssistantNotifier extends Notifier<AssistantState> {
 final assistantProvider = NotifierProvider<AssistantNotifier, AssistantState>(() {
   return AssistantNotifier();
 });
+
+final dailyGreetingProvider = FutureProvider.family<String, String?>((ref, targetDate) async {
+  final repository = await ref.watch(assistantRepositoryProvider.future);
+  return repository.getDailyGreeting(targetDate: targetDate);
+});

@@ -6,6 +6,7 @@ import '../../../core/utils/event_mapper.dart';
 import '../../providers/daily_program_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/assistant_provider.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../../data/models/reservation/reservation_model.dart';
 import '../../../data/models/daily_program/daily_program_model.dart';
@@ -378,14 +379,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                          return isManuallyDone || isTimeOver;
                                        });
           
-          // Dynamic header message
-          String headerMsg = 'Bugün için her şey hazır görünüyor!';
-          if (tasks.isNotEmpty) {
-            final pendingCount = tasks.where((t) => t.status != 'completed').length;
-            headerMsg = pendingCount > 0 
-                ? 'Bugün tamamlanması gereken $pendingCount görevin var.'
-                : 'Harika! Bütün görevlerini tamamladın.';
-          }
+          final dailyGreetingAsync = ref.watch(dailyGreetingProvider(todayStr));
           
           return Stack(
             children: [
@@ -402,7 +396,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
-                    _buildHeader(headerMsg),
+                    _buildHeader(dailyGreetingAsync),
                     Transform.translate(
                       offset: const Offset(0, -30),
                       child: Container(
@@ -613,7 +607,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildHeader(String message) {
+  Widget _buildHeader(AsyncValue<String> greetingAsync) {
     return Container(
       padding: const EdgeInsets.only(top: 40, left: 20, right: 20, bottom: 50),
       color: const Color(0xFF1B232A),
@@ -661,12 +655,40 @@ class _HomePageState extends ConsumerState<HomePage> {
                 color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                message,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              child: greetingAsync.when(
+                data: (msg) => Text(
+                  msg,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                loading: () => Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.cyanAccent),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Asistan notunu hazırlıyor...',
+                      style: GoogleFonts.inter(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+                error: (err, stack) => Text(
+                  'Harika bir gün geçirmen dileğiyle!',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),

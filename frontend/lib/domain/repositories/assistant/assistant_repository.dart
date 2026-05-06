@@ -6,4 +6,6 @@ abstract class AssistantRepository {
     required List<AssistantMessageModel> history,
     required String timezoneOffset,
   });
+
+  Future<String> getDailyGreeting({String? targetDate});
 }

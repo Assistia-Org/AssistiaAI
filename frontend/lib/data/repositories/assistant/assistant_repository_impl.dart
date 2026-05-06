@@ -19,4 +19,9 @@ class AssistantRepositoryImpl implements AssistantRepository {
       timezoneOffset: timezoneOffset,
     );
   }
+
+  @override
+  Future<String> getDailyGreeting({String? targetDate}) async {
+    return await remoteDataSource.getDailyGreeting(targetDate: targetDate);
+  }
 }

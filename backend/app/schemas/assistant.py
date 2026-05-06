@@ -40,3 +40,13 @@ class AssistantChatResponse(BaseModel):
     action_performed: Optional[str] = None
     result: Optional[Dict[str, Any]] = None
     needs_clarification: bool = False
+
+
+class DailyGreetingResponse(BaseModel):
+    """
+    Response body returned by the AI daily greeting endpoint.
+    
+    - greeting: The AI generated daily greeting string.
+    """
+    
+    greeting: str
