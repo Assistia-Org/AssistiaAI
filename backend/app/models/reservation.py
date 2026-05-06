@@ -16,6 +16,7 @@ class Reservation(BaseDocument):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     status: str
+    reminder_sent: bool = Field(default=False)
 
     class Settings:
         name = "reservations"
