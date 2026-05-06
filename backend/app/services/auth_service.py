@@ -1,3 +1,4 @@
+import json
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -7,6 +8,7 @@ from jose import jwt, JWTError
 from pydantic import ValidationError
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password, create_access_token, create_refresh_token
+from app.core.redis import set_redis_value
 from app.repositories.user import (
     create_user,
     get_user_by_email,
@@ -46,8 +48,16 @@ from app.core.messages.success_message import (
 )
 from app.utils.email import send_password_reset_email
 from app.utils.validators import validate_password_strength
+from app.core.logger import logger, EventType
 
-logger = logging.getLogger(__name__)
+std_logger = logging.getLogger(__name__)
+
+# ── Redis user cache ────────────────────────────────────────────────────────
+async def _cache_user(user) -> None:
+    """Kullanıcı bilgisini Redis'e yaz. TTL: 24 saat."""
+    key = f"user_cache:{user.id}"
+    val = json.dumps({"username": user.username or "", "email": user.email or ""})
+    await set_redis_value(key, val, expire=86400)  # 24 saat
 
 async def change_password_service(user: User, data: ChangePasswordRequest) -> dict:
     """
@@ -70,7 +80,12 @@ async def change_password_service(user: User, data: ChangePasswordRequest) -> di
     
     user.hashed_password = get_password_hash(data.new_password)
     await user.save()
-    
+
+    await logger.info(
+        EventType.AUTH_PASSWORD_CHANGE,
+        "Şifre değiştirildi",
+        user_id=str(user.id),
+    )
     return {"message": PASSWORD_CHANGED}
 
 async def forgot_password_service(data: ForgotPasswordRequest) -> dict:
@@ -95,7 +110,12 @@ async def forgot_password_service(data: ForgotPasswordRequest) -> dict:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=EMAIL_SEND_FAILED
         )
-    
+
+    await logger.info(
+        EventType.AUTH_PASSWORD_RESET,
+        "Şifre sıfırlama e-postası gönderildi",
+        user_id=str(user.id),
+    )
     return {"message": PASSWORD_RESET_EMAIL_SENT}
 
 async def reset_password_service(data: ResetPasswordRequest) -> dict:
@@ -153,6 +173,14 @@ async def register_user_service(data: UserCreate) -> UserResponse:
     user_data["hashed_password"] = get_password_hash(user_data.pop("password"))
     
     user = await create_user(user_data)
+    await _cache_user(user)  # Redis'e username+email yaz
+    await logger.info(
+        EventType.AUTH_REGISTER,
+        "Yeni kullanıcı kaydı oluşturuldu",
+        user_id=str(user.id),
+        username=user.username,
+        email=user.email,
+    )
     return UserResponse.model_validate(user)
 
 async def login_service(data: LoginSchema) -> Token:
@@ -162,12 +190,23 @@ async def login_service(data: LoginSchema) -> Token:
     """
     user = await get_user_by_email(data.email)
     if not user:
+        await logger.warning(
+            EventType.AUTH_LOGIN_FAIL,
+            "Giriş başarısız — kullanıcı bulunamadı",
+            extra={"email": data.email},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=INCORRECT_EMAIL_OR_PASSWORD
         )
     
     if not verify_password(data.password, user.hashed_password):
+        await logger.warning(
+            EventType.AUTH_LOGIN_FAIL,
+            "Giriş başarısız — hatalı şifre",
+            user_id=str(user.id),
+            extra={"email": data.email},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=INCORRECT_EMAIL_OR_PASSWORD
@@ -175,6 +214,14 @@ async def login_service(data: LoginSchema) -> Token:
         
     access_token = create_access_token(subject=user.id)
     refresh_token = create_refresh_token(subject=user.id)
+    await _cache_user(user)  # Redis'e username+email yaz
+    await logger.info(
+        EventType.AUTH_LOGIN,
+        "Kullanıcı başarıyla giriş yaptı",
+        user_id=str(user.id),
+        username=user.username,
+        email=user.email,
+    )
     return Token(
         access_token=access_token, 
         refresh_token=refresh_token, 
@@ -213,6 +260,14 @@ async def refresh_token_service(data: TokenRefresh) -> Token:
         
     new_access_token = create_access_token(subject=user.id)
     new_refresh_token = create_refresh_token(subject=user.id)
+    
+    await logger.info(
+        EventType.AUTH_TOKEN_REFRESH,
+        "Token yenilendi",
+        user_id=str(user.id),
+        username=user.username or "",
+        email=user.email or "",
+    )
     
     return Token(
         access_token=new_access_token,
@@ -288,6 +343,15 @@ async def google_auth_service(data: GoogleAuthRequest) -> Token:
     # 6. JWT üret ve döndür
     access_token = create_access_token(subject=user.id)
     refresh_token = create_refresh_token(subject=user.id)
+    await _cache_user(user)  # Redis'e username+email yaz
+    await logger.info(
+        EventType.AUTH_GOOGLE,
+        "Google ile kimlik doğrulama başarılı",
+        user_id=str(user.id),
+        username=user.username,
+        email=user.email,
+        extra={"google_id": google_id},
+    )
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,

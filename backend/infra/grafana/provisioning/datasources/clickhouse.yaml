@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    uid: assistia-clickhouse
+    access: proxy
+    isDefault: true
+    jsonData:
+      defaultDatabase: assistia_logs
+      host: clickhouse
+      port: 9000
+      protocol: native
+      username: default
+      timezone: UTC
+      tlsSkipVerify: true
+    secureJsonData:
+      password: ""
+    editable: true

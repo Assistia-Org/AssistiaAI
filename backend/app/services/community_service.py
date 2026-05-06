@@ -21,6 +21,7 @@ from app.repositories.user import remove_community_role
 from app.schemas.community import CommunityCreate, CommunityUpdate, CommunityResponse
 from app.models.user import User
 from app.models.community import CommunityMember
+from app.core.logger import logger, EventType
 
 
 async def create_community_service(data: CommunityCreate, current_user: User) -> CommunityResponse:
@@ -42,6 +43,16 @@ async def create_community_service(data: CommunityCreate, current_user: User) ->
     
     # Fetch links for the response
     await community.fetch_all_links()
+    
+    await logger.info(
+        EventType.COMMUNITY_CREATE,
+        "Yeni topluluk oluşturuldu",
+        user_id=str(current_user.id),
+        username=current_user.username or "",
+        email=current_user.email or "",
+        extra={"community_id": str(community.id), "name": community.name}
+    )
+    
     return CommunityResponse.model_validate(community)
 
 
@@ -78,6 +89,16 @@ async def update_community_service(community_id: str, data: CommunityUpdate, cur
     updated_community = await update_community(community, data.model_dump(exclude_unset=True))
     # Fetch links for the response
     await updated_community.fetch_all_links()
+    
+    await logger.info(
+        EventType.COMMUNITY_UPDATE,
+        "Topluluk güncellendi",
+        user_id=str(current_user.id),
+        username=current_user.username or "",
+        email=current_user.email or "",
+        extra={"community_id": str(updated_community.id)}
+    )
+    
     return CommunityResponse.model_validate(updated_community)
 
 
@@ -91,8 +112,15 @@ async def delete_community_service(community_id: str, current_user: User) -> Non
     if community.owner_id != str(current_user.id):
         raise HTTPException(status_code=403, detail=UNAUTHORIZED_COMMUNITY_ACTION)
         
-    
     await delete_community(community)
+    await logger.info(
+        EventType.COMMUNITY_DELETE,
+        "Topluluk silindi",
+        user_id=str(current_user.id),
+        username=current_user.username or "",
+        email=current_user.email or "",
+        extra={"community_id": community_id, "name": community.name}
+    )
 
 
 async def remove_community_member_service(community_id: str, user_id: str, current_user: User) -> str:
@@ -121,6 +149,15 @@ async def remove_community_member_service(community_id: str, user_id: str, curre
     # Remove from user's joined list (consistency)
     await remove_community_role(user_id, community_id)
     
+    await logger.info(
+        EventType.COMMUNITY_LEAVE,
+        "Kullanıcı topluluktan çıkarıldı",
+        user_id=str(current_user.id),
+        username=current_user.username or "",
+        email=current_user.email or "",
+        extra={"community_id": community_id, "removed_user_id": user_id}
+    )
+    
     return MEMBER_REMOVED
 
 
@@ -144,5 +181,14 @@ async def leave_community_service(community_id: str, current_user: User) -> str:
     
     # Remove from user's joined list
     await remove_community_role(str(current_user.id), community_id)
+    
+    await logger.info(
+        EventType.COMMUNITY_LEAVE,
+        "Topluluktan çıkıldı",
+        user_id=str(current_user.id),
+        username=current_user.username or "",
+        email=current_user.email or "",
+        extra={"community_id": community_id}
+    )
     
     return COMMUNITY_LEFT

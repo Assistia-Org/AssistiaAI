@@ -1,3 +1,4 @@
+import json
 from fastapi import HTTPException
 from app.core.messages.error_message import USER_NOT_FOUND, DUPLICATE_EMAIL
 from app.repositories.user import (
@@ -9,6 +10,8 @@ from app.repositories.user import (
     update_fcm_token,
 )
 from app.schemas.user import UserResponse, UserUpdate
+from app.core.logger import logger, EventType
+from app.core.redis import set_redis_value
 
 
 async def get_user_service(user_id: str) -> UserResponse:
@@ -47,6 +50,20 @@ async def update_user_service(user_id: str, data: UserUpdate) -> UserResponse:
     update_data = data.model_dump(exclude_unset=True)
         
     updated_user = await update_user(user, update_data)
+    # Redis cache'i yenile (username/email değişmiş olabilir)
+    cache_val = json.dumps({
+        "username": updated_user.username or "",
+        "email":    updated_user.email or "",
+    })
+    await set_redis_value(f"user_cache:{user_id}", cache_val, expire=86400)
+    await logger.info(
+        EventType.USER_UPDATE,
+        "Kullanıcı profili güncellendi",
+        user_id=user_id,
+        username=updated_user.username or "",
+        email=updated_user.email or "",
+        extra={"fields": list(update_data.keys())},
+    )
     return UserResponse.model_validate(updated_user)
 
 
@@ -61,6 +78,11 @@ async def delete_user_service(user_id: str) -> None:
     if not user:
         raise HTTPException(status_code=404, detail=USER_NOT_FOUND)
     await delete_user(user)
+    await logger.warning(
+        EventType.USER_DELETE,
+        "Kullanıcı hesabı silindi",
+        user_id=user_id,
+    )
 
 
 async def update_fcm_token_service(user_id: str, fcm_token: str) -> None:

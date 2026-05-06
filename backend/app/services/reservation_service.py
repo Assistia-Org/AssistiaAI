@@ -4,6 +4,7 @@ from app.core.messages.error_message import (
     RESERVATION_ALREADY_EXISTS,
     UNAUTHORIZED_COMMUNITY_ACTION
 )
+from app.core.logger import logger, EventType
 from datetime import date, datetime, timedelta
 from app.models.reservation import Reservation
 from app.models.daily_program import DailyProgramSummary, DailyProgramItems
@@ -140,6 +141,16 @@ async def create_reservation_service(current_user: User, data: ReservationCreate
 
     response = ReservationResponse.model_validate(reservation)
     response.community_name = community_name
+    await logger.info(
+        EventType.RESERVATION_CREATE,
+        f"Rezervasyon oluşturuldu: {reservation.title}",
+        user_id=user_id,
+        extra={
+            "reservation_id": str(reservation.id),
+            "community_id": data.community_id,
+            "assigned_to": list(target_users),
+        },
+    )
     return response
 
 
@@ -184,6 +195,12 @@ async def update_reservation_service(reservation_id: str, data: ReservationUpdat
         raise HTTPException(status_code=404, detail=RESERVATION_NOT_FOUND)
     
     updated_reservation = await update_reservation(reservation, data.model_dump(exclude_unset=True))
+    await logger.info(
+        EventType.RESERVATION_UPDATE,
+        "Rezervasyon güncellendi",
+        user_id=str(reservation.user_id),
+        extra={"reservation_id": reservation_id}
+    )
     return ReservationResponse.model_validate(updated_reservation)
 
 
@@ -219,3 +236,10 @@ async def delete_reservation_service(reservation_id: str) -> None:
                 program.ozet.etkinlik_sayisi = 0
                 
             await program.save()
+            
+    await logger.info(
+        EventType.RESERVATION_DELETE,
+        "Rezervasyon silindi",
+        user_id=str(user_id),
+        extra={"reservation_id": reservation_id}
+    )

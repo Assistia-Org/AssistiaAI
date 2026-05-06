@@ -14,3 +14,4 @@ httpx
 resend
 redis
 firebase-admin
+aiokafka>=0.10.0

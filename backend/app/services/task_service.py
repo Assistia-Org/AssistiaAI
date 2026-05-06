@@ -10,6 +10,7 @@ from app.repositories.task import (
 from app.schemas.task import TaskCreate, TaskUpdate, TaskResponse
 from app.repositories.community import get_community_by_id
 from app.core.messages.error_message import TASK_NOT_FOUND, UNAUTHORIZED_COMMUNITY_ACTION
+from app.core.logger import logger, EventType
 
 
 from datetime import date, datetime, timezone
@@ -155,6 +156,16 @@ async def create_task_service(current_user: User, data: TaskCreate) -> TaskRespo
 
     response = TaskResponse.model_validate(task)
     response.community_name = community_name
+    await logger.info(
+        EventType.TASK_CREATE,
+        f"Görev oluşturuldu: {task.title}",
+        user_id=creator_id,
+        extra={
+            "task_id": str(task.id),
+            "community_id": data.community_id,
+            "assigned_to": list(target_users),
+        },
+    )
     return response
 
 
@@ -205,6 +216,11 @@ async def update_task_service(task_id: str, data: TaskUpdate) -> TaskResponse:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
     
     updated_task = await update_task(task, data.model_dump(exclude_unset=True))
+    await logger.info(
+        EventType.TASK_UPDATE,
+        f"Görev güncellendi: {task_id}",
+        extra={"task_id": task_id, "fields": list(data.model_dump(exclude_unset=True).keys())},
+    )
     return TaskResponse.model_validate(updated_task)
 
 
@@ -214,3 +230,8 @@ async def delete_task_service(task_id: str) -> None:
     if not task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
     await delete_task(task)
+    await logger.warning(
+        EventType.TASK_DELETE,
+        f"Görev silindi: {task_id}",
+        extra={"task_id": task_id},
+    )
