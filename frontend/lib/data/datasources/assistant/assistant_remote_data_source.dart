@@ -42,4 +42,28 @@ class AssistantRemoteDataSource {
       throw Exception('Asistana ulaşılamadı: ${response.statusCode} - ${response.body}');
     }
   }
+
+  Future<String> getDailyGreeting({String? targetDate}) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+    
+    var url = '${ApiConstants.baseUrl}/assistant/daily-greeting';
+    if (targetDate != null) {
+      url += '?target_date=$targetDate';
+    }
+
+    final response = await client.get(
+      Uri.parse(url),
+      headers: {
+        ...AppConstants.baseHeaders,
+        if (token != null) ...AppConstants.authHeader(token),
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return json['greeting'] as String;
+    } else {
+      throw Exception('Günlük söz alınamadı: ${response.statusCode}');
+    }
+  }
 }
