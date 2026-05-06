@@ -19,6 +19,8 @@ from app.api.routes.assistant import router as assistant_router
 from app.core.config import settings
 from app.core.kafka_producer import start_producer, stop_producer
 from app.core.logger import logger, EventType
+from app.services.reminder_service import start_reminder_worker
+import asyncio
 
 class LoggingMiddleware(BaseHTTPMiddleware):
     """
@@ -146,8 +148,18 @@ async def lifespan(app: FastAPI):
         EventType.SYSTEM_STARTUP,
         f"{settings.PROJECT_NAME} başlatıldı",
     )
+    # Background tasks
+    app.state.reminder_task = asyncio.create_task(start_reminder_worker())
+
     yield
     # Shutdown
+    if hasattr(app.state, "reminder_task"):
+        app.state.reminder_task.cancel()
+        try:
+            await app.state.reminder_task
+        except asyncio.CancelledError:
+            pass
+
     await logger.info(
         EventType.SYSTEM_SHUTDOWN,
         f"{settings.PROJECT_NAME} kapatılıyor",

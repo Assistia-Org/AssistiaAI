@@ -785,7 +785,19 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: items.map((res) {
             final typeLower = res.category.toLowerCase();
             final isFlight = typeLower == 'flight' || typeLower == 'uçuş';
+            final isHotel = typeLower == 'hotel' || typeLower == 'otel' || typeLower == 'konaklama';
             final statusLabel = EventMapper.getStatusLabel(res.status);
+            
+            String subtitle = "-";
+            if (isFlight) {
+              subtitle = "Koltuk: ${res.details['seat'] ?? '-'}";
+            } else if (isHotel) {
+              subtitle = "Oda: ${res.details['room'] ?? '-'}";
+            } else {
+              // Diğer durumlar için varsa lokasyon veya detay bilgisi
+              subtitle = res.details['location'] ?? res.details['note'] ?? res.details['details'] ?? "-";
+            }
+
             return Padding(
               padding: const EdgeInsets.only(right: 15),
               child: GestureDetector(
@@ -793,7 +805,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 child: _buildInfoCard(
                   type: EventMapper.getLabel(res.category),
                   title: res.title,
-                  subtitle: isFlight ? "Koltuk: ${res.details['seat'] ?? '-'}" : "Oda: ${res.details['room'] ?? '-'}",
+                  subtitle: subtitle,
                   status: statusLabel,
                   time: _formatTime(res.startDate),
                   icon: EventMapper.getIcon(res.category),

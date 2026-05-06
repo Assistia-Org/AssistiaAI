@@ -26,6 +26,7 @@ class Task(BaseDocument):
     priority: str = "medium"
     status: TaskStatus = TaskStatus.PENDING
     tags: List[str] = Field(default_factory=list)
+    reminder_sent: bool = Field(default=False)
 
     class Settings:
         name = "tasks"
