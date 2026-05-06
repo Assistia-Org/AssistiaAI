@@ -545,3 +545,74 @@ async def process_assistant_message(
         result=last_tool_result,
         needs_clarification=False,
     )
+
+
+async def generate_daily_greeting_service(current_user: User, target_date_str: Optional[str] = None) -> str:
+    """
+    Generate a short, friendly, and motivational daily greeting using AI.
+    It fetches the user's daily program via handle_get_daily_briefing and
+    prompts the LLM to write a contextual greeting.
+    """
+    if not settings.OPENROUTER_API_KEY:
+        raise HTTPException(status_code=503, detail=ASSISTANT_LLM_ERROR)
+
+    # 1. Get daily briefing data
+    args = {"target_date": target_date_str} if target_date_str else {}
+    try:
+        from app.use_cases.assistant_tools import handle_get_daily_briefing
+        briefing_data = await handle_get_daily_briefing(current_user, args)
+    except Exception as e:
+        logger.warning(f"Failed to fetch daily briefing for greeting: {e}")
+        briefing_data = {"error": "Could not fetch program."}
+
+    # 2. Prepare the prompt for the LLM
+    briefing_json = json.dumps(briefing_data, ensure_ascii=False)
+    
+    system_prompt = (
+        f"Sen AssistiaAI'nin zeki, cana yakın ve vizyoner asistanısın. "
+        f"Mevcut kullanıcı: {current_user.display_name}. "
+        f"Aşağıda kullanıcının bugünkü program verisi (JSON olarak) bulunuyor:\n{briefing_json}\n\n"
+        f"Kullanıcının uygulamasının ana sayfasında en üstte görünecek, ona özel bir günlük mesaj hazırla. "
+        f"Şunlara dikkat et:\n"
+        f"- Sıkıcı ve sıradan olma. Günlük hayata dair kısa bir tavsiye, zihin açıcı bir söz, "
+        f"farkındalık yaratacak ufak bir öneri veya motive edici felsefi bir düşünce ekleyebilirsin.\n"
+        f"- Eğer bugün yaklaşan önemli bir görevi veya toplantısı varsa, ona hem başarılar dile hem de bunu şık bir öneriyle harmanla.\n"
+        f"- Eğer programı boşsa, ona kendine vakit ayırması, yeni bir şeyler öğrenmesi veya dinlenmesi için yaratıcı bir fikir ver.\n"
+        f"- KESİNLİKLE ÇOK KISA TUT! Maksimum 1 cümle ve en fazla 15 kelime olmalı. Bir bildirim (push notification) kadar kısa, tek ve vurucu bir cümle kur.\n"
+        f"- Samimi, modern ve enerjik bir dil kullan.\n"
+        f"- Mesaj akıcı olmalı ve emojiler içerebilir.\n"
+        f"- SADECE karşılama mesajının kendisini döndür, başka hiçbir ekstra kelime (Örn: 'İşte mesajın:' gibi) kullanma."
+    )
+
+    messages = [{"role": "system", "content": system_prompt}]
+
+    headers = {
+        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+        "HTTP-Referer": "https://assistia.ai",
+        "X-Title": "AssistiaAI",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": "google/gemini-3.1-flash-lite-preview",
+        "messages": messages,
+        "max_tokens": 50,
+        "temperature": 0.8,
+    }
+
+    # 3. Call LLM
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            response = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            
+            llm_response = response.json()
+            reply_content = llm_response["choices"][0]["message"].get("content") or ""
+            return reply_content.strip()
+        except Exception as e:
+            logger.error(f"Failed to generate daily greeting: {e}")
+            return f"Merhaba {current_user.display_name}, harika bir gün geçirmen dileğiyle! ✨"
