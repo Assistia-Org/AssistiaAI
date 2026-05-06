@@ -14,7 +14,7 @@ from app.repositories.notification import (
     mark_notification_as_read,
     soft_delete_notification,
 )
-from app.repositories.user import get_fcm_token
+from app.repositories.user import get_fcm_token, get_user_by_id
 from app.schemas.notification import NotificationListResponse, NotificationResponse
 
 
@@ -50,10 +50,10 @@ async def create_notification_service(
     )
 
     # FCM push — works even when app is closed (fire-and-forget, never raises)
-    fcm_token = await get_fcm_token(user_id)
-    if fcm_token:
+    user = await get_user_by_id(user_id)
+    if user and user.fcm_token and user.personal_settings.notifications:
         await send_push_notification(
-            fcm_token=fcm_token,
+            fcm_token=user.fcm_token,
             title=title,
             body=body,
             data={"type": type, "notification_id": str(notification.id)},
