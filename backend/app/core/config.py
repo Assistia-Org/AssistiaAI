@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: str = ""       # boş bırakılırsa Kafka devre dışı
     KAFKA_LOGS_TOPIC: str = "app-logs"
     LOG_LEVEL: str = "INFO"                 # DEBUG | INFO | WARNING | ERROR | CRITICAL
+    SLACK_WEBHOOK_URL: str = ""             # Slack hata logları webhook URL'si
 
     # JWT Settings
     SECRET_KEY: str = "your-complex-secret-key-for-development"  # In production, use env
