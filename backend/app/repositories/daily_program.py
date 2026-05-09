@@ -30,7 +30,7 @@ async def get_program_by_user_and_date(user_id: str, search_date: date) -> Optio
 
 async def list_programs_by_user(user_id: str) -> List[DailyProgram]:
     """
-    List all DailyProgram documents belongs to a user.
+    List all DailyProgram documents belongs to a user. 
     """
     return await DailyProgram.find(DailyProgram.kullanici_id == user_id).to_list()
 
