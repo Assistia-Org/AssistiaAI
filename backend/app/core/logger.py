@@ -22,6 +22,8 @@ Her log çağrısı:
 import json
 import logging
 import time
+import asyncio
+import httpx
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional
@@ -161,6 +163,35 @@ class AssistiaLogger:
             record["msg"],
         )
         await send_log(self._topic, record)
+
+        if level_name in (LogLevel.ERROR.value, LogLevel.CRITICAL.value) and settings.SLACK_WEBHOOK_URL:
+            # Asenkron çalışması için task olarak fırlatıyoruz, ana akışı bloklamasın.
+            asyncio.create_task(self._send_to_slack(record))
+
+    async def _send_to_slack(self, record: dict) -> None:
+        webhook_url = settings.SLACK_WEBHOOK_URL
+        if not webhook_url:
+            return
+
+        message = (
+            f"*{record['level']} - {record['event_type']}*\n"
+            f"*Path:* `{record.get('path') or '-'}`\n"
+            f"*User:* {record.get('username') or record.get('user_id') or '-'}\n"
+            f"*Message:* {record['msg']}\n"
+        )
+        
+        extra_data = record.get('extra', {})
+        if extra_data:
+            message += f"*Extra:*\n```{json.dumps(extra_data, indent=2)}```"
+
+        payload = {"text": message}
+
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(webhook_url, json=payload, timeout=5.0)
+        except Exception as e:
+            # Sadece stdout'a bas ki döngüye girmesin
+            _std_logger.error("Slack'e log gönderilirken hata oluştu: %s", str(e))
 
     # ── Seviye metodları ──────────────────────────────────────────────────────
 
