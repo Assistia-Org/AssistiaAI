@@ -224,14 +224,69 @@ async def update_task_service(task_id: str, data: TaskUpdate) -> TaskResponse:
     return TaskResponse.model_validate(updated_task)
 
 
-async def delete_task_service(task_id: str) -> None:
-    """Orchestrate task deletion."""
+async def delete_task_service(task_id: str, current_user: User) -> None:
+    """
+    Orchestrate task deletion.
+    - If current_user is the creator: Delete the task globally and remove from ALL users' programs.
+    - If current_user is just assigned: Remove current_user from assigned_to and only from their own program.
+    """
     task = await get_task_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
-    await delete_task(task)
-    await logger.warning(
-        EventType.TASK_DELETE,
-        f"Görev silindi: {task_id}",
-        extra={"task_id": task_id},
-    )
+
+    user_id = str(current_user.id)
+    is_creator = task.creator_id == user_id
+
+    # Determine the target date used when this task was added to DailyPrograms
+    if task.due_date:
+        target_date = task.due_date.date()
+    elif task.start_date:
+        target_date = task.start_date.date()
+    else:
+        target_date = date.today()
+
+    if is_creator:
+        # 1. Cleanup DailyProgram for ALL assigned users
+        for assigned_user_id in task.assigned_to:
+            program = await get_program_by_user_and_date(assigned_user_id, target_date)
+            if program:
+                # Remove the task link
+                original_len = len(program.items.tasks)
+                program.items.tasks = [t for t in program.items.tasks if str(getattr(t, "id", t)) != task_id]
+                
+                if len(program.items.tasks) < original_len:
+                    program.ozet.task_sayisi -= (original_len - len(program.items.tasks))
+                    if program.ozet.task_sayisi < 0:
+                        program.ozet.task_sayisi = 0
+                    await program.save()
+
+        # 2. Delete the task record itself
+        await delete_task(task)
+        await logger.warning(
+            EventType.TASK_DELETE,
+            f"Görev lider tarafından herkes için silindi: {task_id}",
+            extra={"task_id": task_id, "creator_id": user_id},
+        )
+    else:
+        # 1. Cleanup DailyProgram ONLY for the current user
+        program = await get_program_by_user_and_date(user_id, target_date)
+        if program:
+            original_len = len(program.items.tasks)
+            program.items.tasks = [t for t in program.items.tasks if str(getattr(t, "id", t)) != task_id]
+            
+            if len(program.items.tasks) < original_len:
+                program.ozet.task_sayisi -= (original_len - len(program.items.tasks))
+                if program.ozet.task_sayisi < 0:
+                    program.ozet.task_sayisi = 0
+                await program.save()
+
+        # 2. Remove the user from the assigned_to list of the task
+        if user_id in task.assigned_to:
+            task.assigned_to.remove(user_id)
+            await task.save()
+
+        await logger.info(
+            EventType.TASK_UPDATE,
+            f"Kullanıcı görevi kendi listesinden sildi: {task_id}",
+            extra={"task_id": task_id, "user_id": user_id},
+        )

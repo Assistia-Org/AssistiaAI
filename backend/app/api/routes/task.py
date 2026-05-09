@@ -84,4 +84,4 @@ async def delete_task(
     Görev silme endpoint'i.
     İlgili görevi veritabanından tamamen çıkarır (hard/soft delete).
     """
-    await delete_task_service(task_id)
+    await delete_task_service(task_id, current_user)
