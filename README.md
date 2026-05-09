@@ -76,7 +76,7 @@ cp .env.example .env
 3. **Firebase Yetkilendirmesi:** Firebase Console'dan indireceğiniz `firebase-credentials.json` (Service Account) dosyasını `backend` dizininin içine ekleyin.
 4. Docker ile servisleri başlatın:
 ```bash
-docker-compose up -d --build
+docker-compose up --build
 ```
 > [!TIP]
 > Bu komut FastAPI, MongoDB ve Redis'i birlikte başlatır. Backend artık `http://10.0.0.2:8000` adresinde(android emulator) çalışmaktadır.
