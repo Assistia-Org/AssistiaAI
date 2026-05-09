@@ -111,4 +111,4 @@ async def delete_reservation(
     Rezervasyon silme endpoint'i.
     İptal edilen rezervasyon girişini veritabanından kalıcı olarak kaldırır.
     """
-    await delete_reservation_service(reservation_id)
+    await delete_reservation_service(reservation_id, current_user)

@@ -136,7 +136,7 @@ async def handle_delete_task(current_user: User, args: Dict[str, Any]) -> Dict[s
     if not task_id:
         raise HTTPException(status_code=400, detail="task_id is required for delete_task.")
 
-    await delete_task_service(task_id)
+    await delete_task_service(task_id, current_user)
     return {"status": "success", "message": "Görev silindi."}
 
 
@@ -227,7 +227,7 @@ async def handle_delete_reservation(current_user: User, args: Dict[str, Any]) ->
     if not reservation_id:
         raise HTTPException(status_code=400, detail="reservation_id is required for delete_reservation.")
 
-    await delete_reservation_service(reservation_id)
+    await delete_reservation_service(reservation_id, current_user)
     return {"status": "success", "message": "Rezervasyon silindi."}
 
 

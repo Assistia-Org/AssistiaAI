@@ -204,42 +204,73 @@ async def update_reservation_service(reservation_id: str, data: ReservationUpdat
     return ReservationResponse.model_validate(updated_reservation)
 
 
-async def delete_reservation_service(reservation_id: str) -> None:
-    """Orchestrate reservation deletion and remove from all linked daily programs."""
+async def delete_reservation_service(reservation_id: str, current_user: User) -> None:
+    """
+    Orchestrate reservation deletion and remove from linked daily programs.
+    - If current_user is the creator: Delete the reservation globally and remove from ALL users' programs.
+    - If current_user is just assigned: Remove current_user from assigned_to and only from their own program.
+    """
     reservation = await get_reservation_by_id(reservation_id)
     if not reservation:
         raise HTTPException(status_code=404, detail=RESERVATION_NOT_FOUND)
 
-    user_id = reservation.user_id
+    user_id = str(current_user.id)
+    creator_id = str(reservation.user_id)
+    is_creator = creator_id == user_id
 
-    # Rezervasyonu sil
-    await delete_reservation(reservation)
+    # Determine the date range for DailyProgram cleanup
+    start_d = reservation.start_date.date() if reservation.start_date else date.today()
+    end_d = reservation.end_date.date() if reservation.end_date else start_d
+    if end_d < start_d:
+        end_d = start_d
 
-    # Bu kullanıcının tüm programlarını getir ve rezervasyonu barındıranlardan çıkar
-    from app.models.daily_program import DailyProgram
-    programs = await DailyProgram.find(DailyProgram.kullanici_id == user_id).to_list()
-    
-    for program in programs:
-        target_links = []
-        for r in program.items.etkinlikler:
-            # Beanie Link objesi (ref) veya direkt döküman olabilir
-            link_id = getattr(r.ref, "id", None) if hasattr(r, "ref") else getattr(r, "id", None)
-            if str(link_id) == str(reservation_id):
-                target_links.append(r)
+    if is_creator:
+        # 1. Cleanup DailyProgram for ALL assigned users over the date range
+        for assigned_user_id in reservation.assigned_to:
+            current_d = start_d
+            while current_d <= end_d:
+                program = await get_program_by_user_and_date(assigned_user_id, current_d)
+                if program:
+                    original_len = len(program.items.etkinlikler)
+                    program.items.etkinlikler = [r for r in program.items.etkinlikler if str(getattr(r, "id", r)) != reservation_id]
+                    
+                    if len(program.items.etkinlikler) < original_len:
+                        program.ozet.etkinlik_sayisi -= (original_len - len(program.items.etkinlikler))
+                        if program.ozet.etkinlik_sayisi < 0:
+                            program.ozet.etkinlik_sayisi = 0
+                        await program.save()
+                current_d += timedelta(days=1)
+
+        # 2. Delete the reservation record itself
+        await delete_reservation(reservation)
+        await logger.warning(
+            EventType.RESERVATION_DELETE,
+            f"Rezervasyon lider tarafından herkes için silindi: {reservation_id}",
+            extra={"reservation_id": reservation_id, "creator_id": user_id},
+        )
+    else:
+        # 1. Cleanup DailyProgram ONLY for the current user over the date range
+        current_d = start_d
+        while current_d <= end_d:
+            program = await get_program_by_user_and_date(user_id, current_d)
+            if program:
+                original_len = len(program.items.etkinlikler)
+                program.items.etkinlikler = [r for r in program.items.etkinlikler if str(getattr(r, "id", r)) != reservation_id]
                 
-        if target_links:
-            for r in target_links:
-                program.items.etkinlikler.remove(r)
-            
-            program.ozet.etkinlik_sayisi -= len(target_links)
-            if program.ozet.etkinlik_sayisi < 0:
-                program.ozet.etkinlik_sayisi = 0
-                
-            await program.save()
-            
-    await logger.info(
-        EventType.RESERVATION_DELETE,
-        "Rezervasyon silindi",
-        user_id=str(user_id),
-        extra={"reservation_id": reservation_id}
-    )
+                if len(program.items.etkinlikler) < original_len:
+                    program.ozet.etkinlik_sayisi -= (original_len - len(program.items.etkinlikler))
+                    if program.ozet.etkinlik_sayisi < 0:
+                        program.ozet.etkinlik_sayisi = 0
+                    await program.save()
+            current_d += timedelta(days=1)
+
+        # 2. Remove the user from the assigned_to list of the reservation
+        if user_id in reservation.assigned_to:
+            reservation.assigned_to.remove(user_id)
+            await reservation.save()
+
+        await logger.info(
+            EventType.RESERVATION_UPDATE,
+            f"Kullanıcı rezervasyonu kendi listesinden sildi: {reservation_id}",
+            extra={"reservation_id": reservation_id, "user_id": user_id},
+        )
