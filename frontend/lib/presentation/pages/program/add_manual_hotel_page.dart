@@ -1,10 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import '../../providers/daily_program_provider.dart';
 import '../../widgets/assignment_selector.dart';
+import '../../widgets/location_picker_widget.dart';
 
 class AddManualHotelPage extends ConsumerStatefulWidget {
   const AddManualHotelPage({super.key});
@@ -21,6 +25,14 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
   bool _isSubmitting = false;
   String? _communityId;
   List<String> _assignedTo = [];
+  String? _locationAddress;
+  double? _locationLat;
+  double? _locationLng;
+
+  // AI
+  bool _isAiExpanded = false;
+  bool _isAnalyzing = false;
+  final _imagePicker = ImagePicker();
   
   String _selectedCity = 'İstanbul';
   static const List<String> _cities = [
@@ -52,6 +64,53 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
     _pnrController.dispose();
     _guestController.dispose();
     super.dispose();
+  }
+
+  // ── AI Helpers ─────────────────────────────────────────────────────
+  Future<void> _pickImage() async {
+    final f = await _imagePicker.pickImage(source: ImageSource.gallery);
+    if (f != null) _handleAnalysis(File(f.path), 'image/jpeg');
+  }
+
+  Future<void> _pickFile() async {
+    final r = await FilePicker.platform
+        .pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+    if (r != null && r.files.single.path != null) {
+      _handleAnalysis(File(r.files.single.path!), 'application/pdf');
+    }
+  }
+
+  Future<void> _handleAnalysis(File file, String mimeType) async {
+    setState(() => _isAnalyzing = true);
+    try {
+      final result = await ref
+          .read(reservationControllerProvider)
+          .analyzeTicket(file, mimeType);
+      if (!mounted) return;
+      if (result.containsKey('error')) {
+        _showSnack(result['error'].toString(), isError: true);
+      } else {
+        // Fill hotel fields from AI result
+        if (result['hotel_name'] != null) _hotelNameController.text = result['hotel_name'];
+        if (result['pnr'] != null) _pnrController.text = result['pnr'];
+        if (result['guest'] != null) _guestController.text = result['guest'];
+        setState(() => _isAiExpanded = false);
+        _showSnack('✅ Otel bilgileri otomatik dolduruldu!');
+      }
+    } catch (e) {
+      if (mounted) _showSnack('Hata: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isAnalyzing = false);
+    }
+  }
+
+  void _showSnack(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: isError ? Colors.redAccent : const Color(0xFF10B981),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   Future<void> _selectDate(bool isCheckIn) async {
@@ -139,6 +198,9 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
       communityId: _communityId,
       assignedTo: _assignedTo,
       status: "confirmed",
+      locationAddress: _locationAddress,
+      locationLat: _locationLat,
+      locationLng: _locationLng,
     );
 
     try {
@@ -190,6 +252,8 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _buildAiSection(),
+              const SizedBox(height: 24),
               _buildSectionTitle('OTEL BİLGİLERİ'),
               const SizedBox(height: 16),
               _buildTextField(
@@ -201,6 +265,17 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
               ),
               const SizedBox(height: 16),
               _buildCitySelector(),
+              const SizedBox(height: 16),
+              LocationPickerWidget(
+                accentColor: const Color(0xFF6366F1),
+                onChanged: (result) {
+                  setState(() {
+                    _locationAddress = result?.address;
+                    _locationLat = result?.lat;
+                    _locationLng = result?.lng;
+                  });
+                },
+              ),
               const SizedBox(height: 24),
               
               _buildSectionTitle('ÇIKIŞ BİLGİLERİ (GİRİŞ - ÇIKIŞ)'),
@@ -351,7 +426,7 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
                 const Icon(Icons.calendar_today_rounded, color: Color(0xFF6366F1), size: 16),
                 const SizedBox(width: 8),
                 Text(
-                  DateFormat('dd MMM yyyy').format(date),
+                  DateFormat('dd/MM/yyyy').format(date),
                   style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ],
@@ -395,4 +470,86 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
       ),
     );
   }
+
+  Widget _buildAiSection() {
+    const Color accent = Color(0xFF6366F1);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [accent.withValues(alpha: 0.12), const Color(0xFF8B5CF6).withValues(alpha: 0.08)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      child: Column(children: [
+        InkWell(
+          onTap: () => setState(() => _isAiExpanded = !_isAiExpanded),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.auto_awesome_rounded, color: accent, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('AI ile Otomatik Doldur',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                const Text('Rezervasyon belgesi veya fotoğraf yükleyin',
+                    style: TextStyle(color: Colors.white38, fontSize: 11)),
+              ])),
+              Icon(_isAiExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                  color: Colors.white38),
+            ]),
+          ),
+        ),
+        if (_isAiExpanded) ...[  
+          Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _isAnalyzing
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Column(children: [
+                      CircularProgressIndicator(color: accent, strokeWidth: 3),
+                      SizedBox(height: 12),
+                      Text('Belge analiz ediliyor...',
+                          style: TextStyle(color: Colors.white60, fontSize: 13)),
+                    ]))
+                : Row(children: [
+                    Expanded(child: _aiBtn('PDF Yükle', Icons.picture_as_pdf_rounded, accent, _pickFile)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _aiBtn('Fotoğraf', Icons.add_photo_alternate_rounded, const Color(0xFF8B5CF6), _pickImage)),
+                  ]),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  Widget _aiBtn(String label, IconData icon, Color color, VoidCallback onTap) =>
+      GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+          ),
+          child: Column(children: [
+            Icon(icon, color: color, size: 24),
+            const SizedBox(height: 6),
+            Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      );
 }

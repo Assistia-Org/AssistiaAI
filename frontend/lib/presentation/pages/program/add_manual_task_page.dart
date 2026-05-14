@@ -7,6 +7,7 @@ import '../../providers/task_provider.dart';
 import '../../providers/daily_program_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/assignment_selector.dart';
+import '../../widgets/location_picker_widget.dart';
 
 class AddManualTaskPage extends ConsumerStatefulWidget {
   final DateTime initialDate;
@@ -29,6 +30,9 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   TimeOfDay _endTime = const TimeOfDay(hour: 11, minute: 0);
   String? _communityId;
   List<String> _assignedTo = [];
+  String? _locationAddress;
+  double? _locationLat;
+  double? _locationLng;
 
   final List<String> _types = ['Görev', 'Toplantı', 'Yemek', 'Spor', 'Eğlence', 'Diğer'];
 
@@ -107,6 +111,9 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       endDate: combinedEnd,
       priority: _selectedPriority,
       status: 'pending',
+      locationAddress: _locationAddress,
+      locationLat: _locationLat,
+      locationLng: _locationLng,
     );
 
     try {
@@ -197,6 +204,18 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
                 hint: 'Eklemek istediğiniz detaylar...',
                 icon: Icons.description_rounded,
                 maxLines: 3,
+              ),
+              const SizedBox(height: 24),
+              _buildSectionTitle('KONUM'),
+              const SizedBox(height: 16),
+              LocationPickerWidget(
+                onChanged: (result) {
+                  setState(() {
+                    _locationAddress = result?.address;
+                    _locationLat = result?.lat;
+                    _locationLng = result?.lng;
+                  });
+                },
               ),
               const SizedBox(height: 40),
               _buildSubmitButton(isLoading),
@@ -298,7 +317,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
             children: [
               Text('Tarih', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
               Text(
-                DateFormat('dd MMMM yyyy').format(_selectedDate),
+                DateFormat('dd/MM/yyyy').format(_selectedDate),
                 style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ],

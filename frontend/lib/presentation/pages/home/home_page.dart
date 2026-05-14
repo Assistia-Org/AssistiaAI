@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/event_mapper.dart';
 import '../../providers/daily_program_provider.dart';
 import '../../providers/task_provider.dart';
@@ -262,7 +263,29 @@ class _HomePageState extends ConsumerState<HomePage> {
                   height: 1.5,
                 ),
               ),
-            
+
+            // Location Row (if available)
+            Builder(builder: (_) {
+              final String? locAddr = isTask
+                  ? (item as TaskModel).locationAddress
+                  : (item as ReservationModel).locationAddress;
+              final double? locLat = isTask
+                  ? (item as TaskModel).locationLat
+                  : (item as ReservationModel).locationLat;
+              final double? locLng = isTask
+                  ? (item as TaskModel).locationLng
+                  : (item as ReservationModel).locationLng;
+              if (locAddr == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: _HomeLocationRow(
+                  address: locAddr,
+                  lat: locLat,
+                  lng: locLng,
+                ),
+              );
+            }),
+
             const SizedBox(height: 40),
             
             // Action Buttons
@@ -429,7 +452,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    DateFormat('d MMMM yyyy').format(DateTime.now()),
+                                    DateFormat('dd/MM/yyyy').format(DateTime.now()),
                                     style: GoogleFonts.inter(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -1121,6 +1144,59 @@ class _HomePageState extends ConsumerState<HomePage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Location Row (Home Page) ─────────────────────────────────────────────────
+class _HomeLocationRow extends StatelessWidget {
+  final String address;
+  final double? lat;
+  final double? lng;
+
+  const _HomeLocationRow({required this.address, this.lat, this.lng});
+
+  Future<void> _openMaps() async {
+    final Uri uri = (lat != null && lng != null)
+        ? Uri.parse('https://maps.google.com/?q=$lat,$lng')
+        : Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(address)}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _openMaps,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEAF5EE),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF4A7C5F).withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.location_on_rounded, size: 18, color: Color(0xFF4A7C5F)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                address,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2E7D50),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.open_in_new_rounded, size: 14, color: Color(0xFF4A7C5F)),
+          ],
+        ),
       ),
     );
   }

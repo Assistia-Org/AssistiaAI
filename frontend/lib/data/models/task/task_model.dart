@@ -13,6 +13,9 @@ class TaskModel {
   final String priority;
   final String status;
   final List<String> tags;
+  final String? locationAddress;
+  final double? locationLat;
+  final double? locationLng;
 
   TaskModel({
     this.id = '',
@@ -29,6 +32,9 @@ class TaskModel {
     this.priority = 'medium',
     this.status = 'pending',
     this.tags = const [],
+    this.locationAddress,
+    this.locationLat,
+    this.locationLng,
   });
 
   factory TaskModel.fromJson(Map<String, dynamic> json) {
@@ -53,6 +59,9 @@ class TaskModel {
       priority: json['priority'] ?? 'medium',
       status: json['status'] ?? 'pending',
       tags: List<String>.from(json['tags'] ?? []),
+      locationAddress: json['location_address'],
+      locationLat: (json['location_lat'] as num?)?.toDouble(),
+      locationLng: (json['location_lng'] as num?)?.toDouble(),
     );
   }
 
@@ -71,6 +80,49 @@ class TaskModel {
       'priority': priority,
       'status': status,
       'tags': tags,
+      'location_address': locationAddress,
+      'location_lat': locationLat,
+      'location_lng': locationLng,
     };
+  }
+
+  TaskModel copyWith({
+    String? id,
+    String? creatorId,
+    List<String>? assignedTo,
+    String? communityId,
+    String? communityName,
+    String? type,
+    String? title,
+    String? description,
+    DateTime? dueDate,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? priority,
+    String? status,
+    List<String>? tags,
+    String? locationAddress,
+    double? locationLat,
+    double? locationLng,
+  }) {
+    return TaskModel(
+      id: id ?? this.id,
+      creatorId: creatorId ?? this.creatorId,
+      assignedTo: assignedTo ?? this.assignedTo,
+      communityId: communityId ?? this.communityId,
+      communityName: communityName ?? this.communityName,
+      type: type ?? this.type,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      dueDate: dueDate ?? this.dueDate,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      priority: priority ?? this.priority,
+      status: status ?? this.status,
+      tags: tags ?? this.tags,
+      locationAddress: locationAddress ?? this.locationAddress,
+      locationLat: locationLat ?? this.locationLat,
+      locationLng: locationLng ?? this.locationLng,
+    );
   }
 }
