@@ -7,6 +7,9 @@ import 'account_info_page.dart';
 import 'change_password_page.dart';
 import 'personal_settings_page.dart';
 import 'help_support_page.dart';
+import '../../providers/community_provider.dart';
+import '../../providers/task_provider.dart';
+import '../../providers/reservation_provider.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -71,7 +74,33 @@ class ProfilePage extends ConsumerWidget {
                         ),
                         
                         const SizedBox(height: 30),
-                        _buildStats(),
+                        Builder(builder: (context) {
+                          final communitiesAsync = ref.watch(myCommunitiesProvider);
+                          final tasksAsync = ref.watch(allTasksProvider);
+                          final reservationsAsync = ref.watch(allReservationsProvider);
+
+                          final String communityCount = communitiesAsync.when(
+                            data: (list) => list.length.toString(),
+                            loading: () => '...',
+                            error: (_, __) => '0',
+                          );
+                          final String taskCount = tasksAsync.when(
+                            data: (list) => list.length.toString(),
+                            loading: () => '...',
+                            error: (_, __) => '0',
+                          );
+                          final String reservationCount = reservationsAsync.when(
+                            data: (list) => list.length.toString(),
+                            loading: () => '...',
+                            error: (_, __) => '0',
+                          );
+
+                          return _buildStats(
+                            communityCount: communityCount,
+                            taskCount: taskCount,
+                            reservationCount: reservationCount,
+                          );
+                        }),
                         
                         const SizedBox(height: 20),
                         _buildSettingsList(context, ref),
@@ -142,7 +171,11 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildStats() {
+  Widget _buildStats({
+    required String communityCount,
+    required String taskCount,
+    required String reservationCount,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 25),
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -153,9 +186,9 @@ class ProfilePage extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('12', 'Topluluk'),
-          _buildStatItem('45', 'Görev'),
-          _buildStatItem('8', 'Seyahat'),
+          _buildStatItem(communityCount, 'Topluluk'),
+          _buildStatItem(taskCount, 'Görev'),
+          _buildStatItem(reservationCount, 'Seyahat'),
         ],
       ),
     );
