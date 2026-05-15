@@ -4,8 +4,10 @@ from fastapi import HTTPException
 from app.core.messages.error_message import (
     TOO_MANY_VERIFICATION_REQUESTS,
     INVALID_VERIFICATION_CODE,
-    EMAIL_SEND_FAILED
+    EMAIL_SEND_FAILED,
+    DUPLICATE_EMAIL
 )
+from app.repositories.user import get_user_by_email
 from app.core.messages.success_message import (
     VERIFICATION_CODE_SENT,
     EMAIL_VERIFIED
@@ -26,10 +28,16 @@ async def request_verification_service(email: str) -> str:
     """
     Handle verification code request with rate limiting.
     Max 3 requests per 5 minutes using Redis.
+    Also checks if the email is already registered before sending a code.
     """
     rate_key = f"verification:rate:{email}"
     code_key = f"verification:code:{email}"
-    
+
+    # 0. Check if email is already registered
+    existing_user = await get_user_by_email(email)
+    if existing_user:
+        raise HTTPException(status_code=409, detail=DUPLICATE_EMAIL)
+
     # 1. Check rate limit
     count = await increment_redis_value(rate_key, expire=300)
     if count > 3:

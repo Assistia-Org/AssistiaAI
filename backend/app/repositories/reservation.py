@@ -1,4 +1,5 @@
 from typing import List, Optional
+from beanie import PydanticObjectId
 from app.models.reservation import Reservation
 
 async def create_reservation(reservation_data: dict) -> Reservation:
@@ -8,7 +9,7 @@ async def create_reservation(reservation_data: dict) -> Reservation:
 
 async def get_reservation_by_id(reservation_id: str) -> Optional[Reservation]:
     """Return reservation by ID or None if not found."""
-    return await Reservation.find_one(Reservation.id == reservation_id)
+    return await Reservation.find_one({"_id": reservation_id})
 
 async def list_reservations() -> List[Reservation]:
     """Return all reservations."""

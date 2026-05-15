@@ -7,6 +7,7 @@ from app.models.task import Task
 from app.models.reservation import Reservation
 from app.models.daily_program import DailyProgram
 from app.models.invitation import Invitation
+from app.models.notification import Notification
 
 async def init_db():
     """Initialize Beanie ODM with MongoDB."""
@@ -22,5 +23,6 @@ async def init_db():
             Reservation,
             DailyProgram,
             Invitation,
+            Notification,
         ]
     )

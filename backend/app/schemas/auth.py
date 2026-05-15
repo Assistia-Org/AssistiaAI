@@ -29,3 +29,7 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
     confirm_password: str
+
+class GoogleAuthRequest(BaseModel):
+    id_token: str
+    fcm_token: Optional[str] = None

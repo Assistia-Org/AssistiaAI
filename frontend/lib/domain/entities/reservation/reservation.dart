@@ -2,6 +2,8 @@ class Reservation {
   final String id;
   final String? userId;
   final String? communityId;
+  final String? communityName;
+  final List<String> assignedTo;
   final String category;
   final String title;
   final Map<String, dynamic> details;
@@ -9,11 +11,16 @@ class Reservation {
   final DateTime? startDate;
   final DateTime? endDate;
   final String status;
+  final String? locationAddress;
+  final double? locationLat;
+  final double? locationLng;
 
   Reservation({
-    required this.id,
+    this.id = '',
     this.userId,
     this.communityId,
+    this.communityName,
+    this.assignedTo = const [],
     required this.category,
     required this.title,
     required this.details,
@@ -21,5 +28,8 @@ class Reservation {
     this.startDate,
     this.endDate,
     required this.status,
+    this.locationAddress,
+    this.locationLat,
+    this.locationLng,
   });
 }

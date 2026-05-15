@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// If StateProvider is still missing, it might be due to an environment issue.
-// Using a simple Notifier as an alternative if needed.
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,10 +15,14 @@ import '../../domain/usecases/auth/forgot_password_usecase.dart';
 import '../../domain/usecases/auth/change_password_usecase.dart';
 import '../../domain/usecases/auth/request_verification_usecase.dart';
 import '../../domain/usecases/auth/verify_code_usecase.dart';
+import '../../domain/usecases/auth/google_auth_usecase.dart';
 import '../../data/datasources/auth/auth_remote_data_source.dart';
 import '../../data/repositories/auth/auth_repository_impl.dart';
+import '../../data/datasources/notification/notification_remote_datasource.dart';
 import 'community_provider.dart';
 import 'invitation_provider.dart';
+import 'daily_program_provider.dart';
+import 'notification_provider.dart';
 import 'sse_provider.dart';
 
 // --- Dependecy Injection via Riverpod ---
@@ -95,6 +101,11 @@ final verifyCodeUseCaseProvider = FutureProvider<VerifyCodeUseCase>((ref) async 
   return VerifyCodeUseCase(repository);
 });
 
+final googleAuthUseCaseProvider = FutureProvider<GoogleAuthUseCase>((ref) async {
+  final repository = await ref.watch(authRepositoryProvider.future);
+  return GoogleAuthUseCase(repository);
+});
+
 
 // --- State Management ---
 
@@ -109,6 +120,20 @@ class AuthLoadingNotifier extends Notifier<bool> {
 
 final authLoadingProvider = NotifierProvider<AuthLoadingNotifier, bool>(() {
   return AuthLoadingNotifier();
+});
+
+// Login başarı splash ekranı için state
+class ShowLoginSplashNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void show() => state = true;
+  void hide() => state = false;
+}
+
+final showLoginSplashProvider =
+    NotifierProvider<ShowLoginSplashNotifier, bool>(() {
+  return ShowLoginSplashNotifier();
 });
 
 class CurrentUserNotifier extends Notifier<User?> {
@@ -139,12 +164,17 @@ class AuthController {
       final loginUseCase = await ref.read(loginUseCaseProvider.future);
       final user = await loginUseCase.execute(email: email, password: password);
       ref.read(currentUserProvider.notifier).setUser(user);
-      
+
+      // Login başarı splash ekranını göster (3 saniye)
+      ref.read(showLoginSplashProvider.notifier).show();
+
       // Connect SSE
       final prefs = await ref.read(sharedPrefsProvider.future);
       final token = prefs.getString('access_token');
       if (token != null) {
         ref.read(sseServiceProvider).connect(token);
+        // Register FCM token with backend
+        _registerFcmToken(prefs);
       }
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
@@ -170,6 +200,8 @@ class AuthController {
       // Clear all cached user data
       ref.invalidate(myCommunitiesProvider);
       ref.invalidate(myInvitationsProvider);
+      ref.invalidate(dailyProgramByDateProvider);
+      ref.invalidate(notificationProvider);
       ref.read(currentUserProvider.notifier)._clearState();
       ref.read(authPageProvider.notifier).setPage(AuthPageType.login);
       ref.read(sseServiceProvider).disconnect();
@@ -190,6 +222,9 @@ class AuthController {
         
         // Connect SSE on app launch
         ref.read(sseServiceProvider).connect(token);
+        // Register FCM token with backend
+        final prefs = await ref.read(sharedPrefsProvider.future);
+        _registerFcmToken(prefs);
       } catch (e) {
         // If token is invalid or expired, logout
         await logout();
@@ -236,8 +271,86 @@ class AuthController {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
   }
+
+  Future<void> signInWithGoogle() async {
+    ref.read(authLoadingProvider.notifier).setLoading(true);
+    try {
+      // 1. Google hesabı seç
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return; // Kullanıcı iptal etti
+
+      // 2. Firebase credential oluştur ve Firebase'e sign-in yap
+      final googleAuth = await googleUser.authentication;
+      final credential = firebase_auth.GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential = await firebase_auth.FirebaseAuth.instance
+          .signInWithCredential(credential);
+
+      // 3. Firebase ID Token al (kendi backend'imiz için)
+      final idToken = await userCredential.user?.getIdToken();
+      if (idToken == null) throw Exception('Firebase ID token alınamadı.');
+
+      // 4. FCM token al (opsiyonel)
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessagingInstance._instance.getToken();
+      } catch (_) {}
+
+      // 5. Backend datasource üzerinden doğrudan googleAuth çağır (fcmToken ile)
+      final prefs = await ref.read(sharedPrefsProvider.future);
+      final client = ref.read(httpClientProvider);
+      final ds = AuthRemoteDataSource(client: client, sharedPreferences: prefs);
+      final user = await ds.googleAuth(idToken: idToken, fcmToken: fcmToken);
+
+      ref.read(currentUserProvider.notifier).setUser(user);
+      ref.read(showLoginSplashProvider.notifier).show();
+
+      // SSE bağla
+      final token = prefs.getString('access_token');
+      if (token != null) {
+        ref.read(sseServiceProvider).connect(token);
+      }
+    } finally {
+      ref.read(authLoadingProvider.notifier).setLoading(false);
+    }
+  }
 }
 
 final authControllerProvider = Provider<AuthController>((ref) {
   return AuthController(ref);
 });
+
+/// Registers the FCM device token with the backend. Fire-and-forget.
+void _registerFcmToken(SharedPreferences prefs) async {
+  try {
+    final accessToken = prefs.getString('access_token');
+    if (accessToken == null) return;
+
+    final messaging = FirebaseMessagingInstance._instance;
+    final fcmToken = await messaging.getToken();
+
+    // 🔍 Bu log'u Flutter konsolunda gör — token alındıysa FCM çalışıyor
+    if (fcmToken == null) {
+      debugPrint('❌ FCM: Token alınamadı (Google Play Services gerekli)');
+      return;
+    }
+    debugPrint('✅ FCM Token alındı: $fcmToken');
+
+    final ds = NotificationRemoteDataSource(
+      client: http.Client(),
+      sharedPreferences: prefs,
+    );
+    await ds.registerFcmToken(fcmToken);
+    debugPrint('✅ FCM Token backend\'e kaydedildi');
+  } catch (e) {
+    debugPrint('❌ FCM Token hatası: $e');
+  }
+}
+
+// Thin wrapper so we can import firebase_messaging only in one place
+class FirebaseMessagingInstance {
+  static final _instance = FirebaseMessaging.instance;
+}
+

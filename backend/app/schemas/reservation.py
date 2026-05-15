@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from app.schemas.base import BaseSchema
@@ -9,10 +9,14 @@ class ReservationBase(BaseModel):
     category: str
     title: str
     details: Dict[str, Any]
+    assigned_to: List[str] = []
     is_shared: bool = False
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     status: str
+    location_address: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
 
 class ReservationCreate(ReservationBase):
     pass
@@ -23,10 +27,15 @@ class ReservationUpdate(BaseModel):
     is_shared: Optional[bool] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    assigned_to: Optional[List[str]] = None
     status: Optional[str] = None
+    location_address: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
 
 class ReservationResponse(ReservationBase, BaseSchema):
     id: str
+    community_name: Optional[str] = None
 
     class Config:
         from_attributes = True

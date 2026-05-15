@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notification_provider.dart';
 import 'account_info_page.dart';
 import 'change_password_page.dart';
+import 'personal_settings_page.dart';
+import 'help_support_page.dart';
+import '../../providers/community_provider.dart';
+import '../../providers/task_provider.dart';
+import '../../providers/reservation_provider.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -68,7 +74,33 @@ class ProfilePage extends ConsumerWidget {
                         ),
                         
                         const SizedBox(height: 30),
-                        _buildStats(),
+                        Builder(builder: (context) {
+                          final communitiesAsync = ref.watch(myCommunitiesProvider);
+                          final tasksAsync = ref.watch(allTasksProvider);
+                          final reservationsAsync = ref.watch(allReservationsProvider);
+
+                          final String communityCount = communitiesAsync.when(
+                            data: (list) => list.length.toString(),
+                            loading: () => '...',
+                            error: (_, __) => '0',
+                          );
+                          final String taskCount = tasksAsync.when(
+                            data: (list) => list.length.toString(),
+                            loading: () => '...',
+                            error: (_, __) => '0',
+                          );
+                          final String reservationCount = reservationsAsync.when(
+                            data: (list) => list.length.toString(),
+                            loading: () => '...',
+                            error: (_, __) => '0',
+                          );
+
+                          return _buildStats(
+                            communityCount: communityCount,
+                            taskCount: taskCount,
+                            reservationCount: reservationCount,
+                          );
+                        }),
                         
                         const SizedBox(height: 20),
                         _buildSettingsList(context, ref),
@@ -139,7 +171,11 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildStats() {
+  Widget _buildStats({
+    required String communityCount,
+    required String taskCount,
+    required String reservationCount,
+  }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 25),
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -150,9 +186,9 @@ class ProfilePage extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('12', 'Topluluk'),
-          _buildStatItem('45', 'Görev'),
-          _buildStatItem('8', 'Seyahat'),
+          _buildStatItem(communityCount, 'Topluluk'),
+          _buildStatItem(taskCount, 'Görev'),
+          _buildStatItem(reservationCount, 'Seyahat'),
         ],
       ),
     );
@@ -207,7 +243,7 @@ class ProfilePage extends ConsumerWidget {
               );
             },
           ),
-          _buildSettingItem(Icons.notifications_none_rounded, 'Bildirimler'),
+          _buildNotificationToggleItem(ref),
           _buildSettingItem(Icons.security_rounded, 'Güvenlik',
             onTap: () {
               Navigator.push(
@@ -216,8 +252,24 @@ class ProfilePage extends ConsumerWidget {
               );
             },
           ),
-          _buildSettingItem(Icons.palette_outlined, 'Görünüm'),
-          _buildSettingItem(Icons.help_outline_rounded, 'Yardım & Destek'),
+          _buildSettingItem(Icons.palette_outlined, 'Görünüm',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PersonalSettingsPage(),
+                ),
+              );
+            },
+          ),
+          _buildSettingItem(Icons.help_outline_rounded, 'Yardım & Destek',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpSupportPage()),
+              );
+            },
+          ),
           const SizedBox(height: 20),
           _buildSettingItem(
             Icons.logout_rounded, 
@@ -274,6 +326,106 @@ class ProfilePage extends ConsumerWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationToggleItem(WidgetRef ref) {
+    final enabledAsync = ref.watch(notificationsEnabledProvider);
+    final isEnabled = enabledAsync.whenOrNull(data: (v) => v) ?? true;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[100]!),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: (isEnabled
+                    ? const Color(0xFF1B232A)
+                    : Colors.grey)
+                .withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            isEnabled
+                ? Icons.notifications_rounded
+                : Icons.notifications_off_outlined,
+            color: isEnabled ? const Color(0xFF1B232A) : Colors.grey,
+            size: 22,
+          ),
+        ),
+        title: Text(
+          'Bildirimler',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Text(
+                isEnabled ? 'Açık' : 'Kapalı',
+                key: ValueKey(isEnabled),
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isEnabled
+                      ? const Color(0xFF2ECC71)
+                      : Colors.grey[400],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: enabledAsync.isLoading
+                  ? null
+                  : () {
+                      ref
+                          .read(notificationsEnabledProvider.notifier)
+                          .toggle();
+                    },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                width: 48,
+                height: 26,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(13),
+                  color: isEnabled
+                      ? const Color(0xFF1B232A)
+                      : Colors.grey[300],
+                ),
+                child: Stack(
+                  children: [
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      left: isEnabled ? 24 : 2,
+                      top: 2,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

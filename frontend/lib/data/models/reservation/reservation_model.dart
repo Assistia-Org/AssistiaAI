@@ -5,6 +5,8 @@ class ReservationModel extends Reservation {
     required super.id,
     super.userId,
     super.communityId,
+    super.communityName,
+    super.assignedTo,
     required super.category,
     required super.title,
     required super.details,
@@ -12,6 +14,9 @@ class ReservationModel extends Reservation {
     super.startDate,
     super.endDate,
     required super.status,
+    super.locationAddress,
+    super.locationLat,
+    super.locationLng,
   });
 
   factory ReservationModel.fromJson(Map<String, dynamic> json) {
@@ -19,6 +24,8 @@ class ReservationModel extends Reservation {
       id: json['id'] ?? json['_id'],
       userId: json['user_id'],
       communityId: json['community_id'],
+      communityName: json['community_name'],
+      assignedTo: List<String>.from(json['assigned_to'] ?? []),
       category: json['category'],
       title: json['title'],
       details: json['details'] ?? {},
@@ -30,6 +37,9 @@ class ReservationModel extends Reservation {
           ? DateTime.parse(json['end_date'])
           : null,
       status: json['status'],
+      locationAddress: json['location_address'],
+      locationLat: (json['location_lat'] as num?)?.toDouble(),
+      locationLng: (json['location_lng'] as num?)?.toDouble(),
     );
   }
 
@@ -38,6 +48,8 @@ class ReservationModel extends Reservation {
       'id': id,
       'user_id': userId,
       'community_id': communityId,
+      'community_name': communityName,
+      'assigned_to': assignedTo,
       'category': category,
       'title': title,
       'details': details,
@@ -45,6 +57,9 @@ class ReservationModel extends Reservation {
       'start_date': startDate?.toIso8601String(),
       'end_date': endDate?.toIso8601String(),
       'status': status,
+      'location_address': locationAddress,
+      'location_lat': locationLat,
+      'location_lng': locationLng,
     };
   }
 
@@ -53,6 +68,8 @@ class ReservationModel extends Reservation {
       id: entity.id,
       userId: entity.userId,
       communityId: entity.communityId,
+      communityName: entity.communityName,
+      assignedTo: entity.assignedTo,
       category: entity.category,
       title: entity.title,
       details: entity.details,
@@ -60,6 +77,9 @@ class ReservationModel extends Reservation {
       startDate: entity.startDate,
       endDate: entity.endDate,
       status: entity.status,
+      locationAddress: entity.locationAddress,
+      locationLat: entity.locationLat,
+      locationLng: entity.locationLng,
     );
   }
 }

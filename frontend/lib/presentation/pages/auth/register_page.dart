@@ -145,7 +145,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
   Future<void> _nextStep() async {
     if (_formKeys[_currentStep].currentState!.validate()) {
       if (_currentStep == 1) {
-        // Step 1: Email -> Request Code
+        // Step 1: Email → kod gönder (backend kayıtlı email'i 409 ile reddeder)
         try {
           await ref.read(authControllerProvider).requestVerification(_emailController.text);
           if (mounted) {
@@ -163,9 +163,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
           }
         } catch (e) {
           if (mounted) {
+            final message = e.toString().replaceFirst('Exception: ', '');
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Kod gönderilemedi: ${e.toString()}'),
+                content: Text(message),
                 backgroundColor: Colors.red,
                 behavior: SnackBarBehavior.floating,
               ),

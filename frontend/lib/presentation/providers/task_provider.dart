@@ -78,3 +78,10 @@ class TaskController {
 final taskControllerProvider = Provider<TaskController>((ref) {
   return TaskController(ref);
 });
+
+final allTasksProvider = FutureProvider<List<TaskModel>>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
+  final controller = ref.watch(taskControllerProvider);
+  return await controller.getMyTasks(user.id);
+});

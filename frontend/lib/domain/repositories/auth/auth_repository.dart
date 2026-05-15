@@ -9,4 +9,5 @@ abstract class AuthRepository {
   Future<void> changePassword({required String oldPassword, required String newPassword});
   Future<void> requestVerification(String email);
   Future<void> verifyCode({required String email, required String code});
+  Future<User> googleAuth(String idToken);
 }

@@ -8,10 +8,13 @@ import '../../../data/models/reservation/reservation_model.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../providers/daily_program_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/reservation_provider.dart';
 import 'add_manual_task_page.dart';
 import 'add_flight_reservation_page.dart';
 import 'add_bus_reservation_page.dart';
 import 'add_manual_hotel_page.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProgramPage extends ConsumerStatefulWidget {
   const ProgramPage({super.key});
@@ -142,7 +145,9 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
       try {
         await ref.read(taskControllerProvider).deleteTask(taskId);
         if (mounted) {
-          Navigator.pop(context); // Close bottom sheet
+          // Önce provider'ı yenile, sonra sheet'i kapat
+          ref.invalidate(dailyProgramByDateProvider(DateFormat('yyyy-MM-dd').format(_selectedDate)));
+          Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Görev silindi', style: GoogleFonts.inter()),
@@ -151,7 +156,54 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hata: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteReservation(String reservationId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Rezervasyonu Sil', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text('Bu rezervasyonu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.', style: GoogleFonts.inter()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Vazgeç', style: GoogleFonts.inter(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Sil', style: GoogleFonts.inter(color: const Color(0xFFF43F5E), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(reservationControllerProvider).deleteReservation(reservationId);
+        if (mounted) {
+          // Önce provider'ı yenile, sonra sheet'i kapat
           ref.invalidate(dailyProgramByDateProvider(DateFormat('yyyy-MM-dd').format(_selectedDate)));
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Rezervasyon silindi', style: GoogleFonts.inter()),
+              backgroundColor: const Color(0xFF1B232A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
         }
       } catch (e) {
         if (mounted) {
@@ -254,13 +306,44 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         children: [
           Padding(
             padding: const EdgeInsets.only(right: 24, bottom: 10),
-            child: Text(
-              _monthYearText,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white70,
-                letterSpacing: 1.0,
+            child: InkWell(
+              onTap: () async {
+                final DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (picked != null) {
+                  setState(() {
+                    _selectedDate = picked;
+                  });
+                  final weekStartOfPicked = _getStartOfWeek(picked);
+                  final initialWeekStart = _getStartOfWeek(DateTime.now());
+                  final daysDiff = weekStartOfPicked.difference(initialWeekStart).inDays;
+                  final weekOffset = (daysDiff / 7).round();
+                  _pageController.jumpToPage(500 + weekOffset);
+                  _updateMonthYearText(weekStartOfPicked);
+                }
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _monthYearText,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down_rounded, color: Colors.white70),
+                  ],
+                ),
               ),
             ),
           ),
@@ -818,14 +901,41 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        label,
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: color,
-                          letterSpacing: 1.1,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              label,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: color,
+                                letterSpacing: 1.1,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (isTask ? (data as TaskModel).communityId : (data as ReservationModel).communityId) != null
+                                  ? const Color(0xFF6366F1).withOpacity(0.1)
+                                  : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              (isTask ? (data as TaskModel).communityName : (data as ReservationModel).communityName) ?? 'Kişisel',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: (isTask ? (data as TaskModel).communityId : (data as ReservationModel).communityId) != null
+                                    ? const Color(0xFF6366F1)
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -1083,7 +1193,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   Expanded(
                     child: _gridCell(
                       'Başlangıç',
-                      DateFormat('dd MMM').format(task.startDate!),
+                      DateFormat('dd/MM').format(task.startDate!),
                       sub: DateFormat('HH:mm').format(task.startDate!),
                       color: color,
                     ),
@@ -1099,7 +1209,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   Expanded(
                     child: _gridCell(
                       'Bitiş',
-                      DateFormat('dd MMM').format(task.endDate!),
+                      DateFormat('dd/MM').format(task.endDate!),
                       sub: DateFormat('HH:mm').format(task.endDate!),
                       color: color,
                     ),
@@ -1122,6 +1232,16 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 height: 1.5,
               ),
             ),
+          ),
+        ],
+        // Location
+        if (task.locationAddress != null || (task.locationLat != null && task.locationLng != null)) ...[
+          const SizedBox(height: 12),
+          _buildLocationCard(
+            address: task.locationAddress,
+            lat: task.locationLat,
+            lng: task.locationLng,
+            color: color,
           ),
         ],
         const SizedBox(height: 32),
@@ -1189,7 +1309,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                               res.category.toLowerCase().contains('otel')
                           ? 'Giriş'
                           : 'Kalkış',
-                      DateFormat('dd MMM yy').format(res.startDate!),
+                      DateFormat('dd/MM/yy').format(res.startDate!),
                       sub: DateFormat('HH:mm').format(res.startDate!),
                       color: color,
                     ),
@@ -1208,7 +1328,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                               res.category.toLowerCase().contains('otel')
                           ? 'Çıkış'
                           : 'Varış',
-                      DateFormat('dd MMM yy').format(res.endDate!),
+                      DateFormat('dd/MM/yy').format(res.endDate!),
                       sub: DateFormat('HH:mm').format(res.endDate!),
                       color: color,
                     ),
@@ -1230,6 +1350,38 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
           ),
         ],
+        // Location
+        if (res.locationAddress != null || (res.locationLat != null && res.locationLng != null)) ...[
+          const SizedBox(height: 12),
+          _buildLocationCard(
+            address: res.locationAddress,
+            lat: res.locationLat,
+            lng: res.locationLng,
+            color: color,
+          ),
+        ],
+        const SizedBox(height: 32),
+        // Delete button
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: OutlinedButton(
+            onPressed: () => _deleteReservation(res.id),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.red.withOpacity(0.2)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+            ),
+            child: Text(
+              'Rezervasyonu Sil',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.red[400],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1475,6 +1627,87 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             .map((w) =>
                 w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
             .join(' ');
+  }
+
+  Widget _buildLocationCard({
+    String? address,
+    double? lat,
+    double? lng,
+    required Color color,
+  }) {
+    return _sectionCard(
+      color: color,
+      title: 'KONUM',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (address != null && address.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(Icons.location_on_rounded, size: 16, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    address,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF334155),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (lat != null && lng != null) const SizedBox(height: 12),
+          ],
+          if (lat != null && lng != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                height: 150,
+                width: double.infinity,
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(lat, lng),
+                        zoom: 15,
+                      ),
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId('location'),
+                          position: LatLng(lat, lng),
+                        ),
+                      },
+                      zoomControlsEnabled: false,
+                      mapToolbarEnabled: false,
+                      myLocationButtonEnabled: false,
+                      liteModeEnabled: true, // Optimizes for performance
+                      onTap: (_) async {
+                        final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                        if (await canLaunchUrl(Uri.parse(url))) {
+                          await launchUrl(Uri.parse(url));
+                        }
+                      },
+                    ),
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: () async {
+                          final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                          if (await canLaunchUrl(Uri.parse(url))) {
+                            await launchUrl(Uri.parse(url));
+                          }
+                        },
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   // ─── EMPTY STATE ───────────────────────────────────────────────────────────

@@ -1,4 +1,6 @@
 class ApiConstants {
+
+  
   static const String baseUrl = 'http://10.0.2.2:8000/api/v1';
 
   // Auth endpoints
@@ -17,6 +19,7 @@ class ApiConstants {
 
   // Reservation endpoints
   static const String reservations = '/reservations/';
+  static String reservationById(String id) => '/reservations/$id';
   static const String reservationsAnalyze = '/reservations/analyze';
   static const String reservationsAnalyzeBus = '/reservations/analyze-bus';
 
@@ -33,4 +36,16 @@ class ApiConstants {
   static String communityDetail(String id) => '/communities/$id';
   static String communityLeave(String id) => '/communities/$id/leave';
   static String communityRemoveMember(String communityId, String userId) => '/communities/$communityId/members/$userId';
+
+  // Notification endpoints
+  static const String notifications = '/notifications/';
+  static String notificationMarkRead(String id) => '/notifications/$id/read';
+  static const String notificationsReadAll = '/notifications/read-all';
+  static String notificationDelete(String id) => '/notifications/$id';
+
+  // FCM token endpoint
+  static const String fcmToken = '/users/me/fcm-token';
+
+  // Assistant endpoints
+  static const String assistantChat = '/assistant/chat';
 }

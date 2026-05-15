@@ -17,6 +17,9 @@ class TaskBase(BaseModel):
     priority: str = "medium"
     status: TaskStatus = TaskStatus.PENDING
     tags: List[str] = []
+    location_address: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
 
 class TaskCreate(TaskBase):
     pass
@@ -31,9 +34,13 @@ class TaskUpdate(BaseModel):
     priority: Optional[str] = None
     status: Optional[TaskStatus] = None
     tags: Optional[List[str]] = None
+    location_address: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
 
 class TaskResponse(TaskBase, BaseSchema):
     id: str
+    community_name: Optional[str] = None
 
     class Config:
         from_attributes = True

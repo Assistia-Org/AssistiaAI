@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/sse/sse_client.dart';
 import 'invitation_provider.dart';
+import 'notification_provider.dart';
 
 // Provides the raw SSEClient instance
 final sseClientProvider = Provider<SSEClient>((ref) {
@@ -25,6 +26,14 @@ class SSEService {
     if (type == 'new_invitation') {
       // Refresh incoming requests
       ref.invalidate(myInvitationsProvider);
+    } else if (type == 'new_notification') {
+      // Toggle kapalıysa UI'ya yansıtma (backend bağlantısı sürüyor)
+      final isEnabled = ref
+          .read(notificationsEnabledProvider)
+          .whenOrNull(data: (v) => v) ?? true;
+      if (isEnabled) {
+        ref.invalidate(notificationProvider);
+      }
     }
   }
 

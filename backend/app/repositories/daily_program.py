@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, time as time_obj
 from typing import List, Optional
 from app.models.daily_program import DailyProgram
 
@@ -18,15 +18,19 @@ async def get_daily_program_by_id(program_id: str) -> Optional[DailyProgram]:
 async def get_program_by_user_and_date(user_id: str, search_date: date) -> Optional[DailyProgram]:
     """
     Find a DailyProgram for a specific user on a specific date.
+    Uses datetime range because PyMongo stores date as datetime;
+    direct date comparison silently fails to match.
     """
-    return await DailyProgram.find_one(
-        DailyProgram.kullanici_id == user_id,
-        DailyProgram.tarih == search_date
-    )
+    start_dt = datetime.combine(search_date, time_obj.min)
+    end_dt = datetime.combine(search_date, time_obj.max)
+    return await DailyProgram.find_one({
+        "kullanici_id": user_id,
+        "tarih": {"$gte": start_dt, "$lte": end_dt},
+    })
 
 async def list_programs_by_user(user_id: str) -> List[DailyProgram]:
     """
-    List all DailyProgram documents belongs to a user.
+    List all DailyProgram documents belongs to a user. 
     """
     return await DailyProgram.find(DailyProgram.kullanici_id == user_id).to_list()
 

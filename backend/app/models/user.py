@@ -19,13 +19,15 @@ class User(BaseDocument):
     username: str
     display_name: str
     email: EmailStr
-    hashed_password: str
+    hashed_password: Optional[str] = None
+    google_id: Optional[str] = None
     is_active: bool = True
     avatar_url: Optional[str] = None
     joined_communities: List[CommunityRoleModel] = Field(default_factory=list)
     personal_settings: PersonalSettingsModel = Field(default_factory=PersonalSettingsModel)
     reset_token: Optional[str] = None
     reset_token_expires_at: Optional[datetime] = None
+    fcm_token: Optional[str] = None
 
     class Settings:
         name = "users"
