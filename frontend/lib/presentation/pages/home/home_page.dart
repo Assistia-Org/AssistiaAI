@@ -480,11 +480,14 @@ class _HomePageState extends ConsumerState<HomePage> {
           final reservations = program.items.etkinlikler;
           final filteredTasks = _selectedTaskCommunityId == null
               ? tasks
-              : tasks
-                    .where(
-                      (task) => task.communityId == _selectedTaskCommunityId,
-                    )
-                    .toList();
+              : (_selectedTaskCommunityId == 'personal'
+                  ? tasks.where((t) => t.communityId == null).toList()
+                  : tasks
+                        .where(
+                          (task) =>
+                              task.communityId == _selectedTaskCommunityId,
+                        )
+                        .toList());
 
           final regularTasks = tasks
               .where(
@@ -790,6 +793,15 @@ class _HomePageState extends ConsumerState<HomePage> {
               count: tasks.length,
               isSelected: _selectedTaskCommunityId == null,
               onTap: () => setState(() => _selectedTaskCommunityId = null),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: _buildCommunityTaskTab(
+                label: 'Kişisel',
+                count: tasks.where((t) => t.communityId == null).length,
+                isSelected: _selectedTaskCommunityId == 'personal',
+                onTap: () => setState(() => _selectedTaskCommunityId = 'personal'),
+              ),
             ),
             ...communities.map((community) {
               final count = communityTaskCounts[community.id] ?? 0;
