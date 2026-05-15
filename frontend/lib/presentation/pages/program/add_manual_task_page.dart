@@ -7,6 +7,7 @@ import '../../providers/task_provider.dart';
 import '../../providers/daily_program_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/assignment_selector.dart';
+import '../../widgets/location_picker_widget.dart';
 
 class AddManualTaskPage extends ConsumerStatefulWidget {
   final DateTime initialDate;
@@ -20,21 +21,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  static const List<String> _monthNames = [
-    'Ocak',
-    'Şubat',
-    'Mart',
-    'Nisan',
-    'Mayıs',
-    'Haziran',
-    'Temmuz',
-    'Ağustos',
-    'Eylül',
-    'Ekim',
-    'Kasım',
-    'Aralık',
-  ];
-
+  
   String _selectedType = 'Görev';
   String _selectedPriority = 'medium';
   late DateTime _selectedDate;
@@ -43,15 +30,11 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   TimeOfDay _endTime = const TimeOfDay(hour: 11, minute: 0);
   String? _communityId;
   List<String> _assignedTo = [];
+  String? _locationAddress;
+  double? _locationLat;
+  double? _locationLng;
 
-  final List<String> _types = [
-    'Görev',
-    'Toplantı',
-    'Yemek',
-    'Spor',
-    'Eğlence',
-    'Diğer',
-  ];
+  final List<String> _types = ['Görev', 'Toplantı', 'Yemek', 'Spor', 'Eğlence', 'Diğer'];
 
   @override
   void initState() {
@@ -118,9 +101,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
 
     final task = TaskModel(
       creatorId: currentUser?.id ?? '',
-      assignedTo: _communityId == null && _assignedTo.isEmpty
-          ? [currentUser?.id ?? '']
-          : _assignedTo,
+      assignedTo: _communityId == null && _assignedTo.isEmpty ? [currentUser?.id ?? ''] : _assignedTo,
       communityId: _communityId,
       type: _selectedType,
       title: _titleController.text,
@@ -130,11 +111,14 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       endDate: combinedEnd,
       priority: _selectedPriority,
       status: 'pending',
+      locationAddress: _locationAddress,
+      locationLat: _locationLat,
+      locationLng: _locationLng,
     );
 
     try {
       await ref.read(taskControllerProvider).createTask(task);
-
+      
       // Invalidate the daily program provider for the selected date
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
       ref.invalidate(dailyProgramByDateProvider(dateStr));
@@ -147,9 +131,9 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e')),
+        );
       }
     } finally {
       if (mounted) {
@@ -165,10 +149,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A), // Deep dark
       appBar: AppBar(
-        title: const Text(
-          'Yeni Görev Ekle',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Yeni Görev Ekle', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Colors.white,
@@ -198,9 +179,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(
-                    child: _buildTimePicker('Başlangıç', _startTime, true),
-                  ),
+                  Expanded(child: _buildTimePicker('Başlangıç', _startTime, true)),
                   const SizedBox(width: 16),
                   Expanded(child: _buildTimePicker('Bitiş', _endTime, false)),
                 ],
@@ -225,6 +204,18 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
                 hint: 'Eklemek istediğiniz detaylar...',
                 icon: Icons.description_rounded,
                 maxLines: 3,
+              ),
+              const SizedBox(height: 24),
+              _buildSectionTitle('KONUM'),
+              const SizedBox(height: 16),
+              LocationPickerWidget(
+                onChanged: (result) {
+                  setState(() {
+                    _locationAddress = result?.address;
+                    _locationLat = result?.lat;
+                    _locationLng = result?.lng;
+                  });
+                },
               ),
               const SizedBox(height: 40),
               _buildSubmitButton(isLoading),
@@ -259,7 +250,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: TextFormField(
         controller: controller,
@@ -291,154 +282,79 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
         child: DropdownButton<String>(
           value: _selectedType,
           dropdownColor: const Color(0xFF1E293B),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Colors.white54,
-          ),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white54),
           isExpanded: true,
           onChanged: (v) => setState(() => _selectedType = v!),
-          items: _types
-              .map(
-                (t) => DropdownMenuItem(
-                  value: t,
-                  child: Row(
-                    children: [
-                      Icon(
-                        _getIconForType(t),
-                        size: 20,
-                        color: _getColorForType(t),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(t, style: const TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                ),
-              )
-              .toList(),
+          items: _types.map((t) => DropdownMenuItem(
+            value: t,
+            child: Row(
+              children: [
+                 Icon(_getIconForType(t), size: 20, color: _getColorForType(t)),
+                 const SizedBox(width: 12),
+                 Text(t, style: const TextStyle(color: Colors.white)),
+              ],
+            ),
+          )).toList(),
         ),
       ),
     );
   }
 
-  List<int> get _yearOptions {
-    final currentYear = DateTime.now().year;
-    final years = List<int>.generate(21, (index) => currentYear - 10 + index);
-    if (!years.contains(_selectedDate.year)) {
-      years.add(_selectedDate.year);
-      years.sort();
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF0EA5E9),
+              onPrimary: Colors.white,
+              onSurface: Colors.white,
+              surface: Color(0xFF1E293B),
+            ),
+            dialogBackgroundColor: const Color(0xFF0F172A),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
     }
-    return years;
-  }
-
-  int _daysInMonth(int year, int month) {
-    return DateTime(year, month + 1, 0).day;
-  }
-
-  void _updateSelectedDate({int? month, int? year}) {
-    final nextYear = year ?? _selectedDate.year;
-    final nextMonth = month ?? _selectedDate.month;
-    final nextDay = _selectedDate.day
-        .clamp(1, _daysInMonth(nextYear, nextMonth))
-        .toInt();
-
-    setState(() {
-      _selectedDate = DateTime(nextYear, nextMonth, nextDay);
-    });
   }
 
   Widget _buildDatePicker() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.calendar_month_rounded, color: Color(0xFF0EA5E9)),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
+    return InkWell(
+      onTap: _selectDate,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_month_rounded, color: Color(0xFF0EA5E9)),
+            const SizedBox(width: 16),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text('Tarih', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
                 Text(
-                  'Tarih',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: _buildDateDropdown<int>(
-                        value: _selectedDate.month,
-                        items: List<int>.generate(12, (index) => index + 1),
-                        labelBuilder: (month) => _monthNames[month - 1],
-                        onChanged: (month) => _updateSelectedDate(month: month),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: _buildDateDropdown<int>(
-                        value: _selectedDate.year,
-                        items: _yearOptions,
-                        labelBuilder: (year) => year.toString(),
-                        onChanged: (year) => _updateSelectedDate(year: year),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  DateFormat('dd.MM.yyyy').format(_selectedDate),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 12,
-                  ),
+                  DateFormat('dd/MM/yyyy').format(_selectedDate),
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDateDropdown<T>({
-    required T value,
-    required List<T> items,
-    required String Function(T value) labelBuilder,
-    required ValueChanged<T> onChanged,
-  }) {
-    return DropdownButtonHideUnderline(
-      child: DropdownButton<T>(
-        value: value,
-        dropdownColor: const Color(0xFF1E293B),
-        icon: const Icon(
-          Icons.keyboard_arrow_down_rounded,
-          color: Colors.white54,
+          ],
         ),
-        isExpanded: true,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-        onChanged: (nextValue) {
-          if (nextValue != null) onChanged(nextValue);
-        },
-        items: items.map((item) {
-          return DropdownMenuItem<T>(
-            value: item,
-            child: Text(labelBuilder(item), overflow: TextOverflow.ellipsis),
-          );
-        }).toList(),
       ),
     );
   }
@@ -456,46 +372,21 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.access_time_rounded,
-              color: isStart
-                  ? const Color(0xFF10B981)
-                  : const Color(0xFFF43F5E),
-            ),
+            Icon(Icons.access_time_rounded, color: isStart ? const Color(0xFF10B981) : const Color(0xFFF43F5E)),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 12,
-                  ),
-                ),
+                Text(label, style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
                 Row(
                   children: [
-                    Text(
-                      _formatTime(time),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (!isStart &&
-                        (_endTime.hour < _startTime.hour ||
-                            (_endTime.hour == _startTime.hour &&
-                                _endTime.minute < _startTime.minute)))
+                    Text(_formatTime(time), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    if (!isStart && (_endTime.hour < _startTime.hour || (_endTime.hour == _startTime.hour && _endTime.minute < _startTime.minute)))
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
                           '+1 GÜN',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFFF43F5E),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: GoogleFonts.inter(color: const Color(0xFFF43F5E), fontSize: 10, fontWeight: FontWeight.bold),
                         ),
                       ),
                   ],
@@ -513,9 +404,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
     return Row(
       children: priorities.map((p) {
         final isSelected = _selectedPriority == p;
-        final color = p == 'high'
-            ? Colors.red
-            : (p == 'medium' ? Colors.orange : Colors.green);
+        final color = p == 'high' ? Colors.red : (p == 'medium' ? Colors.orange : Colors.green);
         return Expanded(
           child: GestureDetector(
             onTap: () => setState(() => _selectedPriority = p),
@@ -523,13 +412,9 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
               margin: EdgeInsets.only(right: p != 'high' ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? color.withOpacity(0.2)
-                    : const Color(0xFF1E293B),
+                color: isSelected ? color.withOpacity(0.2) : const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected ? color : Colors.white.withOpacity(0.05),
-                ),
+                border: Border.all(color: isSelected ? color : Colors.white.withOpacity(0.05)),
               ),
               child: Center(
                 child: Text(
@@ -556,56 +441,35 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
         onPressed: isLoading ? null : _saveTask,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF0EA5E9),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
         ),
         child: isLoading
             ? const CircularProgressIndicator(color: Colors.white)
-            : const Text(
-                'Üretim ve Kayıt Et',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+            : const Text('Üretim ve Kayıt Et', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
       ),
     );
   }
 
   IconData _getIconForType(String type) {
     switch (type) {
-      case 'Toplantı':
-        return Icons.video_camera_front_rounded;
-      case 'Yemek':
-        return Icons.restaurant_rounded;
-      case 'Spor':
-        return Icons.fitness_center_rounded;
-      case 'Eğlence':
-        return Icons.celebration_rounded;
-      case 'Görev':
-        return Icons.task_alt_rounded;
-      default:
-        return Icons.event_note_rounded;
+      case 'Toplantı': return Icons.video_camera_front_rounded;
+      case 'Yemek': return Icons.restaurant_rounded;
+      case 'Spor': return Icons.fitness_center_rounded;
+      case 'Eğlence': return Icons.celebration_rounded;
+      case 'Görev': return Icons.task_alt_rounded;
+      default: return Icons.event_note_rounded;
     }
   }
 
   Color _getColorForType(String type) {
     switch (type) {
-      case 'Toplantı':
-        return const Color(0xFF8B5CF6);
-      case 'Yemek':
-        return const Color(0xFFF59E0B);
-      case 'Spor':
-        return const Color(0xFF10B981);
-      case 'Eğlence':
-        return const Color(0xFFEC4899);
-      case 'Görev':
-        return const Color(0xFF0EA5E9);
-      default:
-        return Colors.white54;
+      case 'Toplantı': return const Color(0xFF8B5CF6);
+      case 'Yemek': return const Color(0xFFF59E0B);
+      case 'Spor': return const Color(0xFF10B981);
+      case 'Eğlence': return const Color(0xFFEC4899);
+      case 'Görev': return const Color(0xFF0EA5E9);
+      default: return Colors.white54;
     }
   }
 }
