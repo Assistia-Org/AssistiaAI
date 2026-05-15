@@ -1160,7 +1160,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   Expanded(
                     child: _gridCell(
                       'Başlangıç',
-                      DateFormat('dd MMM').format(task.startDate!),
+                      DateFormat('dd/MM').format(task.startDate!),
                       sub: DateFormat('HH:mm').format(task.startDate!),
                       color: color,
                     ),
@@ -1176,7 +1176,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   Expanded(
                     child: _gridCell(
                       'Bitiş',
-                      DateFormat('dd MMM').format(task.endDate!),
+                      DateFormat('dd/MM').format(task.endDate!),
                       sub: DateFormat('HH:mm').format(task.endDate!),
                       color: color,
                     ),
@@ -1266,7 +1266,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                               res.category.toLowerCase().contains('otel')
                           ? 'Giriş'
                           : 'Kalkış',
-                      DateFormat('dd MMM yy').format(res.startDate!),
+                      DateFormat('dd/MM/yy').format(res.startDate!),
                       sub: DateFormat('HH:mm').format(res.startDate!),
                       color: color,
                     ),
@@ -1285,7 +1285,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                               res.category.toLowerCase().contains('otel')
                           ? 'Çıkış'
                           : 'Varış',
-                      DateFormat('dd MMM yy').format(res.endDate!),
+                      DateFormat('dd/MM/yy').format(res.endDate!),
                       sub: DateFormat('HH:mm').format(res.endDate!),
                       color: color,
                     ),

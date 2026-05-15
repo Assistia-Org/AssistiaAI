@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/event_mapper.dart';
 import '../../../data/models/reservation/reservation_model.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/daily_program_provider.dart';
+import '../../providers/reservation_provider.dart';
 
 // ─── Turkish Date Helpers ─────────────────────────────────────────────────────
 const _trMonths = [
@@ -97,6 +99,14 @@ class _CategoryListingPageState extends ConsumerState<CategoryListingPage> {
             margin: const EdgeInsets.all(16),
           ),
         );
+        setState(() {
+          if (widget.tasks != null) {
+            final index = widget.tasks!.indexWhere((t) => t.id == taskId);
+            if (index != -1) {
+              widget.tasks![index] = widget.tasks![index].copyWith(status: 'completed');
+            }
+          }
+        });
         ref.invalidate(dailyProgramByDateProvider(
           DateFormat('yyyy-MM-dd').format(DateTime.now()),
         ));
@@ -129,10 +139,46 @@ class _CategoryListingPageState extends ConsumerState<CategoryListingPage> {
               margin: const EdgeInsets.all(16),
             ),
           );
+          setState(() {
+            widget.tasks?.removeWhere((t) => t.id == taskId);
+          });
           ref.invalidate(dailyProgramByDateProvider(
             DateFormat('yyyy-MM-dd').format(DateTime.now()),
           ));
-          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) _showErrorSnack('Hata: $e');
+      }
+    }
+  }
+
+  Future<void> _deleteReservation(String reservationId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => _DeleteDialog(),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(reservationControllerProvider).deleteReservation(reservationId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Rezervasyon silindi',
+                style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+          setState(() {
+            widget.reservations?.removeWhere((r) => r.id == reservationId);
+          });
+          ref.invalidate(dailyProgramByDateProvider(
+            DateFormat('yyyy-MM-dd').format(DateTime.now()),
+          ));
         }
       } catch (e) {
         if (mounted) _showErrorSnack('Hata: $e');
@@ -242,7 +288,7 @@ class _CategoryListingPageState extends ConsumerState<CategoryListingPage> {
             res: r,
             isExpanded: _expandedId == r.id,
             onToggle: () => _toggleExpand(r.id),
-            onDelete: () => _deleteTask(r.id),
+            onDelete: () => _deleteReservation(r.id),
           )),
         ],
       ],
@@ -424,6 +470,14 @@ class _TaskDetail extends StatelessWidget {
               Expanded(child: _DeleteButton(label: 'Sil', onTap: onDelete)),
             ],
           ),
+          if (task.locationAddress != null) ...[
+            const SizedBox(height: 8),
+            _LocationRow(
+              address: task.locationAddress!,
+              lat: task.locationLat,
+              lng: task.locationLng,
+            ),
+          ],
         ],
       ),
     );
@@ -588,6 +642,14 @@ class _ReservationDetail extends StatelessWidget {
             width: double.infinity,
             child: _DeleteButton(label: 'Rezervasyonu Sil', onTap: onDelete),
           ),
+          if (res.locationAddress != null) ...[
+            const SizedBox(height: 8),
+            _LocationRow(
+              address: res.locationAddress!,
+              lat: res.locationLat,
+              lng: res.locationLng,
+            ),
+          ],
         ],
       ),
     );
@@ -952,6 +1014,59 @@ class _DeleteDialog extends StatelessWidget {
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Location Row ─────────────────────────────────────────────────────────────────
+class _LocationRow extends StatelessWidget {
+  final String address;
+  final double? lat;
+  final double? lng;
+
+  const _LocationRow({required this.address, this.lat, this.lng});
+
+  Future<void> _openMaps() async {
+    final Uri uri = (lat != null && lng != null)
+        ? Uri.parse('https://maps.google.com/?q=$lat,$lng')
+        : Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(address)}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _openMaps,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEAF5EE),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF4A7C5F).withOpacity(0.25)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.location_on_rounded, size: 16, color: Color(0xFF4A7C5F)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                address,
+                style: GoogleFonts.dmSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2E7D50),
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(Icons.open_in_new_rounded, size: 13, color: Color(0xFF4A7C5F)),
           ],
         ),
       ),

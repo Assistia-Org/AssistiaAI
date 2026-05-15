@@ -11,6 +11,9 @@ class Reservation {
   final DateTime? startDate;
   final DateTime? endDate;
   final String status;
+  final String? locationAddress;
+  final double? locationLat;
+  final double? locationLng;
 
   Reservation({
     this.id = '',
@@ -25,5 +28,8 @@ class Reservation {
     this.startDate,
     this.endDate,
     required this.status,
+    this.locationAddress,
+    this.locationLat,
+    this.locationLng,
   });
 }
