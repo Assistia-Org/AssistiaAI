@@ -24,17 +24,17 @@ class ProgramPage extends ConsumerStatefulWidget {
 class _ProgramPageState extends ConsumerState<ProgramPage> {
   static const List<String> _monthNames = [
     'Ocak',
-    'Åubat',
+    'Şubat',
     'Mart',
     'Nisan',
-    'MayÄ±s',
+    'Mayıs',
     'Haziran',
     'Temmuz',
-    'AÄŸustos',
-    'EylÃ¼l',
+    'Ağustos',
+    'Eylül',
     'Ekim',
-    'KasÄ±m',
-    'AralÄ±k',
+    'Kasım',
+    'Aralık',
   ];
 
   late DateTime _selectedDate;
@@ -113,8 +113,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     );
     final e = DateTime(eventDate.year, eventDate.month, eventDate.day);
     final diff = e.difference(s).inDays;
-    if (diff > 0) return ' +$diff GÃœN';
-    if (diff < 0) return ' $diff GÃœN';
+    if (diff > 0) return ' +$diff GÜN';
+    if (diff < 0) return ' $diff GÜN';
     return '';
   }
 
@@ -146,7 +146,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'GÃ¶rev baÅŸarÄ±yla tamamlandÄ±!',
+              'Görev başarıyla tamamlandı!',
               style: GoogleFonts.inter(),
             ),
             backgroundColor: const Color(0xFF10B981),
@@ -179,18 +179,18 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         surfaceTintColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'GÃ¶revi Sil',
+          'Görevi Sil',
           style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Bu gÃ¶revi silmek istediÄŸinize emin misiniz? Bu iÅŸlem geri alÄ±namaz.',
+          'Bu görevi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
           style: GoogleFonts.inter(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
-              'VazgeÃ§',
+              'Vazgeç',
               style: GoogleFonts.inter(
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w600,
@@ -215,7 +215,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
       try {
         await ref.read(taskControllerProvider).deleteTask(taskId);
         if (mounted) {
-          // Ã–nce provider'Ä± yenile, sonra sheet'i kapat
+          // Önce provider'ı yenile, sonra sheet'i kapat
           ref.invalidate(
             dailyProgramByDateProvider(
               DateFormat('yyyy-MM-dd').format(_selectedDate),
@@ -224,7 +224,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('GÃ¶rev silindi', style: GoogleFonts.inter()),
+              content: Text('Görev silindi', style: GoogleFonts.inter()),
               backgroundColor: const Color(0xFF1B232A),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -255,14 +255,14 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Bu rezervasyonu silmek istediÄŸinize emin misiniz? Bu iÅŸlem geri alÄ±namaz.',
+          'Bu rezervasyonu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
           style: GoogleFonts.inter(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
-              'VazgeÃ§',
+              'Vazgeç',
               style: GoogleFonts.inter(
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w600,
@@ -289,7 +289,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             .read(reservationControllerProvider)
             .deleteReservation(reservationId);
         if (mounted) {
-          // Ã–nce provider'Ä± yenile, sonra sheet'i kapat
+          // Önce provider'ı yenile, sonra sheet'i kapat
           ref.invalidate(
             dailyProgramByDateProvider(
               DateFormat('yyyy-MM-dd').format(_selectedDate),
@@ -353,9 +353,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     }
 
     return dt;
-  }
-
-  // â”€â”€â”€ BUILD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // BUILD
 
   @override
   Widget build(BuildContext context) {
@@ -413,9 +411,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ],
       ),
     );
-  }
-
-  // â”€â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // HEADER
 
   Widget _buildHeader() {
     return Padding(
@@ -524,7 +520,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
   }
 
   Widget _buildDayChip(DateTime date, bool isSelected) {
-    const labels = ['Pzt', 'Sal', 'Ã‡ar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const labels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
     return GestureDetector(
       onTap: () {
         setState(() => _selectedDate = date);
@@ -562,9 +558,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ),
       ),
     );
-  }
-
-  // â”€â”€â”€ TITLE BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // TITLE BAR
 
   Widget _buildTitleBar() {
     return Padding(
@@ -573,7 +567,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'GÃ¼nlÃ¼k Program',
+            'Günlük Program',
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -589,7 +583,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             onSelected: _onMenuSelected,
             itemBuilder: (_) => [
               _menuItem('Rezerve', Icons.add_location_alt_rounded),
-              _menuItem('GÃ¶rev', Icons.add_task_rounded),
+              _menuItem('Görev', Icons.add_task_rounded),
             ],
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -654,9 +648,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ref.invalidate(dailyProgramByDateProvider(dateStr));
       });
     }
-  }
-
-  // â”€â”€â”€ TIMELINE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // TIMELINE
 
   Widget _buildTimeline(DailyProgramModel program) {
     // Flatten all items with timing metadata
@@ -725,9 +717,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
       itemCount: roots.length,
       itemBuilder: (_, i) => _buildBlock(roots[i]),
     );
-  }
-
-  // â”€â”€â”€ TIMELINE BLOCK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // TIMELINE BLOCK
 
   Widget _buildBlock(Map<String, dynamic> root) {
     final bool isTask = root['isTask'] as bool;
@@ -749,7 +739,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // â”€â”€ Left Rail â”€â”€
+          // Left Rail
           SizedBox(
             width: 78,
             child: Column(
@@ -825,7 +815,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
           ),
           const SizedBox(width: 10),
-          // â”€â”€ Cards â”€â”€
+          // Cards
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -956,9 +946,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ],
       ),
     );
-  }
-
-  // â”€â”€â”€ EVENT CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // EVENT CARD
 
   Widget _buildEventCard({
     required dynamic data,
@@ -981,9 +969,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
 
     final Color color = EventMapper.getColor(type);
     final IconData icon = EventMapper.getIcon(type);
-    final String label = isSub
-        ? 'SÃœREÃ‡ DAHÄ°LÄ°NDE'
-        : EventMapper.getLabel(type);
+    final String label = isSub ? 'SÜREÇ DAHİLİNDE' : EventMapper.getLabel(type);
     final bool isExpanded = _expandedId == id;
 
     return GestureDetector(
@@ -1069,7 +1055,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                                       ? (data as TaskModel).communityName
                                       : (data as ReservationModel)
                                             .communityName) ??
-                                  'KiÅŸisel',
+                                  'Kişisel',
                               style: GoogleFonts.inter(
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
@@ -1129,9 +1115,9 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               if (isTask) ...[
                 if ((data as TaskModel).description != null &&
                     data.description!.isNotEmpty)
-                  _detailRow('AÃ‡IKLAMA', data.description!, color),
-                _detailRow('TÄ°P', data.type, color),
-                _detailRow('Ã–NCELÄ°K', data.priority, color),
+                  _detailRow('AÇIKLAMA', data.description!, color),
+                _detailRow('TİP', data.type, color),
+                _detailRow('ÖNCELİK', data.priority, color),
                 _detailRow(
                   'DURUM',
                   EventMapper.getStatusLabel(data.status),
@@ -1232,9 +1218,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ],
       ),
     );
-  }
-
-  // â”€â”€â”€ DETAIL BOTTOM SHEET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // DETAIL BOTTOM SHEET
 
   void _showDetailSheet({
     required BuildContext context,
@@ -1261,7 +1245,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           ),
           child: Column(
             children: [
-              // â”€â”€ Handle bar
+              // Handle bar
               Container(
                 width: 36,
                 height: 4,
@@ -1271,7 +1255,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // â”€â”€ Header Row
+              // Header Row
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 child: Row(
@@ -1317,7 +1301,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 ),
               ),
               Container(height: 1, color: const Color(0xFFE2E8F0)),
-              // â”€â”€ Scrollable body
+              // Scrollable body
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
@@ -1366,7 +1350,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 if (task.startDate != null)
                   Expanded(
                     child: _gridCell(
-                      'BaÅŸlangÄ±Ã§',
+                      'Başlangıç',
                       DateFormat('dd MMM').format(task.startDate!),
                       sub: DateFormat('HH:mm').format(task.startDate!),
                       color: color,
@@ -1382,7 +1366,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 if (task.endDate != null)
                   Expanded(
                     child: _gridCell(
-                      'BitiÅŸ',
+                      'Bitiş',
                       DateFormat('dd MMM').format(task.endDate!),
                       sub: DateFormat('HH:mm').format(task.endDate!),
                       color: color,
@@ -1397,7 +1381,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           const SizedBox(height: 12),
           _sectionCard(
             color: color,
-            title: 'AÃ‡IKLAMA',
+            title: 'AÇIKLAMA',
             child: Text(
               task.description!,
               style: GoogleFonts.inter(
@@ -1423,7 +1407,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 elevation: 0,
               ),
               child: Text(
-                'GÃ¶revi Tamamla',
+                'Görevi Tamamla',
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -1446,7 +1430,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               ),
             ),
             child: Text(
-              'GÃ¶revi Sil',
+              'Görevi Sil',
               style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -1471,7 +1455,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           const SizedBox(height: 14),
           _sectionCard(
             color: color,
-            title: 'TARÄ°H & SAAT',
+            title: 'TARİH & SAAT',
             child: Row(
               children: [
                 if (res.startDate != null)
@@ -1479,8 +1463,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                     child: _gridCell(
                       res.category.toLowerCase().contains('hotel') ||
                               res.category.toLowerCase().contains('otel')
-                          ? 'GiriÅŸ'
-                          : 'KalkÄ±ÅŸ',
+                          ? 'Giriş'
+                          : 'Kalkış',
                       DateFormat('dd MMM yy').format(res.startDate!),
                       sub: DateFormat('HH:mm').format(res.startDate!),
                       color: color,
@@ -1498,8 +1482,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                     child: _gridCell(
                       res.category.toLowerCase().contains('hotel') ||
                               res.category.toLowerCase().contains('otel')
-                          ? 'Ã‡Ä±kÄ±ÅŸ'
-                          : 'VarÄ±ÅŸ',
+                          ? 'Çıkış'
+                          : 'Varış',
                       DateFormat('dd MMM yy').format(res.endDate!),
                       sub: DateFormat('HH:mm').format(res.endDate!),
                       color: color,
@@ -1732,10 +1716,10 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ? const Color(0xFFF59E0B)
         : const Color(0xFF10B981);
     final String label = priority == 'high'
-        ? 'YÃ¼ksek'
+        ? 'Yüksek'
         : priority == 'medium'
         ? 'Orta'
-        : 'DÃ¼ÅŸÃ¼k';
+        : 'Düşük';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -1783,20 +1767,20 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     const map = {
       'pnr': 'PNR',
       'airline': 'Havayolu',
-      'flight_no': 'UÃ§uÅŸ No',
-      'departure': 'KalkÄ±ÅŸ',
-      'arrival': 'VarÄ±ÅŸ',
+      'flight_no': 'Uçuş No',
+      'departure': 'Kalkış',
+      'arrival': 'Varış',
       'date': 'Tarih',
-      'departure_time': 'KalkÄ±ÅŸ',
-      'arrival_time': 'VarÄ±ÅŸ',
+      'departure_time': 'Kalkış',
+      'arrival_time': 'Varış',
       'status': 'Durum',
       'passenger': 'Yolcu',
       'hotel_name': 'Otel',
       'location': 'Konum',
-      'check_in': 'GiriÅŸ',
-      'check_out': 'Ã‡Ä±kÄ±ÅŸ',
-      'check_in_time': 'GiriÅŸ Saati',
-      'check_out_time': 'Ã‡Ä±kÄ±ÅŸ Saati',
+      'check_in': 'Giriş',
+      'check_out': 'Çıkış',
+      'check_in_time': 'Giriş Saati',
+      'check_out_time': 'Çıkış Saati',
       'room_type': 'Oda',
       'guest_name': 'Misafir',
       'confirmation_no': 'Onay No',
@@ -1809,9 +1793,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               (w) => w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}',
             )
             .join(' ');
-  }
-
-  // â”€â”€â”€ EMPTY STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // EMPTY STATE
 
   Widget _buildEmptyState() {
     return Center(
@@ -1834,7 +1816,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
             const SizedBox(height: 24),
             Text(
-              'HenÃ¼z Bir Plan Yok',
+              'Henüz Bir Plan Yok',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -1843,7 +1825,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'SeÃ§ilen tarih iÃ§in planlanmÄ±ÅŸ etkinlik veya gÃ¶rev bulunamadÄ±.',
+              'Seçilen tarih için planlanmış etkinlik veya görev bulunamadı.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 13,
@@ -1855,9 +1837,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ),
       ),
     );
-  }
-
-  // â”€â”€â”€ RESERVATION PICKER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  } // RESERVATION PICKER
 
   void _showReservationPicker() {
     showModalBottomSheet(
@@ -1889,7 +1869,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               ),
             ),
             Text(
-              'Rezervasyon TÃ¼rÃ¼',
+              'Rezervasyon Türü',
               style: GoogleFonts.inter(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -1898,13 +1878,13 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Eklemek istediÄŸiniz tÃ¼rÃ¼ seÃ§in.',
+              'Eklemek istediğiniz türü seçin.',
               style: GoogleFonts.inter(fontSize: 14, color: Colors.white54),
             ),
             const SizedBox(height: 28),
             _resOption(
-              title: 'UÃ§ak Rezervasyonu',
-              subtitle: 'UÃ§uÅŸ planlarÄ± ve bilet bilgileri',
+              title: 'Uçak Rezervasyonu',
+              subtitle: 'Uçuş planları ve bilet bilgileri',
               icon: Icons.flight_takeoff_rounded,
               color: const Color(0xFF0EA5E9),
               onTap: () {
@@ -1933,8 +1913,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
             const SizedBox(height: 12),
             _resOption(
-              title: 'OtobÃ¼s YolculuÄŸu',
-              subtitle: 'Åehirler arasÄ± seyahat planÄ±',
+              title: 'Otobüs Yolculuğu',
+              subtitle: 'Şehirler arası seyahat planı',
               icon: Icons.directions_bus_rounded,
               color: const Color(0xFFF59E0B),
               onTap: () {
