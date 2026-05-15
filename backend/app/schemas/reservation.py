@@ -14,6 +14,9 @@ class ReservationBase(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     status: str
+    location_address: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
 
 class ReservationCreate(ReservationBase):
     pass
@@ -26,6 +29,9 @@ class ReservationUpdate(BaseModel):
     end_date: Optional[datetime] = None
     assigned_to: Optional[List[str]] = None
     status: Optional[str] = None
+    location_address: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
 
 class ReservationResponse(ReservationBase, BaseSchema):
     id: str

@@ -14,6 +14,9 @@ class ReservationModel extends Reservation {
     super.startDate,
     super.endDate,
     required super.status,
+    super.locationAddress,
+    super.locationLat,
+    super.locationLng,
   });
 
   factory ReservationModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +37,9 @@ class ReservationModel extends Reservation {
           ? DateTime.parse(json['end_date'])
           : null,
       status: json['status'],
+      locationAddress: json['location_address'],
+      locationLat: (json['location_lat'] as num?)?.toDouble(),
+      locationLng: (json['location_lng'] as num?)?.toDouble(),
     );
   }
 
@@ -51,6 +57,9 @@ class ReservationModel extends Reservation {
       'start_date': startDate?.toIso8601String(),
       'end_date': endDate?.toIso8601String(),
       'status': status,
+      'location_address': locationAddress,
+      'location_lat': locationLat,
+      'location_lng': locationLng,
     };
   }
 
@@ -68,6 +77,9 @@ class ReservationModel extends Reservation {
       startDate: entity.startDate,
       endDate: entity.endDate,
       status: entity.status,
+      locationAddress: entity.locationAddress,
+      locationLat: entity.locationLat,
+      locationLng: entity.locationLng,
     );
   }
 }

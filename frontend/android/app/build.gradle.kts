@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -11,6 +14,14 @@ plugins {
 android {
     namespace = "com.example.frontend"
     compileSdk = flutter.compileSdkVersion
+
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localProperties.load(FileInputStream(localPropertiesFile))
+    }
+    val googleMapsApiKey = localProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
+
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -31,6 +42,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        manifestPlaceholders["googleMapsApiKey"] = googleMapsApiKey
     }
 
     buildTypes {

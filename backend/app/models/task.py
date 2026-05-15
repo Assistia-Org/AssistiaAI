@@ -27,6 +27,9 @@ class Task(BaseDocument):
     status: TaskStatus = TaskStatus.PENDING
     tags: List[str] = Field(default_factory=list)
     reminder_sent: bool = Field(default=False)
+    location_address: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
 
     class Settings:
         name = "tasks"
