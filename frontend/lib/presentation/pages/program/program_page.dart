@@ -306,13 +306,44 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         children: [
           Padding(
             padding: const EdgeInsets.only(right: 24, bottom: 10),
-            child: Text(
-              _monthYearText,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white70,
-                letterSpacing: 1.0,
+            child: InkWell(
+              onTap: () async {
+                final DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (picked != null) {
+                  setState(() {
+                    _selectedDate = picked;
+                  });
+                  final weekStartOfPicked = _getStartOfWeek(picked);
+                  final initialWeekStart = _getStartOfWeek(DateTime.now());
+                  final daysDiff = weekStartOfPicked.difference(initialWeekStart).inDays;
+                  final weekOffset = (daysDiff / 7).round();
+                  _pageController.jumpToPage(500 + weekOffset);
+                  _updateMonthYearText(weekStartOfPicked);
+                }
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _monthYearText,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down_rounded, color: Colors.white70),
+                  ],
+                ),
               ),
             ),
           ),
