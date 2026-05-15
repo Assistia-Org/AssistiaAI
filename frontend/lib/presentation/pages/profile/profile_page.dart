@@ -6,6 +6,7 @@ import '../../providers/notification_provider.dart';
 import 'account_info_page.dart';
 import 'change_password_page.dart';
 import 'personal_settings_page.dart';
+import 'help_support_page.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -228,7 +229,14 @@ class ProfilePage extends ConsumerWidget {
               );
             },
           ),
-          _buildSettingItem(Icons.help_outline_rounded, 'Yardım & Destek'),
+          _buildSettingItem(Icons.help_outline_rounded, 'Yardım & Destek',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpSupportPage()),
+              );
+            },
+          ),
           const SizedBox(height: 20),
           _buildSettingItem(
             Icons.logout_rounded, 
