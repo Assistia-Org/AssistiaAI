@@ -300,29 +300,61 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
     );
   }
 
-  Widget _buildDatePicker() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.calendar_month_rounded, color: Color(0xFF0EA5E9)),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Tarih', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
-              Text(
-                DateFormat('dd/MM/yyyy').format(_selectedDate),
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ],
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF0EA5E9),
+              onPrimary: Colors.white,
+              onSurface: Colors.white,
+              surface: Color(0xFF1E293B),
+            ),
+            dialogBackgroundColor: const Color(0xFF0F172A),
           ),
-        ],
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  Widget _buildDatePicker() {
+    return InkWell(
+      onTap: _selectDate,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_month_rounded, color: Color(0xFF0EA5E9)),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Tarih', style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12)),
+                Text(
+                  DateFormat('dd/MM/yyyy').format(_selectedDate),
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

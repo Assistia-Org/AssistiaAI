@@ -294,6 +294,39 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     );
   }
 
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF0EA5E9),
+              onPrimary: Colors.white,
+              onSurface: Colors.white,
+              surface: Color(0xFF1B232A),
+            ),
+            dialogBackgroundColor: const Color(0xFF0F172A),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _firstDayOfCurrentWeek = _getStartOfWeek(picked);
+        _updateMonthYearText(picked);
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(500);
+        }
+      });
+    }
+  }
+
   // ─── HEADER ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
@@ -302,15 +335,25 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 24, bottom: 10),
-            child: Text(
-              _monthYearText,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Colors.white70,
-                letterSpacing: 1.0,
+          GestureDetector(
+            onTap: _selectDate,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 24, bottom: 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _monthYearText,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white70,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 20),
+                ],
               ),
             ),
           ),
