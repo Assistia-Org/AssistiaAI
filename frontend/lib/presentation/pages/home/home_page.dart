@@ -9,9 +9,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/assistant_provider.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../../data/models/reservation/reservation_model.dart';
-import '../../../data/models/daily_program/daily_program_model.dart';
 import '../assistant/assistant_chat_page.dart';
 import 'category_listing_page.dart';
+import '../../providers/reservation_provider.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -61,7 +61,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  Future<void> _deleteTask(String taskId) async {
+  Future<void> _deleteItem(dynamic item) async {
+    final bool isTask = item is TaskModel;
+    final String itemId = isTask ? item.id : (item as ReservationModel).id;
+    final String itemTitle = isTask ? 'Görevi' : 'Rezervasyonu';
+
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -69,7 +73,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         surfaceTintColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Görevi Sil',
+          '$itemTitle Sil',
           style: GoogleFonts.inter(fontWeight: FontWeight.bold),
         ),
         content: Text(
@@ -103,12 +107,21 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     if (confirm == true) {
       try {
-        await ref.read(taskControllerProvider).deleteTask(taskId);
+        if (isTask) {
+          await ref.read(taskControllerProvider).deleteTask(itemId);
+        } else {
+          await ref
+              .read(reservationControllerProvider)
+              .deleteReservation(itemId);
+        }
         if (mounted) {
           Navigator.pop(context); // Close bottom sheet
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Görev silindi', style: GoogleFonts.inter()),
+              content: Text(
+                isTask ? 'Görev silindi' : 'Rezervasyon silindi',
+                style: GoogleFonts.inter(),
+              ),
               backgroundColor: const Color(0xFF1B232A),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -407,7 +420,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               width: double.infinity,
               height: 60,
               child: OutlinedButton(
-                onPressed: () => _deleteTask(item.id),
+                onPressed: () => _deleteItem(item),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
                   shape: RoundedRectangleBorder(
@@ -415,7 +428,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ),
                 child: Text(
-                  'Görevi Sil',
+                  isTask ? 'Görevi Sil' : 'Rezervasyonu Sil',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,

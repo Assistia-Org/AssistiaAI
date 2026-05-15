@@ -977,7 +977,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         : (data as ReservationModel).title;
     final String subtitle = isTask
         ? ((data as TaskModel).description ?? '')
-        : '${(data as ReservationModel).category} - ${EventMapper.getStatusLabel((data as ReservationModel).status)}';
+        : '${(data as ReservationModel).category} - ${EventMapper.getStatusLabel(data.status)}';
 
     final Color color = EventMapper.getColor(type);
     final IconData icon = EventMapper.getIcon(type);
