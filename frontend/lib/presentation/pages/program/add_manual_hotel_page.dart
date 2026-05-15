@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
 import '../../providers/daily_program_provider.dart';
+import '../../widgets/assignment_selector.dart';
 
 class AddManualHotelPage extends ConsumerStatefulWidget {
   const AddManualHotelPage({super.key});
@@ -18,6 +18,9 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
   final _hotelNameController = TextEditingController();
   final _pnrController = TextEditingController();
   final _guestController = TextEditingController();
+  bool _isSubmitting = false;
+  String? _communityId;
+  List<String> _assignedTo = [];
   
   String _selectedCity = 'İstanbul';
   static const List<String> _cities = [
@@ -96,9 +99,9 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
 
   Future<void> _saveReservation() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
 
-    final uuid = const Uuid();
-    
     final details = {
       "hotel_name": _hotelNameController.text,
       "address": _selectedCity,
@@ -128,12 +131,13 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
     );
 
     final reservation = Reservation(
-      id: uuid.v4(),
       category: "hotel",
       title: "Otel: ${_hotelNameController.text}",
       details: details,
       startDate: combinedStart,
       endDate: combinedEnd,
+      communityId: _communityId,
+      assignedTo: _assignedTo,
       status: "confirmed",
     );
 
@@ -159,6 +163,10 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
             backgroundColor: Colors.redAccent,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -208,6 +216,15 @@ class _AddManualHotelPageState extends ConsumerState<AddManualHotelPage> {
               
               _buildSectionTitle('DETAYLAR'),
               const SizedBox(height: 16),
+              AssignmentSelector(
+                onChanged: (communityId, assignedTo) {
+                  setState(() {
+                    _communityId = communityId;
+                    _assignedTo = assignedTo;
+                  });
+                },
+              ),
+              const SizedBox(height: 24),
               _buildTextField(
                 controller: _pnrController,
                 label: 'Rezervasyon No (PNR)',

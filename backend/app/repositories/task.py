@@ -28,7 +28,7 @@ async def list_tasks_by_community(community_id: str) -> List[Task]:
     """Return tasks for a specific community."""
     return await Task.find(Task.community_id == community_id).to_list()
 
-async def update_status(task_id: str, status: str) -> bool:
+async def update_status(task_id: str, status: TaskStatus) -> bool:
     """Update task status."""
     task = await get_task_by_id(task_id)
     if not task:

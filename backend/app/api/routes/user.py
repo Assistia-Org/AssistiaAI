@@ -6,6 +6,8 @@ from app.services.user_service import (
     list_users_service,
     update_user_service,
     get_user_by_email_service,
+    update_me_service,
+    update_fcm_token_service,
 )
 from app.api.dependencies.auth import get_current_user
 from app.models.user import User
@@ -19,6 +21,17 @@ async def get_me(current_user: User = Depends(get_current_user)) -> UserResponse
     Get current authenticated user profile.
     """
     return UserResponse.model_validate(current_user)
+
+
+@router.post("/me", response_model=UserResponse, status_code=status.HTTP_200_OK)
+async def update_me(
+    data: UserUpdate,
+    current_user: User = Depends(get_current_user),
+) -> UserResponse:
+    """
+    Update current authenticated user profile.
+    """
+    return await update_me_service(current_user.id, data)
 
 
 @router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
@@ -79,3 +92,23 @@ async def delete_user(
     Belirtilen ID'ye sahip kullanıcıyı sistemden siler.
     """
     await delete_user_service(user_id)
+
+
+from pydantic import BaseModel
+
+class FcmTokenUpdate(BaseModel):
+    """Request body for FCM token registration."""
+    fcm_token: str
+
+
+@router.patch("/me/fcm-token", response_model=dict, status_code=status.HTTP_200_OK)
+async def update_fcm_token(
+    data: FcmTokenUpdate,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Register or refresh the FCM device token for the authenticated user.
+    Flutter should call this endpoint right after every successful login.
+    """
+    await update_fcm_token_service(str(current_user.id), data.fcm_token)
+    return {"message": "FCM token updated successfully."}

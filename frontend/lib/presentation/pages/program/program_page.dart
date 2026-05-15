@@ -7,6 +7,8 @@ import '../../../data/models/daily_program/daily_program_model.dart';
 import '../../../data/models/reservation/reservation_model.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../providers/daily_program_provider.dart';
+import '../../providers/task_provider.dart';
+import '../../providers/reservation_provider.dart';
 import 'add_manual_task_page.dart';
 import 'add_flight_reservation_page.dart';
 import 'add_bus_reservation_page.dart';
@@ -22,17 +24,17 @@ class ProgramPage extends ConsumerStatefulWidget {
 class _ProgramPageState extends ConsumerState<ProgramPage> {
   static const List<String> _monthNames = [
     'Ocak',
-    'Şubat',
+    'Åubat',
     'Mart',
     'Nisan',
-    'Mayıs',
+    'MayÄ±s',
     'Haziran',
     'Temmuz',
-    'Ağustos',
-    'Eylül',
+    'AÄŸustos',
+    'EylÃ¼l',
     'Ekim',
-    'Kasım',
-    'Aralık',
+    'KasÄ±m',
+    'AralÄ±k',
   ];
 
   late DateTime _selectedDate;
@@ -102,6 +104,20 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     return DateFormat('HH:mm').format(dt);
   }
 
+  String _getDayOffsetLabel(DateTime? eventDate) {
+    if (eventDate == null) return '';
+    final s = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+    );
+    final e = DateTime(eventDate.year, eventDate.month, eventDate.day);
+    final diff = e.difference(s).inDays;
+    if (diff > 0) return ' +$diff GÃœN';
+    if (diff < 0) return ' $diff GÃœN';
+    return '';
+  }
+
   DateTime? _parseTimeFromDetails(Map<String, dynamic> details, bool isEnd) {
     final key = isEnd ? 'arrival_time' : 'departure_time';
     final raw = details[key]?.toString();
@@ -117,6 +133,187 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
       );
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> _completeTask(String taskId) async {
+    try {
+      await ref
+          .read(taskControllerProvider)
+          .updateTaskStatus(taskId, 'completed');
+      if (mounted) {
+        Navigator.pop(context); // Close bottom sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'GÃ¶rev baÅŸarÄ±yla tamamlandÄ±!',
+              style: GoogleFonts.inter(),
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        ref.invalidate(
+          dailyProgramByDateProvider(
+            DateFormat('yyyy-MM-dd').format(_selectedDate),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
+    }
+  }
+
+  Future<void> _deleteTask(String taskId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'GÃ¶revi Sil',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Bu gÃ¶revi silmek istediÄŸinize emin misiniz? Bu iÅŸlem geri alÄ±namaz.',
+          style: GoogleFonts.inter(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'VazgeÃ§',
+              style: GoogleFonts.inter(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Sil',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFF43F5E),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(taskControllerProvider).deleteTask(taskId);
+        if (mounted) {
+          // Ã–nce provider'Ä± yenile, sonra sheet'i kapat
+          ref.invalidate(
+            dailyProgramByDateProvider(
+              DateFormat('yyyy-MM-dd').format(_selectedDate),
+            ),
+          );
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('GÃ¶rev silindi', style: GoogleFonts.inter()),
+              backgroundColor: const Color(0xFF1B232A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteReservation(String reservationId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Rezervasyonu Sil',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Bu rezervasyonu silmek istediÄŸinize emin misiniz? Bu iÅŸlem geri alÄ±namaz.',
+          style: GoogleFonts.inter(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'VazgeÃ§',
+              style: GoogleFonts.inter(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Sil',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFF43F5E),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref
+            .read(reservationControllerProvider)
+            .deleteReservation(reservationId);
+        if (mounted) {
+          // Ã–nce provider'Ä± yenile, sonra sheet'i kapat
+          ref.invalidate(
+            dailyProgramByDateProvider(
+              DateFormat('yyyy-MM-dd').format(_selectedDate),
+            ),
+          );
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Rezervasyon silindi', style: GoogleFonts.inter()),
+              backgroundColor: const Color(0xFF1B232A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+      }
     }
   }
 
@@ -158,7 +355,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     return dt;
   }
 
-  // ─── BUILD ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ BUILD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @override
   Widget build(BuildContext context) {
@@ -218,7 +415,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     );
   }
 
-  // ─── HEADER ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildHeader() {
     return Padding(
@@ -327,7 +524,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
   }
 
   Widget _buildDayChip(DateTime date, bool isSelected) {
-    const labels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const labels = ['Pzt', 'Sal', 'Ã‡ar', 'Per', 'Cum', 'Cmt', 'Paz'];
     return GestureDetector(
       onTap: () {
         setState(() => _selectedDate = date);
@@ -367,7 +564,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     );
   }
 
-  // ─── TITLE BAR ─────────────────────────────────────────────────────────────
+  // â”€â”€â”€ TITLE BAR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildTitleBar() {
     return Padding(
@@ -376,7 +573,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Günlük Program',
+            'GÃ¼nlÃ¼k Program',
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -392,7 +589,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             onSelected: _onMenuSelected,
             itemBuilder: (_) => [
               _menuItem('Rezerve', Icons.add_location_alt_rounded),
-              _menuItem('Görev', Icons.add_task_rounded),
+              _menuItem('GÃ¶rev', Icons.add_task_rounded),
             ],
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -459,7 +656,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     }
   }
 
-  // ─── TIMELINE ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ TIMELINE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildTimeline(DailyProgramModel program) {
     // Flatten all items with timing metadata
@@ -530,7 +727,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     );
   }
 
-  // ─── TIMELINE BLOCK ────────────────────────────────────────────────────────
+  // â”€â”€â”€ TIMELINE BLOCK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildBlock(Map<String, dynamic> root) {
     final bool isTask = root['isTask'] as bool;
@@ -544,26 +741,42 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     final Color color = EventMapper.getColor(type);
     final String startTime = _formatTime(root['start'] as DateTime?);
     final String endTime = _formatTime(root['end'] as DateTime?);
+    final String startOffset = _getDayOffsetLabel(root['start'] as DateTime?);
+    final String endOffset = _getDayOffsetLabel(root['end'] as DateTime?);
     final bool hasChildren = children.isNotEmpty;
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Left Rail ──
+          // â”€â”€ Left Rail â”€â”€
           SizedBox(
-            width: 68,
+            width: 78,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const SizedBox(height: 14),
-                Text(
-                  startTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: const Color(0xFF0F172A),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      startTime,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    if (startOffset.isNotEmpty)
+                      Text(
+                        startOffset,
+                        style: GoogleFonts.inter(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF64748B), // Grey for past
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Expanded(
@@ -585,20 +798,34 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  endTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF94A3B8),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      endTime,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                    if (endOffset.isNotEmpty)
+                      Text(
+                        endOffset,
+                        style: GoogleFonts.inter(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFFF43F5E),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 14),
               ],
             ),
           ),
           const SizedBox(width: 10),
-          // ── Cards ──
+          // â”€â”€ Cards â”€â”€
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -609,17 +836,19 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   ...children.map((child) {
                     final bool childIsTask = child['isTask'] as bool;
                     final dynamic childData = child['data'];
-                    final String childStart = _formatTime(
-                      child['start'] as DateTime?,
-                    );
-                    final String childEnd = _formatTime(
-                      child['end'] as DateTime?,
-                    );
+                    final DateTime? cStart = child['start'] as DateTime?;
+                    final DateTime? cEnd = child['end'] as DateTime?;
+                    final String childStartStr = _formatTime(cStart);
+                    final String childEndStr = _formatTime(cEnd);
+                    final String cStartOffset = _getDayOffsetLabel(cStart);
+                    final String cEndOffset = _getDayOffsetLabel(cEnd);
                     return _buildChildRow(
                       childData,
                       childIsTask,
-                      childStart,
-                      childEnd,
+                      childStartStr,
+                      childEndStr,
+                      cStartOffset,
+                      cEndOffset,
                       color,
                     );
                   }),
@@ -637,6 +866,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     bool isTask,
     String startTime,
     String endTime,
+    String startOffset,
+    String endOffset,
     Color parentLineColor,
   ) {
     return IntrinsicHeight(
@@ -645,22 +876,36 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         children: [
           // Sub-rail
           SizedBox(
-            width: 58,
+            width: 70,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const SizedBox(height: 12),
-                Text(
-                  startTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: EventMapper.getColor(
-                      isTask
-                          ? (data as TaskModel).type
-                          : (data as ReservationModel).category,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      startTime,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: EventMapper.getColor(
+                          isTask
+                              ? (data as TaskModel).type
+                              : (data as ReservationModel).category,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (startOffset.isNotEmpty)
+                      Text(
+                        startOffset,
+                        style: GoogleFonts.inter(
+                          fontSize: 7,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Expanded(
@@ -675,13 +920,27 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  endTime,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF94A3B8),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      endTime,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                    if (endOffset.isNotEmpty)
+                      Text(
+                        endOffset,
+                        style: GoogleFonts.inter(
+                          fontSize: 7,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFFF43F5E),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 12),
               ],
@@ -699,7 +958,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     );
   }
 
-  // ─── EVENT CARD ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ EVENT CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildEventCard({
     required dynamic data,
@@ -707,19 +966,24 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     required bool isSub,
   }) {
     // Resolve fields
-    final TaskModel? task = isTask ? data as TaskModel : null;
-    final ReservationModel? reservation = isTask
-        ? null
-        : data as ReservationModel;
-    final String id = task?.id ?? reservation!.id;
-    final String type = task?.type ?? reservation!.category;
-    final String title = task?.title ?? reservation!.title;
-    final String subtitle =
-        task?.description ?? '${reservation!.category} - ${reservation.status}';
+    final String id = isTask
+        ? (data as TaskModel).id
+        : (data as ReservationModel).id;
+    final String type = isTask
+        ? (data as TaskModel).type
+        : (data as ReservationModel).category;
+    final String title = isTask
+        ? (data as TaskModel).title
+        : (data as ReservationModel).title;
+    final String subtitle = isTask
+        ? ((data as TaskModel).description ?? '')
+        : '${(data as ReservationModel).category} - ${EventMapper.getStatusLabel((data as ReservationModel).status)}';
 
     final Color color = EventMapper.getColor(type);
     final IconData icon = EventMapper.getIcon(type);
-    final String label = isSub ? 'SÜREÇ DAHİLİNDE' : EventMapper.getLabel(type);
+    final String label = isSub
+        ? 'SÃœREÃ‡ DAHÄ°LÄ°NDE'
+        : EventMapper.getLabel(type);
     final bool isExpanded = _expandedId == id;
 
     return GestureDetector(
@@ -769,14 +1033,58 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        label,
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: color,
-                          letterSpacing: 1.1,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              label,
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: color,
+                                letterSpacing: 1.1,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  (isTask
+                                          ? (data as TaskModel).communityId
+                                          : (data as ReservationModel)
+                                                .communityId) !=
+                                      null
+                                  ? const Color(0xFF6366F1).withOpacity(0.1)
+                                  : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              (isTask
+                                      ? (data as TaskModel).communityName
+                                      : (data as ReservationModel)
+                                            .communityName) ??
+                                  'KiÅŸisel',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color:
+                                    (isTask
+                                            ? (data as TaskModel).communityId
+                                            : (data as ReservationModel)
+                                                  .communityId) !=
+                                        null
+                                    ? const Color(0xFF6366F1)
+                                    : Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -821,17 +1129,25 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               if (isTask) ...[
                 if ((data as TaskModel).description != null &&
                     data.description!.isNotEmpty)
-                  _detailRow('AÇIKLAMA', data.description!, color),
-                _detailRow('TİP', data.type, color),
-                _detailRow('ÖNCELİK', data.priority, color),
-                _detailRow('DURUM', data.status, color),
+                  _detailRow('AÃ‡IKLAMA', data.description!, color),
+                _detailRow('TÄ°P', data.type, color),
+                _detailRow('Ã–NCELÄ°K', data.priority, color),
+                _detailRow(
+                  'DURUM',
+                  EventMapper.getStatusLabel(data.status),
+                  color,
+                ),
               ] else ...[
                 _detailRow(
                   'KATEGORİ',
                   (data as ReservationModel).category,
                   color,
                 ),
-                _detailRow('DURUM', data.status, color),
+                _detailRow(
+                  'DURUM',
+                  EventMapper.getStatusLabel(data.status),
+                  color,
+                ),
                 if (data.details['pnr'] != null)
                   _detailRow('PNR', data.details['pnr'].toString(), color),
               ],
@@ -918,7 +1234,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     );
   }
 
-  // ─── DETAIL BOTTOM SHEET ────────────────────────────────────────────────────
+  // â”€â”€â”€ DETAIL BOTTOM SHEET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void _showDetailSheet({
     required BuildContext context,
@@ -945,7 +1261,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           ),
           child: Column(
             children: [
-              // ── Handle bar
+              // â”€â”€ Handle bar
               Container(
                 width: 36,
                 height: 4,
@@ -955,7 +1271,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              // ── Header Row
+              // â”€â”€ Header Row
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 child: Row(
@@ -1001,7 +1317,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 ),
               ),
               Container(height: 1, color: const Color(0xFFE2E8F0)),
-              // ── Scrollable body
+              // â”€â”€ Scrollable body
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
@@ -1050,7 +1366,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 if (task.startDate != null)
                   Expanded(
                     child: _gridCell(
-                      'Başlangıç',
+                      'BaÅŸlangÄ±Ã§',
                       DateFormat('dd MMM').format(task.startDate!),
                       sub: DateFormat('HH:mm').format(task.startDate!),
                       color: color,
@@ -1066,7 +1382,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                 if (task.endDate != null)
                   Expanded(
                     child: _gridCell(
-                      'Bitiş',
+                      'BitiÅŸ',
                       DateFormat('dd MMM').format(task.endDate!),
                       sub: DateFormat('HH:mm').format(task.endDate!),
                       color: color,
@@ -1081,7 +1397,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           const SizedBox(height: 12),
           _sectionCard(
             color: color,
-            title: 'AÇIKLAMA',
+            title: 'AÃ‡IKLAMA',
             child: Text(
               task.description!,
               style: GoogleFonts.inter(
@@ -1092,6 +1408,53 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
           ),
         ],
+        const SizedBox(height: 32),
+        if (task.status != 'completed') ...[
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              onPressed: () => _completeTask(task.id),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'GÃ¶revi Tamamla',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: OutlinedButton(
+            onPressed: () => _deleteTask(task.id),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.red.withOpacity(0.2)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Text(
+              'GÃ¶revi Sil',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.red[400],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1108,7 +1471,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           const SizedBox(height: 14),
           _sectionCard(
             color: color,
-            title: 'TARİH & SAAT',
+            title: 'TARÄ°H & SAAT',
             child: Row(
               children: [
                 if (res.startDate != null)
@@ -1116,8 +1479,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                     child: _gridCell(
                       res.category.toLowerCase().contains('hotel') ||
                               res.category.toLowerCase().contains('otel')
-                          ? 'Giriş'
-                          : 'Kalkış',
+                          ? 'GiriÅŸ'
+                          : 'KalkÄ±ÅŸ',
                       DateFormat('dd MMM yy').format(res.startDate!),
                       sub: DateFormat('HH:mm').format(res.startDate!),
                       color: color,
@@ -1135,8 +1498,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
                     child: _gridCell(
                       res.category.toLowerCase().contains('hotel') ||
                               res.category.toLowerCase().contains('otel')
-                          ? 'Çıkış'
-                          : 'Varış',
+                          ? 'Ã‡Ä±kÄ±ÅŸ'
+                          : 'VarÄ±ÅŸ',
                       DateFormat('dd MMM yy').format(res.endDate!),
                       sub: DateFormat('HH:mm').format(res.endDate!),
                       color: color,
@@ -1159,6 +1522,29 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
           ),
         ],
+        const SizedBox(height: 32),
+        // Delete button
+        SizedBox(
+          width: double.infinity,
+          height: 54,
+          child: OutlinedButton(
+            onPressed: () => _deleteReservation(res.id),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Colors.red.withOpacity(0.2)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Text(
+              'Rezervasyonu Sil',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.red[400],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1327,7 +1713,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
           ),
           const SizedBox(width: 6),
           Text(
-            status,
+            EventMapper.getStatusLabel(status),
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -1346,10 +1732,10 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ? const Color(0xFFF59E0B)
         : const Color(0xFF10B981);
     final String label = priority == 'high'
-        ? 'Yüksek'
+        ? 'YÃ¼ksek'
         : priority == 'medium'
         ? 'Orta'
-        : 'Düşük';
+        : 'DÃ¼ÅŸÃ¼k';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -1397,20 +1783,20 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     const map = {
       'pnr': 'PNR',
       'airline': 'Havayolu',
-      'flight_no': 'Uçuş No',
-      'departure': 'Kalkış',
-      'arrival': 'Varış',
+      'flight_no': 'UÃ§uÅŸ No',
+      'departure': 'KalkÄ±ÅŸ',
+      'arrival': 'VarÄ±ÅŸ',
       'date': 'Tarih',
-      'departure_time': 'Kalkış',
-      'arrival_time': 'Varış',
+      'departure_time': 'KalkÄ±ÅŸ',
+      'arrival_time': 'VarÄ±ÅŸ',
       'status': 'Durum',
       'passenger': 'Yolcu',
       'hotel_name': 'Otel',
       'location': 'Konum',
-      'check_in': 'Giriş',
-      'check_out': 'Çıkış',
-      'check_in_time': 'Giriş Saati',
-      'check_out_time': 'Çıkış Saati',
+      'check_in': 'GiriÅŸ',
+      'check_out': 'Ã‡Ä±kÄ±ÅŸ',
+      'check_in_time': 'GiriÅŸ Saati',
+      'check_out_time': 'Ã‡Ä±kÄ±ÅŸ Saati',
       'room_type': 'Oda',
       'guest_name': 'Misafir',
       'confirmation_no': 'Onay No',
@@ -1425,7 +1811,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             .join(' ');
   }
 
-  // ─── EMPTY STATE ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ EMPTY STATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   Widget _buildEmptyState() {
     return Center(
@@ -1448,7 +1834,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Henüz Bir Plan Yok',
+              'HenÃ¼z Bir Plan Yok',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -1457,7 +1843,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Seçilen tarih için planlanmış etkinlik veya görev bulunamadı.',
+              'SeÃ§ilen tarih iÃ§in planlanmÄ±ÅŸ etkinlik veya gÃ¶rev bulunamadÄ±.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 13,
@@ -1471,7 +1857,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     );
   }
 
-  // ─── RESERVATION PICKER ────────────────────────────────────────────────────
+  // â”€â”€â”€ RESERVATION PICKER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   void _showReservationPicker() {
     showModalBottomSheet(
@@ -1503,7 +1889,7 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               ),
             ),
             Text(
-              'Rezervasyon Türü',
+              'Rezervasyon TÃ¼rÃ¼',
               style: GoogleFonts.inter(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -1512,13 +1898,13 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Eklemek istediğiniz türü seçin.',
+              'Eklemek istediÄŸiniz tÃ¼rÃ¼ seÃ§in.',
               style: GoogleFonts.inter(fontSize: 14, color: Colors.white54),
             ),
             const SizedBox(height: 28),
             _resOption(
-              title: 'Uçak Rezervasyonu',
-              subtitle: 'Uçuş planları ve bilet bilgileri',
+              title: 'UÃ§ak Rezervasyonu',
+              subtitle: 'UÃ§uÅŸ planlarÄ± ve bilet bilgileri',
               icon: Icons.flight_takeoff_rounded,
               color: const Color(0xFF0EA5E9),
               onTap: () {
@@ -1547,8 +1933,8 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
             const SizedBox(height: 12),
             _resOption(
-              title: 'Otobüs Yolculuğu',
-              subtitle: 'Şehirler arası seyahat planı',
+              title: 'OtobÃ¼s YolculuÄŸu',
+              subtitle: 'Åehirler arasÄ± seyahat planÄ±',
               icon: Icons.directions_bus_rounded,
               color: const Color(0xFFF59E0B),
               onTap: () {

@@ -1,0 +1,76 @@
+# Vector 0.38 — AssistiaAI Loglama Pipeline
+# Kafka'dan log mesajlarını okur, ClickHouse'a yazar.
+
+# ─── API (opsiyonel izleme) ────────────────────────────────────────────────────
+[api]
+enabled = true
+address  = "0.0.0.0:8686"
+
+# ─── KAYNAK: Kafka ─────────────────────────────────────────────────────────────
+[sources.kafka_logs]
+type             = "kafka"
+bootstrap_servers = "kafka:29092"
+topics           = ["app-logs"]
+group_id         = "vector-consumer"
+auto_offset_reset = "earliest"
+decoding.codec   = "json"
+
+# ─── DÖNÜŞÜM: Alanları düzenle ─────────────────────────────────────────────────
+[transforms.parse_logs]
+type   = "remap"
+inputs = ["kafka_logs"]
+source = '''
+# Timestamp'ı ClickHouse DateTime64 formatına çevir: "YYYY-MM-DD HH:MM:SS.fff"
+parsed_ts     = parse_timestamp(string!(.timestamp), format: "%+") ?? now()
+msg_timestamp = format_timestamp!(parsed_ts, format: "%Y-%m-%d %H:%M:%S%.3f")
+msg_level     = string(.level)      ?? "INFO"
+msg_event     = string(.event_type) ?? "UNKNOWN"
+msg_service   = string(.service)    ?? "assistia-backend"
+msg_method    = string(.method)     ?? ""
+msg_path      = string(.path)       ?? ""
+msg_status    = to_int(.status_code) ?? 0
+msg_duration  = to_int(.duration_ms) ?? 0
+msg_user_id   = string(.user_id)    ?? ""
+msg_username  = string(.username)   ?? ""
+msg_email     = string(.email)      ?? ""
+msg_ip        = string(.ip_address) ?? ""
+msg_text      = string(.msg)        ?? ""
+msg_extra     = encode_json(.extra)
+
+# Tüm Kafka metadata'yı sil, sadece ClickHouse sütunlarını bırak
+. = {
+  "timestamp":   msg_timestamp,
+  "level":       msg_level,
+  "event_type":  msg_event,
+  "service":     msg_service,
+  "method":      msg_method,
+  "path":        msg_path,
+  "status_code": msg_status,
+  "duration_ms": msg_duration,
+  "user_id":     msg_user_id,
+  "username":    msg_username,
+  "email":       msg_email,
+  "ip_address":  msg_ip,
+  "msg":         msg_text,
+  "extra":       msg_extra
+}
+'''
+
+# ─── HEDEF: ClickHouse ─────────────────────────────────────────────────────────
+[sinks.clickhouse_logs]
+type     = "clickhouse"
+inputs   = ["parse_logs"]
+endpoint = "http://clickhouse:8123"
+database = "assistia_logs"
+table    = "logs"
+compression = "gzip"
+
+# Toplu gönderim ayarları (performans optimizasyonu)
+[sinks.clickhouse_logs.batch]
+max_bytes    = 10485760   # 10 MB dolunca flush
+timeout_secs = 5          # ya da 5 saniyede bir
+
+# Hata durumunda yeniden deneme
+[sinks.clickhouse_logs.request]
+retry_attempts       = 5
+retry_initial_backoff_secs = 1

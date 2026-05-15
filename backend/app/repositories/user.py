@@ -23,6 +23,10 @@ async def get_user_by_reset_token(token: str) -> Optional[User]:
     """Return user by reset token or None if not found."""
     return await User.find_one(User.reset_token == token)
 
+async def get_user_by_google_id(google_id: str) -> Optional[User]:
+    """Return user by Firebase/Google UID or None if not found."""
+    return await User.find_one(User.google_id == google_id)
+
 async def list_users() -> List[User]:
     """Return all users."""
     return await User.find_all().to_list()
@@ -98,3 +102,21 @@ async def delete_user(user: User) -> bool:
     """Delete the user document."""
     await user.delete()
     return True
+
+
+async def update_fcm_token(user_id: str, fcm_token: Optional[str]) -> bool:
+    """Update the FCM push token for a user. Pass None to clear the token."""
+    user = await get_user_by_id(user_id)
+    if not user:
+        return False
+    user.fcm_token = fcm_token
+    await user.save()
+    return True
+
+
+async def get_fcm_token(user_id: str) -> Optional[str]:
+    """Return the stored FCM token for a user, or None if not set."""
+    user = await get_user_by_id(user_id)
+    if not user:
+        return None
+    return user.fcm_token

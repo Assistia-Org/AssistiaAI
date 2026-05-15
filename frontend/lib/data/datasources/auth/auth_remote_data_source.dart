@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../models/user/user_model.dart';
 import '../../../domain/entities/user/user.dart';
@@ -18,20 +17,18 @@ class AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    required String verificationCode,
   }) async {
-    const uuid = Uuid();
-    final uniqueId = uuid.v4();
-
     // The backend uses 'display_name' and 'username', we map 'name' to both for simplicity.
     final response = await client.post(
       Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authRegister}'),
       headers: AppConstants.baseHeaders,
       body: jsonEncode({
-        'id': uniqueId,
         'username': name.replaceAll(' ', '').toLowerCase(),
         'display_name': name,
         'email': email,
         'password': password,
+        'verification_code': verificationCode,
       }),
     );
 
@@ -95,8 +92,83 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    final token = sharedPreferences.getString(AppConstants.accessTokenKey);
+    if (token == null) throw Exception('No access token found');
+
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authChangePassword}'),
+      headers: {
+        ...AppConstants.baseHeaders,
+        ...AppConstants.authHeader(token),
+      },
+      body: jsonEncode({
+        'current_password': oldPassword,
+        'new_password': newPassword,
+        'confirm_password': newPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to change password: ${response.body}');
+    }
+  }
+
+  Future<User> googleAuth({required String idToken, String? fcmToken}) async {
+    final body = <String, dynamic>{'id_token': idToken};
+    if (fcmToken != null) body['fcm_token'] = fcmToken;
+
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}/auth/google'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final accessToken = data['access_token'];
+      final refreshToken = data['refresh_token'];
+
+      await sharedPreferences.setString(AppConstants.accessTokenKey, accessToken);
+      if (refreshToken != null) {
+        await sharedPreferences.setString(AppConstants.refreshTokenKey, refreshToken);
+      }
+
+      return await getMe(accessToken);
+    } else {
+      throw Exception('Google ile giriş başarısız: ${response.body}');
+    }
+  }
+
   Future<void> logout() async {
     await sharedPreferences.remove(AppConstants.accessTokenKey);
     await sharedPreferences.remove(AppConstants.refreshTokenKey);
+  }
+
+  Future<void> requestVerification(String email) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationRequest}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'email': email}),
+    );
+
+    if (response.statusCode == 409) {
+      throw Exception('Bu e-posta adresiyle kayıtlı bir hesap zaten mevcut.');
+    }
+    if (response.statusCode != 200) {
+      throw Exception('Failed to request verification: ${response.body}');
+    }
+  }
+
+  Future<void> verifyCode(String email, String code) async {
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.verificationVerify}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Verification failed: ${response.body}');
+    }
   }
 }

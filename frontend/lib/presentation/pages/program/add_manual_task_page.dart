@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../providers/task_provider.dart';
+import '../../providers/daily_program_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../widgets/assignment_selector.dart';
 
 class AddManualTaskPage extends ConsumerStatefulWidget {
   final DateTime initialDate;
@@ -35,8 +38,11 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
   String _selectedType = 'Görev';
   String _selectedPriority = 'medium';
   late DateTime _selectedDate;
+  bool _isSubmitting = false;
   TimeOfDay _startTime = const TimeOfDay(hour: 10, minute: 0);
   TimeOfDay _endTime = const TimeOfDay(hour: 11, minute: 0);
+  String? _communityId;
+  List<String> _assignedTo = [];
 
   final List<String> _types = [
     'Görev',
@@ -84,8 +90,11 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
 
   Future<void> _saveTask() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
 
-    final uuid = const Uuid();
+    final currentUser = ref.read(currentUserProvider);
+
     final DateTime combinedStart = DateTime(
       _selectedDate.year,
       _selectedDate.month,
@@ -94,7 +103,7 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       _startTime.minute,
     );
 
-    final DateTime combinedEnd = DateTime(
+    DateTime combinedEnd = DateTime(
       _selectedDate.year,
       _selectedDate.month,
       _selectedDate.day,
@@ -102,10 +111,17 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
       _endTime.minute,
     );
 
+    // Bitiş saati başlangıçtan önceyse ertesi güne taşır
+    if (combinedEnd.isBefore(combinedStart)) {
+      combinedEnd = combinedEnd.add(const Duration(days: 1));
+    }
+
     final task = TaskModel(
-      id: uuid.v4(),
-      creatorId: 'user_123', // Hardcoded for now
-      assignedTo: ['user_123'],
+      creatorId: currentUser?.id ?? '',
+      assignedTo: _communityId == null && _assignedTo.isEmpty
+          ? [currentUser?.id ?? '']
+          : _assignedTo,
+      communityId: _communityId,
       type: _selectedType,
       title: _titleController.text,
       description: _descriptionController.text,
@@ -118,6 +134,11 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
 
     try {
       await ref.read(taskControllerProvider).createTask(task);
+
+      // Invalidate the daily program provider for the selected date
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      ref.invalidate(dailyProgramByDateProvider(dateStr));
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Görev başarıyla eklendi!')),
@@ -129,6 +150,10 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -184,6 +209,15 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
               _buildSectionTitle('DETAYLAR'),
               const SizedBox(height: 16),
               _buildPrioritySelector(),
+              const SizedBox(height: 24),
+              AssignmentSelector(
+                onChanged: (communityId, assignedTo) {
+                  setState(() {
+                    _communityId = communityId;
+                    _assignedTo = assignedTo;
+                  });
+                },
+              ),
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _descriptionController,
@@ -439,13 +473,32 @@ class _AddManualTaskPageState extends ConsumerState<AddManualTaskPage> {
                     fontSize: 12,
                   ),
                 ),
-                Text(
-                  _formatTime(time),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      _formatTime(time),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (!isStart &&
+                        (_endTime.hour < _startTime.hour ||
+                            (_endTime.hour == _startTime.hour &&
+                                _endTime.minute < _startTime.minute)))
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          '+1 GÜN',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFF43F5E),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),

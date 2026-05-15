@@ -3,6 +3,7 @@ class TaskModel {
   final String creatorId;
   final List<String> assignedTo;
   final String? communityId;
+  final String? communityName;
   final String type;
   final String title;
   final String? description;
@@ -14,10 +15,11 @@ class TaskModel {
   final List<String> tags;
 
   TaskModel({
-    required this.id,
+    this.id = '',
     required this.creatorId,
     required this.assignedTo,
     this.communityId,
+    this.communityName,
     required this.type,
     required this.title,
     this.description,
@@ -35,6 +37,7 @@ class TaskModel {
       creatorId: json['creator_id'] ?? '',
       assignedTo: List<String>.from(json['assigned_to'] ?? []),
       communityId: json['community_id'],
+      communityName: json['community_name'],
       type: json['type'] ?? 'Görev',
       title: json['title'] ?? '',
       description: json['description'],
@@ -55,10 +58,10 @@ class TaskModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'creator_id': creatorId,
       'assigned_to': assignedTo,
       'community_id': communityId,
+      'community_name': communityName,
       'type': type,
       'title': title,
       'description': description,

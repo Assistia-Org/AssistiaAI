@@ -19,6 +19,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isGoogleLoading = false;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -85,30 +86,27 @@ class _LoginPageState extends ConsumerState<LoginPage>
     }
   }
 
+  void _signInWithGoogle() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      await ref.read(authControllerProvider).signInWithGoogle();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google ile giriş başarısız: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
   void _navigateToRegister() {
-    // Navigate with a custom SlideTransition
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const RegisterPage(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.easeInOutCubic;
-
-          var tween = Tween(
-            begin: begin,
-            end: end,
-          ).chain(CurveTween(curve: curve));
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 600),
-      ),
-    );
+    ref.read(authPageProvider.notifier).setPage(AuthPageType.register);
   }
 
   void _showForgotPasswordDialog() {
@@ -482,6 +480,73 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
                                   ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // OR Divider
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey[300])),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'veya',
+                              style: GoogleFonts.inter(
+                                color: Colors.grey[500],
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey[300])),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Google Sign-In Button
+                      SizedBox(
+                        height: 56,
+                        child: OutlinedButton(
+                          onPressed: (isLoading || _isGoogleLoading) ? null : _signInWithGoogle,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.grey[300]!),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: _isGoogleLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.blueAccent,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.network(
+                                      'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                                      height: 24,
+                                      width: 24,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.g_mobiledata_rounded,
+                                        size: 28,
+                                        color: Colors.redAccent,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Google ile devam et',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                         ),
                       ),

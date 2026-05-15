@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
 from pydantic import Field
 from enum import Enum
 from app.models.base import BaseDocument
@@ -9,7 +10,8 @@ class TaskStatus(str, Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    OVERDUE = "overdue"
+    
 class Task(BaseDocument):
     id: str = Field(default_factory=lambda: uuid4().hex, alias="_id")
     creator_id: str
@@ -24,6 +26,7 @@ class Task(BaseDocument):
     priority: str = "medium"
     status: TaskStatus = TaskStatus.PENDING
     tags: List[str] = Field(default_factory=list)
+    reminder_sent: bool = Field(default=False)
 
     class Settings:
         name = "tasks"

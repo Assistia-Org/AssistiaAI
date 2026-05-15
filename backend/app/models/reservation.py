@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from pydantic import Field
 from app.models.base import BaseDocument
@@ -11,10 +11,12 @@ class Reservation(BaseDocument):
     category: str
     title: str
     details: Dict[str, Any]
+    assigned_to: List[str] = Field(default_factory=list)
     is_shared: bool = False
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     status: str
+    reminder_sent: bool = Field(default=False)
 
     class Settings:
         name = "reservations"

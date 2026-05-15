@@ -6,7 +6,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../domain/entities/reservation/reservation.dart';
 import '../../providers/reservation_provider.dart';
-import 'package:uuid/uuid.dart';
+import '../../providers/daily_program_provider.dart';
+import 'package:intl/intl.dart';
+import '../../widgets/assignment_selector.dart';
 
 class AddBusReservationPage extends ConsumerStatefulWidget {
   const AddBusReservationPage({super.key});
@@ -19,6 +21,9 @@ class AddBusReservationPage extends ConsumerStatefulWidget {
 class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
   Map<String, dynamic>? _extractedData;
   final ImagePicker _picker = ImagePicker();
+  bool _isSubmitting = false;
+  String? _communityId;
+  List<String> _assignedTo = [];
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
@@ -266,6 +271,15 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
             ],
           ),
 
+          const SizedBox(height: 24),
+          AssignmentSelector(
+            onChanged: (communityId, assignedTo) {
+              setState(() {
+                _communityId = communityId;
+                _assignedTo = assignedTo;
+              });
+            },
+          ),
           const SizedBox(height: 32),
           _buildActionButtons(),
           const SizedBox(height: 40),
@@ -455,46 +469,56 @@ class _AddBusReservationPageState extends ConsumerState<AddBusReservationPage> {
             isSaving ? "Kaydediliyor..." : "Onayla ve Kaydet",
             onTap: isSaving
                 ? () {}
-                : () async {
-                    try {
-                      const uuid = Uuid();
-                      final data = _extractedData!;
+                  : () async {
+                      if (_isSubmitting) return;
+                      setState(() => _isSubmitting = true);
+                      try {
+                        final data = _extractedData!;
 
-                      final reservation = Reservation(
-                        id: uuid.v4(),
-                        category: "bus",
-                        title:
-                            "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
-                        details: data,
-                        status: "confirmed",
-                      );
+                        final reservation = Reservation(
+                          category: "bus",
+                          title:
+                              "Otobüs: ${data['departure'] ?? '-'} → ${data['arrival'] ?? '-'}",
+                          details: data,
+                          communityId: _communityId,
+                          assignedTo: _assignedTo,
+                          status: "confirmed",
+                        );
 
-                      await ref
-                          .read(reservationControllerProvider)
-                          .addReservation(reservation);
+                        await ref
+                            .read(reservationControllerProvider)
+                            .addReservation(reservation);
 
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              "Otobüs rezervasyonu başarıyla kaydedildi!",
+                        // Invalidate the daily program provider for today
+                        final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+                        ref.invalidate(dailyProgramByDateProvider(dateStr));
+
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                "Otobüs rezervasyonu başarıyla kaydedildi!",
+                              ),
+                              backgroundColor: Colors.green,
                             ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                        Navigator.pop(context);
+                          );
+                          Navigator.pop(context);
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Kaydedilemedi: ${e.toString()}"),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() => _isSubmitting = false);
+                        }
                       }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("Kaydedilemedi: ${e.toString()}"),
-                            backgroundColor: Colors.redAccent,
-                          ),
-                        );
-                      }
-                    }
-                  },
+                    },
           ),
         ),
       ],

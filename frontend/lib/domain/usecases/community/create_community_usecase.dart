@@ -9,7 +9,12 @@ class CreateCommunityUseCase {
   Future<Community> call({
     required String name,
     required String type,
+    String? description,
   }) {
-    return repository.createCommunity(name: name, type: type);
+    return repository.createCommunity(
+      name: name,
+      type: type,
+      description: description,
+    );
   }
 }

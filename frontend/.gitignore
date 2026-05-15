@@ -47,3 +47,23 @@ app.*.map.json
 # Environment variables
 .env
 .env.*
+
+# Firebase config (contains sensitive API keys — never commit)
+google-services.json
+GoogleService-Info.plist
+
+# Android Gradle cache & local paths
+android/.gradle/
+android/local.properties
+
+# Auto-generated plugin registrants (flutter pub get creates these)
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+ios/Runner/GeneratedPluginRegistrant.h
+ios/Runner/GeneratedPluginRegistrant.m
+macos/Flutter/GeneratedPluginRegistrant.swift
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
+linux/flutter/generated_plugins.cmake
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+windows/flutter/generated_plugins.cmake

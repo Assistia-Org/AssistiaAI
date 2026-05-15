@@ -45,4 +45,42 @@ class EventMapper {
     
     return type.toUpperCase();
   }
+
+  /// Returns the translated label for task status
+  static String getStatusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Bekliyor';
+      case 'in_progress':
+        return 'İşlemde';
+      case 'completed':
+        return 'Tamamlandı';
+      case 'overdue':
+        return 'Geçti';
+      case 'confirmed':
+        return 'Onaylandı';
+      case 'scheduled':
+        return 'Planlandı';
+      case 'cancelled':
+        return 'İptal Edildi';
+      default:
+        return status.toUpperCase();
+    }
+  }
+
+  /// Returns the color for task status
+  static Color getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return const Color(0xFF64748B); // Slate
+      case 'in_progress':
+        return const Color(0xFF3B82F6); // Blue
+      case 'completed':
+        return const Color(0xFF10B981); // Emerald
+      case 'overdue':
+        return const Color(0xFFF43F5E); // Rose
+      default:
+        return const Color(0xFF94A3B8); // Default
+    }
+  }
 }

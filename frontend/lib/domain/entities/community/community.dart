@@ -16,6 +16,7 @@ class Community {
   final String type;
   final String ownerId;
   final List<CommunityMember> members;
+  final String? description;
 
   Community({
     required this.id,
@@ -23,6 +24,7 @@ class Community {
     required this.type,
     required this.ownerId,
     required this.members,
+    this.description,
   });
 
   bool isOwner(String userId) => ownerId == userId;

@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConstants {
-  static const String _configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+  );
 
   static String get baseUrl {
     if (_configuredBaseUrl.isNotEmpty) {
@@ -14,7 +16,7 @@ class ApiConstants {
 
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        return 'http://192.168.1.180:8000/api/v1';
+        return 'http://10.149.65.122:8000/api/v1';
       default:
         return 'http://localhost:8000/api/v1';
     }
@@ -23,22 +25,32 @@ class ApiConstants {
   // Auth endpoints
   static const String authRegister = '/auth/register';
   static const String authLogin = '/auth/login';
+  static const String authChangePassword = '/auth/change-password';
+
+  // Verification endpoints
+  static const String verificationRequest = '/verification/request';
+  static const String verificationVerify = '/verification/verify';
 
   // User endpoints
   static const String userMe = '/users/me';
   static String userById(String id) => '/users/$id';
-  static String userByEmail(String email) => '/users/by-email?email=${Uri.encodeComponent(email)}';
+  static String userByEmail(String email) =>
+      '/users/by-email?email=${Uri.encodeComponent(email)}';
 
   // Reservation endpoints
   static const String reservations = '/reservations/';
+  static String reservationById(String id) => '/reservations/$id';
+  static String reservationDetail(String id) => reservationById(id);
   static const String reservationsAnalyze = '/reservations/analyze';
   static const String reservationsAnalyzeBus = '/reservations/analyze-bus';
 
   // Daily Program endpoints
-  static String dailyProgramsByDate(String dateStr) => '/daily-programs/date/$dateStr';
+  static String dailyProgramsByDate(String dateStr) =>
+      '/daily-programs/date/$dateStr';
 
   // Task endpoints
   static const String tasks = '/tasks/';
+  static String taskDetail(String id) => '/tasks/$id';
   static String tasksByUserId(String userId) => '/tasks/user/$userId';
 
   // Community endpoints
@@ -46,5 +58,18 @@ class ApiConstants {
   static const String myCommunities = '/communities/me';
   static String communityDetail(String id) => '/communities/$id';
   static String communityLeave(String id) => '/communities/$id/leave';
-  static String communityRemoveMember(String communityId, String userId) => '/communities/$communityId/members/$userId';
+  static String communityRemoveMember(String communityId, String userId) =>
+      '/communities/$communityId/members/$userId';
+
+  // Notification endpoints
+  static const String notifications = '/notifications/';
+  static String notificationMarkRead(String id) => '/notifications/$id/read';
+  static const String notificationsReadAll = '/notifications/read-all';
+  static String notificationDelete(String id) => '/notifications/$id';
+
+  // FCM token endpoint
+  static const String fcmToken = '/users/me/fcm-token';
+
+  // Assistant endpoints
+  static const String assistantChat = '/assistant/chat';
 }

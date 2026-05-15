@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../../core/constants/dummy_data.dart';
-import '../../../data/models/daily_program/daily_program_model.dart';
-import '../../../data/models/reservation/reservation_model.dart';
-import '../../../data/models/task/task_model.dart';
-import '../../../domain/entities/community/community.dart';
-import '../../providers/community_provider.dart';
+import '../../../core/utils/event_mapper.dart';
 import '../../providers/daily_program_provider.dart';
+import '../../providers/task_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/assistant_provider.dart';
+import '../../../data/models/task/task_model.dart';
+import '../../../data/models/reservation/reservation_model.dart';
+import '../../../data/models/daily_program/daily_program_model.dart';
+import '../assistant/assistant_chat_page.dart';
+import 'category_listing_page.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -18,30 +21,149 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  String _selectedFilterId = 'all';
-  final Set<String> _completedIds = {};
+  // Local state to track optimizations or UI tweaks if needed
+  String _getTodayStr() => DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-  void _completeTask(String taskId) {
-    setState(() {
-      _completedIds.add(taskId);
-    });
-    Navigator.pop(context); // Close bottom sheet
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+  String _formatTime(DateTime? dt) {
+    if (dt == null) return '--:--';
+    return DateFormat('HH:mm').format(dt);
+  }
+
+  Future<void> _completeTask(String taskId) async {
+    try {
+      await ref
+          .read(taskControllerProvider)
+          .updateTaskStatus(taskId, 'completed');
+      if (mounted) {
+        Navigator.pop(context); // Close bottom sheet
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Görev başarıyla tamamlandı!',
+              style: GoogleFonts.inter(),
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        // Refresh the program provider
+        ref.invalidate(dailyProgramByDateProvider(_getTodayStr()));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
+    }
+  }
+
+  Future<void> _deleteTask(String taskId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Görevi Sil',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+        ),
         content: Text(
-          'Görev başarıyla tamamlandı!',
+          'Bu görevi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
           style: GoogleFonts.inter(),
         ),
-        backgroundColor: const Color(0xFF10B981),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Vazgeç',
+              style: GoogleFonts.inter(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Sil',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFF43F5E),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(taskControllerProvider).deleteTask(taskId);
+        if (mounted) {
+          Navigator.pop(context); // Close bottom sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Görev silindi', style: GoogleFonts.inter()),
+              backgroundColor: const Color(0xFF1B232A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+          ref.invalidate(dailyProgramByDateProvider(_getTodayStr()));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+      }
+    }
+  }
+
+  void _navigateToListing(
+    String title, {
+    List<TaskModel>? tasks,
+    List<ReservationModel>? reservations,
+  }) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CategoryListingPage(
+          title: title,
+          tasks: tasks,
+          reservations: reservations,
+        ),
       ),
     );
   }
 
-  void _showTaskActions(Map<String, dynamic> task) {
-    final String calculatedStatus = DummyData.getCalculatedStatus(task);
-    final Color themeColor = DummyData.getEventColor(task['type']);
+  void _showTaskActions(dynamic item) {
+    final bool isTask = item is TaskModel;
+    final String type = isTask
+        ? item.type
+        : (item as ReservationModel).category;
+    final String status = isTask
+        ? item.status
+        : (item as ReservationModel).status;
+    final String displayStatus = EventMapper.getStatusLabel(
+      status,
+    ).toUpperCase();
+
+    final Color themeColor = EventMapper.getColor(type);
+    final String title = isTask ? item.title : (item as ReservationModel).title;
+    final String description = isTask
+        ? (item.description ?? 'Detaylı açıklama bulunmuyor.')
+        : '';
+    final String timeRange =
+        '${_formatTime(item.startDate)} - ${_formatTime(item.endDate)}';
 
     showModalBottomSheet(
       context: context,
@@ -82,17 +204,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                     color: themeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Icon(
-                    DummyData.getEventIcon(task['type']),
-                    color: themeColor,
-                  ),
+                  child: Icon(EventMapper.getIcon(type), color: themeColor),
                 ),
                 const SizedBox(width: 15),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      task['type'].toString().toUpperCase(),
+                      type.toUpperCase(),
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
@@ -101,7 +220,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                     ),
                     Text(
-                      '${task['start_date']} - ${task['end_date']}',
+                      timeRange,
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: Colors.grey[500],
@@ -118,21 +237,21 @@ class _HomePageState extends ConsumerState<HomePage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: calculatedStatus == 'TAMAMLANDI'
+                    color: status == 'completed'
                         ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                        : (calculatedStatus == 'İŞLEMDE'
+                        : (status == 'in_progress'
                               ? Colors.blue.withValues(alpha: 0.1)
                               : Colors.grey[100]),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    calculatedStatus,
+                    displayStatus,
                     style: GoogleFonts.inter(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: calculatedStatus == 'TAMAMLANDI'
+                      color: status == 'completed'
                           ? const Color(0xFF065F46)
-                          : (calculatedStatus == 'İŞLEMDE'
+                          : (status == 'in_progress'
                                 ? Colors.blue[700]
                                 : Colors.grey[600]),
                     ),
@@ -143,7 +262,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
             const SizedBox(height: 25),
             Text(
-              task['title'],
+              title,
               style: GoogleFonts.inter(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -153,7 +272,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             const SizedBox(height: 12),
 
             // Structured Details for Reservations or Simple Description for Tasks
-            if (task['details'] != null)
+            if (!isTask)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -163,46 +282,46 @@ class _HomePageState extends ConsumerState<HomePage> {
                   border: Border.all(color: Colors.grey[200]!),
                 ),
                 child: Column(
-                  children: (task['details'] as Map<String, dynamic>).entries
-                      .map((entry) {
-                        String label = entry.key == 'seat'
-                            ? 'Koltuk'
-                            : entry.key == 'gate'
-                            ? 'Kapı'
-                            : entry.key == 'room'
-                            ? 'Oda No'
-                            : entry.key == 'board'
-                            ? 'Konaklama'
-                            : entry.key;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                label,
-                                style: GoogleFonts.inter(
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                entry.value.toString(),
-                                style: GoogleFonts.inter(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                  children: (item as ReservationModel).details.entries.map((
+                    entry,
+                  ) {
+                    String label = entry.key == 'seat'
+                        ? 'Koltuk'
+                        : entry.key == 'gate'
+                        ? 'Kapı'
+                        : entry.key == 'room'
+                        ? 'Oda No'
+                        : entry.key == 'board'
+                        ? 'Konaklama'
+                        : entry.key;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            label,
+                            style: GoogleFonts.inter(
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        );
-                      })
-                      .toList(),
+                          Text(
+                            entry.value.toString(),
+                            style: GoogleFonts.inter(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
                 ),
               )
             else
               Text(
-                task['description'] ?? 'Detaylı açıklama bulunmuyor.',
+                description,
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -213,36 +332,73 @@ class _HomePageState extends ConsumerState<HomePage> {
             const SizedBox(height: 40),
 
             // Action Buttons
-            if (calculatedStatus != 'TAMAMLANDI')
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: calculatedStatus == 'BEKLİYOR'
-                      ? null
-                      : () => _completeTask(task['id']),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    disabledBackgroundColor: Colors.grey[200],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+            if (isTask) ...[
+              if (status == 'completed')
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          color: Color(0xFF10B981),
+                          size: 28,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Bu görev tamamlandı',
+                          style: TextStyle(
+                            color: Color(0xFF10B981),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    elevation: 0,
+                  ),
+                )
+              else if (status == 'pending')
+                Container(
+                  width: double.infinity,
+                  height: 60,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   child: Text(
-                    calculatedStatus == 'BEKLİYOR'
-                        ? 'Saati Bekleniyor...'
-                        : 'Görevi Tamamla',
+                    'Saati Bekleniyor...',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: calculatedStatus == 'BEKLİYOR'
-                          ? Colors.grey[400]
-                          : Colors.white,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                )
+              else // in_progress or overdue
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: () => _completeTask(item.id),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Görevi Tamamla',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
+            ],
 
             const SizedBox(height: 12),
 
@@ -251,17 +407,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               width: double.infinity,
               height: 60,
               child: OutlinedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Silme özelliği yakında eklenecek.',
-                        style: GoogleFonts.inter(),
-                      ),
-                    ),
-                  );
-                },
+                onPressed: () => _deleteTask(item.id),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
                   shape: RoundedRectangleBorder(
@@ -285,240 +431,343 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  List<Map<String, String>> _homeFilters(List<Community> communities) {
-    final communityFilters = communities.map((community) {
-      return {
-        'id': community.id,
-        'label': community.name,
-      };
-    }).toList();
-
-    return [
-      {'id': 'all', 'label': 'Tümü'},
-      {'id': 'personal', 'label': 'Kişisel'},
-      ...communityFilters,
-    ];
-  }
-
-  List<Map<String, dynamic>> _filterItems(List<Map<String, dynamic>> items) {
-    if (_selectedFilterId == 'all') return items;
-
-    return items.where((item) {
-      final communityId = item['community_id']?.toString().trim();
-      if (_selectedFilterId == 'personal') {
-        return communityId == null ||
-            communityId.isEmpty ||
-            communityId == 'null';
-      }
-
-      return communityId == _selectedFilterId;
-    }).toList();
-  }
-
-  String _formatTime(DateTime? dateTime) {
-    if (dateTime == null) return '';
-    return DateFormat('HH:mm').format(dateTime);
-  }
-
-  Map<String, dynamic> _taskToCardItem(TaskModel task) {
-    return {
-      'id': task.id,
-      'creator_id': task.creatorId,
-      'assigned_to': task.assignedTo,
-      'community_id': task.communityId,
-      'type': task.type,
-      'title': task.title,
-      'description': task.description,
-      'start_date': _formatTime(task.startDate),
-      'end_date': _formatTime(task.endDate),
-      'priority': task.priority,
-      'status': _completedIds.contains(task.id) ? 'completed' : task.status,
-      'tags': task.tags,
-    };
-  }
-
-  Map<String, dynamic> _reservationToCardItem(ReservationModel reservation) {
-    return {
-      'id': reservation.id,
-      'user_id': reservation.userId,
-      'community_id': reservation.communityId,
-      'category': reservation.category,
-      'type': reservation.category,
-      'title': reservation.title,
-      'details': reservation.details,
-      'is_shared': reservation.isShared,
-      'start_date': _formatTime(reservation.startDate),
-      'end_date': _formatTime(reservation.endDate),
-      'status': _completedIds.contains(reservation.id)
-          ? 'completed'
-          : reservation.status,
-    };
-  }
-
-  List<Map<String, dynamic>> _tasksFromProgram(DailyProgramModel program) {
-    return program.items.tasks.map(_taskToCardItem).toList();
-  }
-
-  List<Map<String, dynamic>> _reservationsFromProgram(
-    DailyProgramModel program,
-  ) {
-    return program.items.etkinlikler.map(_reservationToCardItem).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final programAsync = ref.watch(dailyProgramByDateProvider(dateStr));
-    final communitiesAsync = ref.watch(myCommunitiesProvider);
-    final communities = communitiesAsync.maybeWhen(
-      data: (value) => value,
-      orElse: () => const <Community>[],
-    );
-    final program = programAsync.maybeWhen(
-      data: (value) => value,
-      orElse: () => null,
-    );
-    final filteredTasks = program == null
-        ? <Map<String, dynamic>>[]
-        : _filterItems(_tasksFromProgram(program));
-    final filteredReservations = program == null
-        ? <Map<String, dynamic>>[]
-        : _filterItems(_reservationsFromProgram(program));
-    final isLoading = programAsync.isLoading || communitiesAsync.isLoading;
-
-    // 3. Calculate completion flags for summary ticks
-    final bool allTasksDone =
-        filteredTasks.isNotEmpty &&
-        filteredTasks.every((t) => t['status'] == 'completed');
-    final bool allReservationsDone =
-        filteredReservations.isNotEmpty &&
-        filteredReservations.every((r) => r['status'] == 'completed');
+    final todayStr = _getTodayStr();
+    final programAsync = ref.watch(dailyProgramByDateProvider(todayStr));
+    final currentUser = ref.watch(currentUserProvider);
+    final String firstName =
+        currentUser?.displayName.split(' ').first ?? 'Kullanıcı';
 
     // Global Background Color (Darker for Contrast)
     const Color globalBg = Color(0xFFEAEFF5);
 
     return Scaffold(
       backgroundColor: globalBg,
-      body: Stack(
-        children: [
-          // Top Background Filler (Dark)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 400,
-            child: Container(color: const Color(0xFF1B232A)),
-          ),
-          // Scrollable Content
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              children: [
-                _buildHeader(),
-                Transform.translate(
-                  offset: const Offset(0, -30),
-                  child: Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(
-                      color: globalBg,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(40),
-                        topRight: Radius.circular(40),
+      body: programAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text('Hata: $err')),
+        data: (program) {
+          final tasks = program.items.tasks;
+          final reservations = program.items.etkinlikler;
+
+          final regularTasks = tasks
+              .where(
+                (t) =>
+                    t.type.toLowerCase() != 'meeting' &&
+                    t.type.toLowerCase() != 'toplantı',
+              )
+              .toList();
+          final meetingTasks = tasks
+              .where(
+                (t) =>
+                    t.type.toLowerCase() == 'meeting' ||
+                    t.type.toLowerCase() == 'toplantı',
+              )
+              .toList();
+
+          final now = DateTime.now();
+
+          final bool tasksDone =
+              regularTasks.isNotEmpty &&
+              regularTasks.every((t) => t.status == 'completed');
+          final bool meetingsDone =
+              meetingTasks.isNotEmpty &&
+              meetingTasks.every((t) => t.status == 'completed');
+
+          // Reservations are done if manually completed OR if end time has passed
+          final bool resDone =
+              reservations.isNotEmpty &&
+              reservations.every((r) {
+                final bool isManuallyDone = r.status == 'completed';
+                final bool isTimeOver =
+                    r.endDate != null && now.isAfter(r.endDate!);
+                return isManuallyDone || isTimeOver;
+              });
+
+          final bool everythingDone =
+              (tasks.isNotEmpty || reservations.isNotEmpty) &&
+              tasks.every((t) => t.status == 'completed') &&
+              reservations.every((r) {
+                final bool isManuallyDone = r.status == 'completed';
+                final bool isTimeOver =
+                    r.endDate != null && now.isAfter(r.endDate!);
+                return isManuallyDone || isTimeOver;
+              });
+
+          final dailyGreetingAsync = ref.watch(dailyGreetingProvider(todayStr));
+
+          return Stack(
+            children: [
+              // Top Background Filler (Dark)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 400,
+                child: Container(color: const Color(0xFF1B232A)),
+              ),
+              // Scrollable Content
+              SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    _buildHeader(dailyGreetingAsync),
+                    Transform.translate(
+                      offset: const Offset(0, -30),
+                      child: Container(
+                        width: double.infinity,
+                        decoration: const BoxDecoration(
+                          color: globalBg,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(40),
+                            topRight: Radius.circular(40),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 30),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ── Greeting ──────────────────────────────────
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 25,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Merhaba, $firstName 👋',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF1B232A),
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    DateFormat(
+                                      'd MMMM yyyy',
+                                    ).format(DateTime.now()),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.grey[500],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // ── Daily Summaries Card ───────────────────────
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 25,
+                              ),
+                              child: Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF1B232A),
+                                      Color(0xFF2D3E4E),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(28),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF1B232A,
+                                      ).withValues(alpha: 0.25),
+                                      blurRadius: 30,
+                                      offset: const Offset(0, 12),
+                                    ),
+                                  ],
+                                ),
+                                padding: const EdgeInsets.all(22),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(7),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.bar_chart_rounded,
+                                            color: Colors.cyanAccent,
+                                            size: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'Günün Özeti',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 20),
+                                    _buildDailySummaries(
+                                      tasksDone: tasksDone,
+                                      meetingsDone: meetingsDone,
+                                      resDone: resDone,
+                                      everythingDone: everythingDone,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 32),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 25,
+                              ),
+                              child: _buildSectionHeader(
+                                'Rezervasyonlarım',
+                                icon: Icons.confirmation_num_rounded,
+                                onTap: () => _navigateToListing(
+                                  'Rezervasyonlarım',
+                                  reservations: reservations,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _buildReservationsList(reservations),
+
+                            const SizedBox(height: 32),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 25,
+                              ),
+                              child: _buildSectionHeader(
+                                'Görevlerim',
+                                icon: Icons.task_alt_rounded,
+                                onTap: () => _navigateToListing(
+                                  'Görevlerim',
+                                  tasks: tasks
+                                      .where(
+                                        (t) =>
+                                            t.type.toLowerCase() != 'meeting' &&
+                                            t.type.toLowerCase() != 'toplantı',
+                                      )
+                                      .toList(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _buildTasksList(tasks),
+
+                            const SizedBox(height: 32),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 25,
+                              ),
+                              child: _buildSectionHeader(
+                                'Toplantılarım',
+                                icon: Icons.video_camera_front_rounded,
+                                onTap: () => _navigateToListing(
+                                  'Toplantılarım',
+                                  tasks: tasks
+                                      .where(
+                                        (t) =>
+                                            t.type.toLowerCase() == 'meeting' ||
+                                            t.type.toLowerCase() == 'toplantı',
+                                      )
+                                      .toList(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _buildMeetingsList(tasks),
+
+                            const SizedBox(height: 70),
+                          ],
+                        ),
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 30),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: Text(
-                            "Can'a Merhaba",
-                            style: GoogleFonts.inter(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        _buildHomeFilters(communities),
-                        const SizedBox(height: 25),
-                        if (isLoading)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 25),
-                            child: LinearProgressIndicator(
-                              minHeight: 2,
-                              color: Color(0xFF1B232A),
-                            ),
-                          ),
-                        if (isLoading) const SizedBox(height: 18),
-                        // Daily Summaries Card
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(32),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.03),
-                                  blurRadius: 40,
-                                  offset: const Offset(0, 15),
-                                ),
-                              ],
-                            ),
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Günün Özetleri",
-                                  style: GoogleFonts.inter(
-                                    fontSize: 19,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 25),
-                                _buildDailySummaries(
-                                  allTasksDone,
-                                  allReservationsDone,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
-                        const SizedBox(height: 35),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: _buildSectionHeader("Rezervasyonlarım"),
-                        ),
-                        const SizedBox(height: 15),
-                        _buildReservationsList(filteredReservations),
-
-                        const SizedBox(height: 35),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: _buildSectionHeader("Görevlerim"),
-                        ),
-                        const SizedBox(height: 15),
-                        _buildTasksList(filteredTasks),
-
-                        const SizedBox(height: 35),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25),
-                          child: _buildSectionHeader("Toplantılarım"),
-                        ),
-                        const SizedBox(height: 15),
-                        _buildMeetingsList(filteredTasks),
-
-                        const SizedBox(height: 60),
-                      ],
-                    ),
+  Widget _buildSectionHeader(
+    String title, {
+    VoidCallback? onTap,
+    IconData? icon,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1B232A).withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(10),
                   ),
+                  child: Icon(icon, size: 15, color: const Color(0xFF1B232A)),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF1B232A),
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B232A).withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Tümü',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1B232A).withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 13,
+                  color: const Color(0xFF1B232A).withValues(alpha: 0.7),
                 ),
               ],
             ),
@@ -528,93 +777,54 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildHomeFilters(List<Community> communities) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      clipBehavior: Clip.none,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 25),
-        child: Row(
-          children: _homeFilters(communities).map((filter) {
-            final id = filter['id']!;
-            final label = filter['label']!;
-            final isSelected = _selectedFilterId == id;
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: ChoiceChip(
-                label: Text(label),
-                selected: isSelected,
-                onSelected: (_) {
-                  setState(() => _selectedFilterId = id);
-                },
-                showCheckmark: false,
-                labelStyle: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? Colors.white : const Color(0xFF475569),
-                ),
-                selectedColor: const Color(0xFF1B232A),
-                backgroundColor: Colors.white,
-                side: BorderSide(
-                  color: isSelected
-                      ? const Color(0xFF1B232A)
-                      : Colors.black.withValues(alpha: 0.06),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-          ),
-        ),
-        const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      ],
-    );
-  }
-
-  Widget _buildHeader() {
+  Widget _buildHeader(AsyncValue<String> greetingAsync) {
     return Container(
       padding: const EdgeInsets.only(top: 40, left: 20, right: 20, bottom: 50),
       color: const Color(0xFF1B232A),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [Color(0xFF2D3E4E), Color(0xFF1A2A3A)],
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  opaque: false,
+                  pageBuilder: (context, animation, secondaryAnimation) {
+                    return const AssistantChatPage();
+                  },
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(0.0, 1.0);
+                        const end = Offset.zero;
+                        const curve = Curves.easeOutQuart;
+                        var tween = Tween(
+                          begin: begin,
+                          end: end,
+                        ).chain(CurveTween(curve: curve));
+                        var offsetAnimation = animation.drive(tween);
+                        return SlideTransition(
+                          position: offsetAnimation,
+                          child: child,
+                        );
+                      },
+                ),
+              );
+            },
+            child: Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFF2D3E4E), Color(0xFF1A2A3A)],
+                ),
               ),
-            ),
-            child: const Center(
-              child: Icon(
-                Icons.auto_awesome,
-                color: Colors.cyanAccent,
-                size: 30,
+              child: const Center(
+                child: Icon(
+                  Icons.auto_awesome,
+                  color: Colors.cyanAccent,
+                  size: 30,
+                ),
               ),
             ),
           ),
@@ -626,12 +836,43 @@ class _HomePageState extends ConsumerState<HomePage> {
                 color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text(
-                'Bugün için her şey hazır görünüyor!',
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+              child: greetingAsync.when(
+                data: (msg) => Text(
+                  msg,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                loading: () => Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.cyanAccent,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Asistan notunu hazırlıyor...',
+                      style: GoogleFonts.inter(
+                        color: Colors.white70,
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+                error: (err, stack) => Text(
+                  'Harika bir gün geçirmen dileğiyle!',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
@@ -641,13 +882,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildDailySummaries(bool tasksDone, bool resDone) {
+  Widget _buildDailySummaries({
+    required bool tasksDone,
+    required bool meetingsDone,
+    required bool resDone,
+    required bool everythingDone,
+  }) {
     final List<Map<String, dynamic>> summaries = [
-      {'icon': Icons.task_alt_rounded, 'is_done': tasksDone},
-      {'icon': Icons.business_center_rounded, 'is_done': resDone},
-      {'icon': Icons.insights_rounded, 'is_done': tasksDone && resDone},
-      {'icon': Icons.calendar_today_rounded, 'is_gray': true},
-      {'icon': Icons.more_horiz_rounded, 'is_last': true},
+      {'icon': Icons.check_circle_outline_rounded, 'is_done': tasksDone},
+      {'icon': Icons.business_center_rounded, 'is_done': meetingsDone},
+      {'icon': Icons.auto_graph_rounded, 'is_done': resDone},
+      {'icon': Icons.calendar_today_rounded, 'is_done': everythingDone},
     ];
 
     return Row(
@@ -677,27 +922,29 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ? [Colors.grey[50]!, Colors.grey[100]!]
                         : (isDone
                               ? [
-                                  const Color(0xFFE0F2F1),
-                                  const Color(0xFFB2DFDB),
+                                  const Color(0xFF10B981).withOpacity(0.1),
+                                  const Color(0xFF10B981).withOpacity(0.2),
                                 ]
                               : [Colors.white, Colors.grey[50]!]),
                   ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: isLast
                 ? null
                 : Border.all(
                     color: isDone
-                        ? const Color(0xFF4A9090).withValues(alpha: 0.3)
-                        : Colors.black.withValues(alpha: 0.05),
+                        ? const Color(0xFF10B981).withOpacity(0.3)
+                        : Colors.black.withOpacity(0.05),
                     width: 1.5,
                   ),
           ),
           child: Icon(
-            data['icon'],
+            isDone && data['icon'] == Icons.calendar_today_rounded
+                ? Icons.check_circle_rounded
+                : data['icon'],
             color: isLast
                 ? Colors.grey[300]
-                : (isDone ? const Color(0xFF4A9090) : Colors.grey[400]),
-            size: 22,
+                : (isDone ? const Color(0xFF10B981) : Colors.grey[400]),
+            size: 24,
           ),
         ),
         if (isDone)
@@ -707,7 +954,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             child: Container(
               padding: const EdgeInsets.all(3),
               decoration: const BoxDecoration(
-                color: Color(0xFF4A9090),
+                color: Color(0xFF10B981),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check, size: 8, color: Colors.white),
@@ -717,13 +964,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildReservationsList(List<Map<String, dynamic>> items) {
-    if (items.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 25),
-        child: Text("Yakınlarda rezervasyon yok"),
+  Widget _buildReservationsList(List<ReservationModel> items) {
+    if (items.isEmpty)
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 25),
+        child: _buildEmptyChip(
+          'Yakınlarda rezervasyon yok',
+          Icons.confirmation_num_outlined,
+        ),
       );
-    }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -733,24 +982,50 @@ class _HomePageState extends ConsumerState<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Row(
           children: items.map((res) {
-            final isFlight = res['type'] == 'Uçuş';
-            final String calculatedStatus = DummyData.getCalculatedStatus(res);
+            final typeLower = res.category.toLowerCase();
+            final isFlight = typeLower == 'flight' || typeLower == 'uçuş';
+            final isHotel =
+                typeLower == 'hotel' ||
+                typeLower == 'otel' ||
+                typeLower == 'konaklama';
+            final statusLabel = EventMapper.getStatusLabel(res.status);
+
+            String subtitle = "-";
+            if (isFlight) {
+              subtitle = "Koltuk: ${res.details['seat'] ?? '-'}";
+            } else if (isHotel) {
+              subtitle = "Oda: ${res.details['room'] ?? '-'}";
+            } else {
+              // Diğer durumlar için varsa lokasyon veya detay bilgisi
+              subtitle =
+                  res.details['location'] ??
+                  res.details['note'] ??
+                  res.details['details'] ??
+                  "-";
+            }
+
             return Padding(
               padding: const EdgeInsets.only(right: 15),
               child: GestureDetector(
                 onTap: () => _showTaskActions(res),
                 child: _buildInfoCard(
-                  type: res['type'],
-                  title: res['title'],
-                  subtitle: isFlight
-                      ? "Koltuk: ${res['details']['seat']}"
-                      : "Oda: ${res['details']['room']}",
-                  status: calculatedStatus,
-                  time: res['start_date'],
-                  icon: DummyData.getEventIcon(res['type']),
-                  color: DummyData.getEventColor(res['type']),
-                  isCompleted: calculatedStatus == 'TAMAMLANDI',
-                  isInProgress: calculatedStatus == 'İŞLEMDE',
+                  type: EventMapper.getLabel(res.category),
+                  title: res.title,
+                  subtitle: subtitle,
+                  status: statusLabel,
+                  time: _formatTime(res.startDate),
+                  icon: EventMapper.getIcon(res.category),
+                  color: EventMapper.getColor(res.category),
+                  isCompleted:
+                      res.status == 'completed' ||
+                      (res.endDate != null &&
+                          DateTime.now().isAfter(res.endDate!)),
+                  isInProgress:
+                      res.status == 'in_progress' ||
+                      (res.startDate != null &&
+                          res.endDate != null &&
+                          DateTime.now().isAfter(res.startDate!) &&
+                          DateTime.now().isBefore(res.endDate!)),
                 ),
               ),
             );
@@ -760,14 +1035,17 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildTasksList(List<Map<String, dynamic>> items) {
-    final taskItems = items.where((i) => i['type'] == 'Görev').toList();
-    if (taskItems.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 25),
-        child: Text("Bugün için görev yok"),
+  Widget _buildTasksList(List<TaskModel> items) {
+    final taskItems = items.where((i) {
+      final t = i.type.toLowerCase();
+      return t != 'meeting' && t != 'toplantı';
+    }).toList();
+
+    if (taskItems.isEmpty)
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 25),
+        child: _buildEmptyChip('Bugün için görev yok', Icons.task_outlined),
       );
-    }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -777,22 +1055,22 @@ class _HomePageState extends ConsumerState<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Row(
           children: taskItems.map((task) {
-            final String calculatedStatus = DummyData.getCalculatedStatus(task);
+            final statusLabel = EventMapper.getStatusLabel(task.status);
             return Padding(
               padding: const EdgeInsets.only(right: 15),
               child: GestureDetector(
                 onTap: () => _showTaskActions(task),
                 child: _buildInfoCard(
-                  type: "Görev",
-                  title: task['title'],
+                  type: EventMapper.getLabel(task.type),
+                  title: task.title,
                   subtitle:
-                      "Öncelik: ${task['priority'].toString().toUpperCase()}",
-                  status: calculatedStatus,
-                  time: task['start_date'],
-                  icon: DummyData.getEventIcon(task['type']),
-                  color: DummyData.getEventColor(task['type']),
-                  isCompleted: calculatedStatus == 'TAMAMLANDI',
-                  isInProgress: calculatedStatus == 'İŞLEMDE',
+                      "Öncelik: ${task.priority.toString().toUpperCase()}",
+                  status: statusLabel,
+                  time: _formatTime(task.startDate),
+                  icon: EventMapper.getIcon(task.type),
+                  color: EventMapper.getColor(task.type),
+                  isCompleted: task.status == 'completed',
+                  isInProgress: task.status == 'in_progress',
                 ),
               ),
             );
@@ -802,14 +1080,20 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  Widget _buildMeetingsList(List<Map<String, dynamic>> items) {
-    final meetingItems = items.where((i) => i['type'] == 'Toplantı').toList();
-    if (meetingItems.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 25),
-        child: Text("Bugün toplantı yok"),
+  Widget _buildMeetingsList(List<TaskModel> items) {
+    final meetingItems = items.where((i) {
+      final t = i.type.toLowerCase();
+      return t == 'meeting' || t == 'toplantı';
+    }).toList();
+
+    if (meetingItems.isEmpty)
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 25),
+        child: _buildEmptyChip(
+          'Bugün toplantı yok',
+          Icons.video_camera_front_outlined,
+        ),
       );
-    }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -819,28 +1103,52 @@ class _HomePageState extends ConsumerState<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 25),
         child: Row(
           children: meetingItems.map((meeting) {
-            final String calculatedStatus = DummyData.getCalculatedStatus(
-              meeting,
-            );
+            final statusLabel = EventMapper.getStatusLabel(meeting.status);
             return Padding(
               padding: const EdgeInsets.only(right: 15),
               child: GestureDetector(
                 onTap: () => _showTaskActions(meeting),
                 child: _buildInfoCard(
-                  type: "Online Toplantı",
-                  title: meeting['title'],
-                  subtitle: "Platform: Google Meet",
-                  status: calculatedStatus,
-                  time: meeting['start_date'],
-                  icon: DummyData.getEventIcon(meeting['type']),
-                  color: DummyData.getEventColor(meeting['type']),
-                  isCompleted: calculatedStatus == 'TAMAMLANDI',
-                  isInProgress: calculatedStatus == 'İŞLEMDE',
+                  type: "TOPLANTI",
+                  title: meeting.title,
+                  subtitle: meeting.description ?? "Detay bulunmuyor",
+                  status: statusLabel,
+                  time: _formatTime(meeting.startDate),
+                  icon: EventMapper.getIcon(meeting.type),
+                  color: EventMapper.getColor(meeting.type),
+                  isCompleted: meeting.status == 'completed',
+                  isInProgress: meeting.status == 'in_progress',
                 ),
               ),
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyChip(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[400]),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -856,68 +1164,103 @@ class _HomePageState extends ConsumerState<HomePage> {
     required bool isCompleted,
     bool isInProgress = false,
   }) {
+    // Status colors
+    final Color statusBg = isCompleted
+        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+        : isInProgress
+        ? const Color(0xFF3B82F6).withValues(alpha: 0.12)
+        : Colors.grey.withValues(alpha: 0.1);
+    final Color statusFg = isCompleted
+        ? const Color(0xFF065F46)
+        : isInProgress
+        ? const Color(0xFF1D4ED8)
+        : Colors.grey.shade600;
+
     return Container(
-      width: 230,
+      width: 220,
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(28),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: isInProgress
-                ? color.withValues(alpha: 0.15)
-                : Colors.black.withValues(alpha: 0.06),
-            blurRadius: isInProgress ? 25 : 20,
-            offset: const Offset(0, 10),
+                ? color.withValues(alpha: 0.18)
+                : Colors.black.withValues(alpha: 0.07),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
           ),
         ],
+        border: isInProgress
+            ? Border.all(color: color.withValues(alpha: 0.3), width: 1.5)
+            : null,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Vibrant Color + Icon + Time
+          // ── Coloured top strip with icon ──────────────────
           Container(
-            height: 90,
+            height: 100,
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color,
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [color, color.withValues(alpha: 0.85)],
+                colors: [color, color.withValues(alpha: 0.75)],
               ),
             ),
             child: Stack(
               children: [
-                Center(child: Icon(icon, color: Colors.white, size: 32)),
-                // Integrated Time (High Contrast)
+                // Large background icon (watermark)
                 Positioned(
-                  bottom: 0,
-                  right: 0,
+                  right: -10,
+                  bottom: -10,
+                  child: Icon(
+                    icon,
+                    size: 80,
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
+                ),
+                // Centered icon
+                Positioned(
+                  top: 18,
+                  left: 18,
+                  child: Container(
+                    padding: const EdgeInsets.all(9),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: Colors.white, size: 20),
+                  ),
+                ),
+                // Time pill
+                Positioned(
+                  bottom: 12,
+                  right: 14,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
+                      horizontal: 9,
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: Colors.black.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.access_time_filled_rounded,
-                          size: 12,
+                          Icons.schedule_rounded,
+                          size: 11,
                           color: Colors.white,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 4),
                         Text(
                           time,
                           style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
                         ),
@@ -925,79 +1268,91 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ),
                   ),
                 ),
+                // Completed overlay
+                if (isCompleted)
+                  Positioned(
+                    top: 10,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        size: 10,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
 
-          // White Area: Title, Subtitle, Status
+          // ── Content area ──────────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Type label + Status pill
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: Text(
-                        type.toUpperCase(),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: color,
-                          letterSpacing: 0.8,
-                        ),
+                    Text(
+                      type.toUpperCase(),
+                      style: GoogleFonts.inter(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                        letterSpacing: 1.0,
                       ),
                     ),
-                    // Proportional Status Pill
+                    const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: isCompleted
-                            ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                            : (isInProgress
-                                  ? Colors.blue.withValues(alpha: 0.1)
-                                  : Colors.grey[100]),
+                        color: statusBg,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         status,
                         style: GoogleFonts.inter(
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                          color: isCompleted
-                              ? const Color(0xFF065F46)
-                              : (isInProgress
-                                    ? Colors.blue[700]
-                                    : Colors.grey[500]),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: statusFg,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 7),
                 Text(
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1B232A),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isCompleted
+                        ? Colors.grey.shade400
+                        : const Color(0xFF1B232A),
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                    decorationColor: Colors.grey.shade400,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 5),
                 Text(
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
+                    color: Colors.grey.shade500,
                   ),
                 ),
               ],
