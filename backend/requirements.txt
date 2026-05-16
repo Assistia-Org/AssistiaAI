@@ -14,4 +14,7 @@ httpx
 resend
 redis
 firebase-admin
-aiokafka>=0.10.0
+aiokafka>=0.10.0
+pytest
+pytest-asyncio
+pytest-mock

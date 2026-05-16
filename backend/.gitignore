@@ -33,4 +33,3 @@ ENV/
 
 # Secrets
 .env
-firebase-credentials.json

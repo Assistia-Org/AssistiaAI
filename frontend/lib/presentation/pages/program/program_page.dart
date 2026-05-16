@@ -13,6 +13,8 @@ import 'add_manual_task_page.dart';
 import 'add_flight_reservation_page.dart';
 import 'add_bus_reservation_page.dart';
 import 'add_manual_hotel_page.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProgramPage extends ConsumerStatefulWidget {
   const ProgramPage({super.key});
@@ -1244,6 +1246,16 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             ),
           ),
         ],
+        // Location
+        if (task.locationAddress != null || (task.locationLat != null && task.locationLng != null)) ...[
+          const SizedBox(height: 12),
+          _buildLocationCard(
+            address: task.locationAddress,
+            lat: task.locationLat,
+            lng: task.locationLng,
+            color: color,
+          ),
+        ],
         const SizedBox(height: 32),
         if (task.status != 'completed') ...[
           SizedBox(
@@ -1348,6 +1360,16 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
               runSpacing: 0,
               children: _buildDetailGridCells(details, color),
             ),
+          ),
+        ],
+        // Location
+        if (res.locationAddress != null || (res.locationLat != null && res.locationLng != null)) ...[
+          const SizedBox(height: 12),
+          _buildLocationCard(
+            address: res.locationAddress,
+            lat: res.locationLat,
+            lng: res.locationLng,
+            color: color,
           ),
         ],
         const SizedBox(height: 32),
@@ -1617,6 +1639,87 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
             .map((w) =>
                 w.isEmpty ? '' : '${w[0].toUpperCase()}${w.substring(1)}')
             .join(' ');
+  }
+
+  Widget _buildLocationCard({
+    String? address,
+    double? lat,
+    double? lng,
+    required Color color,
+  }) {
+    return _sectionCard(
+      color: color,
+      title: 'KONUM',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (address != null && address.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(Icons.location_on_rounded, size: 16, color: color),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    address,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF334155),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (lat != null && lng != null) const SizedBox(height: 12),
+          ],
+          if (lat != null && lng != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                height: 150,
+                width: double.infinity,
+                child: Stack(
+                  children: [
+                    GoogleMap(
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(lat, lng),
+                        zoom: 15,
+                      ),
+                      markers: {
+                        Marker(
+                          markerId: const MarkerId('location'),
+                          position: LatLng(lat, lng),
+                        ),
+                      },
+                      zoomControlsEnabled: false,
+                      mapToolbarEnabled: false,
+                      myLocationButtonEnabled: false,
+                      liteModeEnabled: true, // Optimizes for performance
+                      onTap: (_) async {
+                        final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                        if (await canLaunchUrl(Uri.parse(url))) {
+                          await launchUrl(Uri.parse(url));
+                        }
+                      },
+                    ),
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: () async {
+                          final url = 'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+                          if (await canLaunchUrl(Uri.parse(url))) {
+                            await launchUrl(Uri.parse(url));
+                          }
+                        },
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   // ─── EMPTY STATE ───────────────────────────────────────────────────────────

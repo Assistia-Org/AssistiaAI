@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/utils/event_mapper.dart';
 import '../../providers/daily_program_provider.dart';
 import '../../providers/task_provider.dart';
@@ -479,11 +480,14 @@ class _HomePageState extends ConsumerState<HomePage> {
           final reservations = program.items.etkinlikler;
           final filteredTasks = _selectedTaskCommunityId == null
               ? tasks
-              : tasks
-                    .where(
-                      (task) => task.communityId == _selectedTaskCommunityId,
-                    )
-                    .toList();
+              : (_selectedTaskCommunityId == 'personal'
+                  ? tasks.where((t) => t.communityId == null).toList()
+                  : tasks
+                        .where(
+                          (task) =>
+                              task.communityId == _selectedTaskCommunityId,
+                        )
+                        .toList());
 
           final regularTasks = tasks
               .where(
@@ -789,6 +793,15 @@ class _HomePageState extends ConsumerState<HomePage> {
               count: tasks.length,
               isSelected: _selectedTaskCommunityId == null,
               onTap: () => setState(() => _selectedTaskCommunityId = null),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: _buildCommunityTaskTab(
+                label: 'Kişisel',
+                count: tasks.where((t) => t.communityId == null).length,
+                isSelected: _selectedTaskCommunityId == 'personal',
+                onTap: () => setState(() => _selectedTaskCommunityId = 'personal'),
+              ),
             ),
             ...communities.map((community) {
               final count = communityTaskCounts[community.id] ?? 0;
@@ -1572,36 +1585,78 @@ class _HomeLocationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _openMaps,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEAF5EE),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF4A7C5F).withOpacity(0.25)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.location_on_rounded, size: 18, color: Color(0xFF4A7C5F)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                address,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2E7D50),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: _openMaps,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFCBD5E1)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on_rounded, size: 18, color: Color(0xFF64748B)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    address,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF334155),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 8),
+                const Icon(Icons.open_in_new_rounded, size: 14, color: Color(0xFF64748B)),
+              ],
+            ),
+          ),
+        ),
+        if (lat != null && lng != null) ...[
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              height: 150,
+              width: double.infinity,
+              child: Stack(
+                children: [
+                  GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: LatLng(lat!, lng!),
+                      zoom: 15,
+                    ),
+                    markers: {
+                      Marker(
+                        markerId: const MarkerId('home_loc'),
+                        position: LatLng(lat!, lng!),
+                      ),
+                    },
+                    zoomControlsEnabled: false,
+                    mapToolbarEnabled: false,
+                    myLocationButtonEnabled: false,
+                    liteModeEnabled: true,
+                    onTap: (_) => _openMaps(),
+                  ),
+                  Positioned.fill(
+                    child: GestureDetector(
+                      onTap: _openMaps,
+                      child: Container(color: Colors.transparent),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.open_in_new_rounded, size: 14, color: Color(0xFF4A7C5F)),
-          ],
-        ),
-      ),
+          ),
+        ],
+      ],
     );
   }
 }
