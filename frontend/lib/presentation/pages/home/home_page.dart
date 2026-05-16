@@ -1079,20 +1079,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               );
             },
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFF2D3E4E), Color(0xFF1A2A3A)],
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.auto_awesome,
-                  color: Colors.cyanAccent,
-                  size: 30,
+            child: SizedBox(
+              width: 55,
+              height: 55,
+              child: Transform.scale(
+                scale: 2.5,
+                child: Image.asset(
+                  'assets/images/assistia_ai_bot.png',
+                  fit: BoxFit.contain,
                 ),
               ),
             ),
