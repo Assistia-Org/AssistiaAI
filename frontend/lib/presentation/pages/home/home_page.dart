@@ -10,6 +10,7 @@ import '../../providers/task_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/community_provider.dart';
+import '../../providers/reservation_provider.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../../data/models/reservation/reservation_model.dart';
 import '../../../domain/entities/community/community.dart';
@@ -114,6 +115,73 @@ class _HomePageState extends ConsumerState<HomePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Görev silindi', style: GoogleFonts.inter()),
+              backgroundColor: const Color(0xFF1B232A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+          ref.invalidate(dailyProgramByDateProvider(_getTodayStr()));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteReservation(String reservationId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Rezervasyonu Sil',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Bu rezervasyonu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+          style: GoogleFonts.inter(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Vazgeç',
+              style: GoogleFonts.inter(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Sil',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFF43F5E),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(reservationControllerProvider).deleteReservation(reservationId);
+        if (mounted) {
+          Navigator.pop(context); // Close bottom sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Rezervasyon silindi', style: GoogleFonts.inter()),
               backgroundColor: const Color(0xFF1B232A),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -429,12 +497,18 @@ class _HomePageState extends ConsumerState<HomePage> {
 
             const SizedBox(height: 12),
 
-            // Delete button (Placeholder as requested)
+            // Delete button
             SizedBox(
               width: double.infinity,
               height: 60,
               child: OutlinedButton(
-                onPressed: () => _deleteTask(item.id),
+                onPressed: () {
+                  if (isTask) {
+                    _deleteTask(item.id);
+                  } else {
+                    _deleteReservation(item.id);
+                  }
+                },
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
                   shape: RoundedRectangleBorder(
@@ -442,7 +516,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ),
                 child: Text(
-                  'Görevi Sil',
+                  isTask ? 'Görevi Sil' : 'Rezervasyonu Sil',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
