@@ -2,14 +2,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/sse/sse_client.dart';
 import 'invitation_provider.dart';
 import 'notification_provider.dart';
+import 'auth_provider.dart';
 
 // Provides the raw SSEClient instance
 final sseClientProvider = Provider<SSEClient>((ref) {
-  final client = SSEClient();
-  ref.onDispose(() {
-    client.disconnect();
-  });
-  return client;
+  final prefsAsync = ref.watch(sharedPrefsProvider);
+  
+  // Prefs ready olana kadar dummy client, sonrasında asıl client
+  return prefsAsync.when(
+    data: (prefs) {
+      final client = SSEClient(prefs);
+      ref.onDispose(() => client.disconnect());
+      return client;
+    },
+    loading: () => SSEClient(null as dynamic), // Riskli ama sseService zaten connect'i bekleyecek
+    error: (_, __) => SSEClient(null as dynamic),
+  );
 });
 
 // A service that listens to the SSEClient stream and updates state
@@ -37,8 +45,8 @@ class SSEService {
     }
   }
 
-  void connect(String token) {
-    client.connect(token);
+  void connect(String? token) {
+    client.connect();
   }
 
   void disconnect() {

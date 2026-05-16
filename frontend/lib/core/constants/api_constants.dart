@@ -2,10 +2,12 @@ class ApiConstants {
 
   
   static const String baseUrl = 'https://assistiaai.onrender.com/api/v1';
+  
 
   // Auth endpoints
   static const String authRegister = '/auth/register';
   static const String authLogin = '/auth/login';
+  static const String authRefresh = '/auth/refresh';
   static const String authChangePassword = '/auth/change-password';
 
   // Verification endpoints
