@@ -77,7 +77,6 @@ class ProfilePage extends ConsumerWidget {
                         Builder(builder: (context) {
                           final communitiesAsync = ref.watch(myCommunitiesProvider);
                           final tasksAsync = ref.watch(allTasksProvider);
-                          final reservationsAsync = ref.watch(allReservationsProvider);
 
                           final String communityCount = communitiesAsync.when(
                             data: (list) => list.length.toString(),
@@ -89,16 +88,10 @@ class ProfilePage extends ConsumerWidget {
                             loading: () => '...',
                             error: (_, __) => '0',
                           );
-                          final String reservationCount = reservationsAsync.when(
-                            data: (list) => list.length.toString(),
-                            loading: () => '...',
-                            error: (_, __) => '0',
-                          );
 
                           return _buildStats(
                             communityCount: communityCount,
                             taskCount: taskCount,
-                            reservationCount: reservationCount,
                           );
                         }),
                         
@@ -174,7 +167,6 @@ class ProfilePage extends ConsumerWidget {
   Widget _buildStats({
     required String communityCount,
     required String taskCount,
-    required String reservationCount,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 25),
@@ -188,7 +180,6 @@ class ProfilePage extends ConsumerWidget {
         children: [
           _buildStatItem(communityCount, 'Topluluk'),
           _buildStatItem(taskCount, 'Görev'),
-          _buildStatItem(reservationCount, 'Seyahat'),
         ],
       ),
     );
