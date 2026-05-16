@@ -10,6 +10,7 @@ import '../../../domain/entities/community/community.dart';
 import '../../../domain/entities/user/user.dart';
 import 'community_detail_page.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/user_avatar.dart';
 
 class CommunitiesPage extends ConsumerStatefulWidget {
   const CommunitiesPage({super.key});
@@ -546,17 +547,11 @@ class _CommunitiesPageState extends ConsumerState<CommunitiesPage> {
                   ),
                 ],
               ),
-              child: CircleAvatar(
+              child: UserAvatar(
                 radius: 14,
-                backgroundImage: member.user.avatarUrl != null
-                    ? NetworkImage(member.user.avatarUrl!)
-                    : null,
-                child: member.user.avatarUrl == null
-                    ? Text(
-                        member.user.displayName[0],
-                        style: const TextStyle(fontSize: 10),
-                      )
-                    : null,
+                displayName: member.user.displayName,
+                avatarUrl: member.user.avatarUrl,
+                textStyle: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
           );

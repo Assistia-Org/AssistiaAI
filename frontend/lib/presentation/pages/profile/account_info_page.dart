@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/custom_text_field.dart';
+import '../../widgets/user_avatar.dart';
 
 class AccountInfoPage extends ConsumerStatefulWidget {
   const AccountInfoPage({super.key});
@@ -136,11 +137,10 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
                                       ),
                                     ],
                                   ),
-                                  child: CircleAvatar(
+                                  child: UserAvatar(
                                     radius: 60,
-                                    backgroundImage: NetworkImage(
-                                      user?.avatarUrl ?? 'https://i.pravatar.cc/300',
-                                    ),
+                                    displayName: user?.displayName ?? 'Misafir',
+                                    avatarUrl: user?.avatarUrl,
                                   ),
                                 ),
                                 Positioned(
