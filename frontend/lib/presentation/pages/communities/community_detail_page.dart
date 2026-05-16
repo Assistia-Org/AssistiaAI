@@ -8,6 +8,7 @@ import '../../../domain/entities/community/community.dart';
 import '../../../domain/entities/user/user.dart';
 import '../../widgets/custom_text_field.dart';
 import 'community_edit_sheet.dart';
+import '../../widgets/user_avatar.dart';
 
 class CommunityDetailPage extends ConsumerWidget {
   final Community community;
@@ -332,22 +333,10 @@ class CommunityDetailPage extends ConsumerWidget {
                 width: 2,
               ),
             ),
-            child: CircleAvatar(
+            child: UserAvatar(
               radius: 22,
-              backgroundColor: accentColor.withValues(alpha: 0.15),
-              backgroundImage: member.user.avatarUrl != null
-                  ? NetworkImage(member.user.avatarUrl!)
-                  : null,
-              child: member.user.avatarUrl == null
-                  ? Text(
-                      member.user.displayName[0].toUpperCase(),
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: accentColor,
-                      ),
-                    )
-                  : null,
+              displayName: member.user.displayName,
+              avatarUrl: member.user.avatarUrl,
             ),
           ),
           const SizedBox(width: 15),
@@ -436,14 +425,10 @@ class CommunityDetailPage extends ConsumerWidget {
             // Member info row
             Row(
               children: [
-                CircleAvatar(
+                UserAvatar(
                   radius: 22,
-                  backgroundImage: member.user.avatarUrl != null
-                      ? NetworkImage(member.user.avatarUrl!)
-                      : null,
-                  child: member.user.avatarUrl == null
-                      ? Text(member.user.displayName[0].toUpperCase())
-                      : null,
+                  displayName: member.user.displayName,
+                  avatarUrl: member.user.avatarUrl,
                 ),
                 const SizedBox(width: 14),
                 Text(
