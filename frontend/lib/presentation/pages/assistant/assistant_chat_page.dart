@@ -138,7 +138,9 @@ class _AssistantChatPageState extends ConsumerState<AssistantChatPage> {
                     left: 16,
                     right: 16,
                     top: 12,
-                    bottom: MediaQuery.of(context).padding.bottom + 12,
+                    bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                        ? MediaQuery.of(context).viewInsets.bottom + 12
+                        : MediaQuery.of(context).padding.bottom + 12,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
