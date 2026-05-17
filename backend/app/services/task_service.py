@@ -100,7 +100,7 @@ async def move_task_in_daily_programs(task: Task, old_date: date, new_date: date
         }
         new_program = await create_daily_program(program_data)
 
-    if not any(str(t.id) == str(task.id) for t in new_program.items.tasks):
+    if not any(str(getattr(t, "id", t)) == str(getattr(task, "id", task)) for t in new_program.items.tasks):
         new_program.items.tasks.append(task)
         new_program.ozet.task_sayisi += 1
         await new_program.save()
@@ -208,7 +208,7 @@ async def create_task_service(current_user: User, data: TaskCreate) -> TaskRespo
             program = await create_daily_program(program_data)
 
         # Check if already added to avoid duplicates
-        if not any(str(t.id) == str(task.id) for t in program.items.tasks):
+        if not any(str(getattr(t, "id", t)) == str(getattr(task, "id", task)) for t in program.items.tasks):
             program.items.tasks.append(task)
             program.ozet.task_sayisi += 1
             await program.save()
@@ -296,18 +296,53 @@ async def update_task_service(task_id: str, data: TaskUpdate, current_user: User
 
     user_id = str(current_user.id)
     is_creator = task.creator_id == user_id
+    is_assignee = user_id in (task.assigned_to or [])
 
-    # Record the old target date before update
+    if not is_creator and not is_assignee:
+        from app.core.messages.error_message import UNAUTHORIZED_TASK_ACTION
+        raise HTTPException(status_code=403, detail=UNAUTHORIZED_TASK_ACTION)
+
+    # Record the old target date and old assigned user before update
     old_date = get_task_target_date(task)
+    old_assigned_user = task.assigned_to[0] if task.assigned_to else user_id
     update_dict = data.model_dump(exclude_unset=True)
 
     # Update current task
     updated_task = await update_task(task, update_dict)
     
-    # Sync program date for current task if date changed
+    # Sync program date for current task if date changed or assignee changed
     new_date = get_task_target_date(updated_task)
-    assigned_user_id = updated_task.assigned_to[0] if updated_task.assigned_to else user_id
-    await move_task_in_daily_programs(updated_task, old_date, new_date, assigned_user_id)
+    new_assigned_user = updated_task.assigned_to[0] if updated_task.assigned_to else user_id
+
+    if old_assigned_user != new_assigned_user:
+        # Remove from old user's program at old_date
+        old_program = await get_program_by_user_and_date(old_assigned_user, old_date)
+        if old_program:
+            original_len = len(old_program.items.tasks)
+            old_program.items.tasks = [t for t in old_program.items.tasks if str(getattr(t, "id", t)) != str(updated_task.id)]
+            if len(old_program.items.tasks) < original_len:
+                old_program.ozet.task_sayisi -= (original_len - len(old_program.items.tasks))
+                if old_program.ozet.task_sayisi < 0:
+                    old_program.ozet.task_sayisi = 0
+                await old_program.save()
+
+        # Add to new user's program at new_date
+        new_program = await get_program_by_user_and_date(new_assigned_user, new_date)
+        if not new_program:
+            program_data = {
+                "tarih": new_date,
+                "kullanici_id": new_assigned_user,
+                "ozet": DailyProgramSummary(task_sayisi=0, etkinlik_sayisi=0),
+                "items": DailyProgramItems(tasks=[], etkinlikler=[])
+            }
+            new_program = await create_daily_program(program_data)
+        if not any(str(getattr(t, "id", t)) == str(getattr(updated_task, "id", updated_task)) for t in new_program.items.tasks):
+            new_program.items.tasks.append(updated_task)
+            new_program.ozet.task_sayisi += 1
+            await new_program.save()
+    else:
+        # Same user, just shift dates if they changed
+        await move_task_in_daily_programs(updated_task, old_date, new_date, new_assigned_user)
 
     # If creator is updating and task is part of a split group, propagate changes (excluding status/assigned_to)
     if is_creator and updated_task.parent_task_id:
@@ -341,7 +376,11 @@ async def delete_task_service(task_id: str, current_user: User) -> None:
 
     user_id = str(current_user.id)
     is_creator = task.creator_id == user_id
-    target_date = get_task_target_date(task)
+    is_assignee = user_id in (task.assigned_to or [])
+
+    if not is_creator and not is_assignee:
+        from app.core.messages.error_message import UNAUTHORIZED_TASK_ACTION
+        raise HTTPException(status_code=403, detail=UNAUTHORIZED_TASK_ACTION)
 
     if is_creator:
         # Find all split tasks belonging to this group
@@ -354,8 +393,9 @@ async def delete_task_service(task_id: str, current_user: User) -> None:
         for t in tasks_to_delete:
             t_id = str(t.id)
             assigned_user_id = t.assigned_to[0] if t.assigned_to else t.creator_id
+            t_target_date = get_task_target_date(t)
             
-            program = await get_program_by_user_and_date(assigned_user_id, target_date)
+            program = await get_program_by_user_and_date(assigned_user_id, t_target_date)
             if program:
                 original_len = len(program.items.tasks)
                 program.items.tasks = [item for item in program.items.tasks if str(getattr(item, "id", item)) != t_id]
@@ -375,7 +415,8 @@ async def delete_task_service(task_id: str, current_user: User) -> None:
         )
     else:
         # Cleanup DailyProgram ONLY for the current user
-        program = await get_program_by_user_and_date(user_id, target_date)
+        t_target_date = get_task_target_date(task)
+        program = await get_program_by_user_and_date(user_id, t_target_date)
         if program:
             original_len = len(program.items.tasks)
             program.items.tasks = [t for t in program.items.tasks if str(getattr(t, "id", t)) != task_id]
