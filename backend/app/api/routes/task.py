@@ -72,7 +72,7 @@ async def update_task(
     Görev güncelleme endpoint'i.
     Görev durumunu tamamlandı (completed), işlemde (in_progress) veya bekliyor (pending) olarak değiştirmek için kullanılır.
     """
-    return await update_task_service(task_id, data)
+    return await update_task_service(task_id, data, current_user)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

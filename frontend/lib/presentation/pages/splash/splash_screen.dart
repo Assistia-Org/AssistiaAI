@@ -86,33 +86,17 @@ class _SplashScreenState extends State<SplashScreen>
                     scale: _logoScale,
                     child: ScaleTransition(
                       scale: _pulse,
-                      child: Container(
-                        width: 110,
-                        height: 110,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                        child: SizedBox(
+                          width: 180,
+                          height: 180,
+                          child: Image.asset(
+                            'assets/images/assistia_ai_bot.png',
+                            fit: BoxFit.contain,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF7C3AED).withOpacity(0.5),
-                              blurRadius: 40,
-                              spreadRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          color: Colors.white,
-                          size: 54,
                         ),
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 32),
                 // Uygulama adı + slogan
                 FadeTransition(

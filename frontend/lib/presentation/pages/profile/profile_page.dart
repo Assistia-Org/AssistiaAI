@@ -10,6 +10,7 @@ import 'help_support_page.dart';
 import '../../providers/community_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/reservation_provider.dart';
+import '../../widgets/user_avatar.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -54,7 +55,7 @@ class ProfilePage extends ConsumerWidget {
                     child: Column(
                       children: [
                         // Profile Avatar Overlapping the Header
-                        _buildOverlappingAvatar(),
+                        _buildOverlappingAvatar(user),
                         
                         const SizedBox(height: 15),
                         Text(
@@ -129,37 +130,20 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _buildOverlappingAvatar() {
+  Widget _buildOverlappingAvatar(user) {
     return Transform.translate(
       offset: const Offset(0, -50), // Half of the avatar height (radius 50)
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(5),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: const CircleAvatar(
-              radius: 50,
-              backgroundImage: NetworkImage('https://i.pravatar.cc/300'),
-            ),
-          ),
-          Positioned(
-            bottom: 5,
-            right: 5,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.cyanAccent,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: const Icon(Icons.camera_alt_rounded, color: Colors.black, size: 18),
-            ),
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.all(5),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+        ),
+        child: UserAvatar(
+          radius: 50,
+          displayName: user?.displayName ?? 'Misafir',
+          avatarUrl: user?.avatarUrl,
+        ),
       ),
     );
   }

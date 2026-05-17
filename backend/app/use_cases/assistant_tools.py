@@ -98,7 +98,7 @@ async def handle_update_task(current_user: User, args: Dict[str, Any]) -> Dict[s
             update_data[key] = _parse_iso(args[key])
 
     data = TaskUpdate(**update_data)
-    result = await update_task_service(task_id, data)
+    result = await update_task_service(task_id, data, current_user)
     return result.model_dump(mode="json")
 
 
@@ -118,7 +118,7 @@ async def handle_complete_task(current_user: User, args: Dict[str, Any]) -> Dict
         raise HTTPException(status_code=400, detail="task_id is required for complete_task.")
 
     data = TaskUpdate(status="completed")
-    result = await update_task_service(task_id, data)
+    result = await update_task_service(task_id, data, current_user)
     return result.model_dump(mode="json")
 
 

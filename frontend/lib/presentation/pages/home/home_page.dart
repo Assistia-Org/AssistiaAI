@@ -10,6 +10,7 @@ import '../../providers/task_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/assistant_provider.dart';
 import '../../providers/community_provider.dart';
+import '../../providers/reservation_provider.dart';
 import '../../../data/models/task/task_model.dart';
 import '../../../data/models/reservation/reservation_model.dart';
 import '../../../domain/entities/community/community.dart';
@@ -114,6 +115,73 @@ class _HomePageState extends ConsumerState<HomePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Görev silindi', style: GoogleFonts.inter()),
+              backgroundColor: const Color(0xFF1B232A),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+          ref.invalidate(dailyProgramByDateProvider(_getTodayStr()));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteReservation(String reservationId) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Rezervasyonu Sil',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Bu rezervasyonu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+          style: GoogleFonts.inter(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Vazgeç',
+              style: GoogleFonts.inter(
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Sil',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFF43F5E),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await ref.read(reservationControllerProvider).deleteReservation(reservationId);
+        if (mounted) {
+          Navigator.pop(context); // Close bottom sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Rezervasyon silindi', style: GoogleFonts.inter()),
               backgroundColor: const Color(0xFF1B232A),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
@@ -429,12 +497,18 @@ class _HomePageState extends ConsumerState<HomePage> {
 
             const SizedBox(height: 12),
 
-            // Delete button (Placeholder as requested)
+            // Delete button
             SizedBox(
               width: double.infinity,
               height: 60,
               child: OutlinedButton(
-                onPressed: () => _deleteTask(item.id),
+                onPressed: () {
+                  if (isTask) {
+                    _deleteTask(item.id);
+                  } else {
+                    _deleteReservation(item.id);
+                  }
+                },
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
                   shape: RoundedRectangleBorder(
@@ -442,7 +516,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ),
                 child: Text(
-                  'Görevi Sil',
+                  isTask ? 'Görevi Sil' : 'Rezervasyonu Sil',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -489,14 +563,25 @@ class _HomePageState extends ConsumerState<HomePage> {
                         )
                         .toList());
 
-          final regularTasks = tasks
+          final filteredReservations = _selectedTaskCommunityId == null
+              ? reservations
+              : (_selectedTaskCommunityId == 'personal'
+                  ? reservations.where((r) => r.communityId == null).toList()
+                  : reservations
+                        .where(
+                          (res) =>
+                              res.communityId == _selectedTaskCommunityId,
+                        )
+                        .toList());
+
+          final regularTasks = filteredTasks
               .where(
                 (t) =>
                     t.type.toLowerCase() != 'meeting' &&
                     t.type.toLowerCase() != 'toplantı',
               )
               .toList();
-          final meetingTasks = tasks
+          final meetingTasks = filteredTasks
               .where(
                 (t) =>
                     t.type.toLowerCase() == 'meeting' ||
@@ -515,8 +600,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
           // Reservations are done if manually completed OR if end time has passed
           final bool resDone =
-              reservations.isNotEmpty &&
-              reservations.every((r) {
+              filteredReservations.isNotEmpty &&
+              filteredReservations.every((r) {
                 final bool isManuallyDone = r.status == 'completed';
                 final bool isTimeOver =
                     r.endDate != null && now.isAfter(r.endDate!);
@@ -524,9 +609,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               });
 
           final bool everythingDone =
-              (tasks.isNotEmpty || reservations.isNotEmpty) &&
-              tasks.every((t) => t.status == 'completed') &&
-              reservations.every((r) {
+              (filteredTasks.isNotEmpty || filteredReservations.isNotEmpty) &&
+              filteredTasks.every((t) => t.status == 'completed') &&
+              filteredReservations.every((r) {
                 final bool isManuallyDone = r.status == 'completed';
                 final bool isTimeOver =
                     r.endDate != null && now.isAfter(r.endDate!);
@@ -594,6 +679,28 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   ),
                                 ],
                               ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Community Tabs Filter at the top of the container
+                            communitiesAsync.when(
+                              data: (communities) => _buildCommunityTaskTabs(
+                                communities: communities,
+                                tasks: tasks,
+                                reservations: reservations,
+                              ),
+                              loading: () => const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 25),
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                              error: (err, stack) => const SizedBox.shrink(),
                             ),
 
                             const SizedBox(height: 24),
@@ -680,12 +787,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 icon: Icons.confirmation_num_rounded,
                                 onTap: () => _navigateToListing(
                                   'Rezervasyonlarım',
-                                  reservations: reservations,
+                                  reservations: filteredReservations,
                                 ),
                               ),
                             ),
                             const SizedBox(height: 14),
-                            _buildReservationsList(reservations),
+                            _buildReservationsList(filteredReservations),
 
                             const SizedBox(height: 32),
                             Padding(
@@ -706,24 +813,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       .toList(),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 14),
-                            communitiesAsync.when(
-                              data: (communities) => _buildCommunityTaskTabs(
-                                communities: communities,
-                                tasks: tasks,
-                              ),
-                              loading: () => const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 25),
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              ),
-                              error: (err, stack) => const SizedBox.shrink(),
                             ),
                             const SizedBox(height: 14),
                             _buildTasksList(filteredTasks),
@@ -769,16 +858,27 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildCommunityTaskTabs({
     required List<Community> communities,
     required List<TaskModel> tasks,
+    required List<ReservationModel> reservations,
   }) {
     if (communities.isEmpty) return const SizedBox.shrink();
 
-    final communityTaskCounts = <String, int>{};
+    final communityItemCounts = <String, int>{};
     for (final task in tasks) {
       final communityId = task.communityId;
       if (communityId == null) continue;
-      communityTaskCounts[communityId] =
-          (communityTaskCounts[communityId] ?? 0) + 1;
+      communityItemCounts[communityId] =
+          (communityItemCounts[communityId] ?? 0) + 1;
     }
+    for (final res in reservations) {
+      final communityId = res.communityId;
+      if (communityId == null) continue;
+      communityItemCounts[communityId] =
+          (communityItemCounts[communityId] ?? 0) + 1;
+    }
+
+    final totalAll = tasks.length + reservations.length;
+    final totalPersonal = tasks.where((t) => t.communityId == null).length +
+        reservations.where((r) => r.communityId == null).length;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -790,7 +890,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             _buildCommunityTaskTab(
               label: 'Tümü',
-              count: tasks.length,
+              count: totalAll,
               isSelected: _selectedTaskCommunityId == null,
               onTap: () => setState(() => _selectedTaskCommunityId = null),
             ),
@@ -798,13 +898,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               padding: const EdgeInsets.only(left: 8),
               child: _buildCommunityTaskTab(
                 label: 'Kişisel',
-                count: tasks.where((t) => t.communityId == null).length,
+                count: totalPersonal,
                 isSelected: _selectedTaskCommunityId == 'personal',
                 onTap: () => setState(() => _selectedTaskCommunityId = 'personal'),
               ),
             ),
             ...communities.map((community) {
-              final count = communityTaskCounts[community.id] ?? 0;
+              final count = communityItemCounts[community.id] ?? 0;
               return Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: _buildCommunityTaskTab(
@@ -1005,20 +1105,14 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
               );
             },
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Color(0xFF2D3E4E), Color(0xFF1A2A3A)],
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.auto_awesome,
-                  color: Colors.cyanAccent,
-                  size: 30,
+            child: SizedBox(
+              width: 55,
+              height: 55,
+              child: Transform.scale(
+                scale: 2.5,
+                child: Image.asset(
+                  'assets/images/assistia_ai_bot.png',
+                  fit: BoxFit.contain,
                 ),
               ),
             ),
