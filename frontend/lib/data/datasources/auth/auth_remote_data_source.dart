@@ -64,6 +64,32 @@ class AuthRemoteDataSource {
     }
   }
 
+  Future<void> refreshToken() async {
+    final refreshToken = sharedPreferences.getString(AppConstants.refreshTokenKey);
+    if (refreshToken == null) throw Exception('No refresh token found');
+
+    final response = await client.post(
+      Uri.parse('${ApiConstants.baseUrl}${ApiConstants.authRefresh}'),
+      headers: AppConstants.baseHeaders,
+      body: jsonEncode({'refresh_token': refreshToken}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final newAccessToken = data['access_token'];
+      final newRefreshToken = data['refresh_token'];
+
+      await sharedPreferences.setString(AppConstants.accessTokenKey, newAccessToken);
+      if (newRefreshToken != null) {
+        await sharedPreferences.setString(AppConstants.refreshTokenKey, newRefreshToken);
+      }
+    } else {
+      // If refresh fails, clear tokens as they are likely invalid/expired
+      await logout();
+      throw Exception('Failed to refresh token: ${response.body}');
+    }
+  }
+
   Future<User> getMe(String token) async {
     final response = await client.get(
       Uri.parse('${ApiConstants.baseUrl}${ApiConstants.userMe}'),

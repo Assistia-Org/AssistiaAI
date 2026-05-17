@@ -7,6 +7,7 @@ class ApiConstants {
   // Auth endpoints
   static const String authRegister = '/auth/register';
   static const String authLogin = '/auth/login';
+  static const String authRefresh = '/auth/refresh';
   static const String authChangePassword = '/auth/change-password';
 
   // Verification endpoints

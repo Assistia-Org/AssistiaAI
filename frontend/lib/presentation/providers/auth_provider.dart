@@ -25,6 +25,8 @@ import 'daily_program_provider.dart';
 import 'notification_provider.dart';
 import 'sse_provider.dart';
 
+import '../../core/network/auth_client.dart';
+
 // --- Dependecy Injection via Riverpod ---
 
 enum AuthPageType { login, register }
@@ -47,7 +49,19 @@ final sharedPrefsProvider = FutureProvider<SharedPreferences>((ref) async {
 });
 
 final httpClientProvider = Provider<http.Client>((ref) {
-  return http.Client();
+  final prefsAsync = ref.watch(sharedPrefsProvider);
+  
+  // Return a dummy client if prefs aren't ready yet, 
+  // but it will be updated once they are.
+  return prefsAsync.when(
+    data: (prefs) => AuthClient(
+      http.Client(), 
+      prefs,
+      onLogout: () => ref.read(authControllerProvider).logout(),
+    ),
+    loading: () => http.Client(),
+    error: (_, __) => http.Client(),
+  );
 });
 
 final authRemoteDataSourceProvider = FutureProvider<AuthRemoteDataSource>((ref) async {
@@ -172,9 +186,8 @@ class AuthController {
       final prefs = await ref.read(sharedPrefsProvider.future);
       final token = prefs.getString('access_token');
       if (token != null) {
-        ref.read(sseServiceProvider).connect(token);
-        // Register FCM token with backend
-        _registerFcmToken(prefs);
+        ref.read(sseServiceProvider).connect(null);
+        _registerFcmToken(prefs, ref.read(httpClientProvider));
       }
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
@@ -205,6 +218,7 @@ class AuthController {
       ref.read(currentUserProvider.notifier)._clearState();
       ref.read(authPageProvider.notifier).setPage(AuthPageType.login);
       ref.read(sseServiceProvider).disconnect();
+      ref.invalidate(sseClientProvider);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
@@ -221,10 +235,9 @@ class AuthController {
         ref.read(currentUserProvider.notifier).setUser(user);
         
         // Connect SSE on app launch
-        ref.read(sseServiceProvider).connect(token);
+        ref.read(sseServiceProvider).connect(null);
         // Register FCM token with backend
-        final prefs = await ref.read(sharedPrefsProvider.future);
-        _registerFcmToken(prefs);
+        _registerFcmToken(prefs, ref.read(httpClientProvider));
       } catch (e) {
         // If token is invalid or expired, logout
         await logout();
@@ -310,7 +323,7 @@ class AuthController {
       // SSE bağla
       final token = prefs.getString('access_token');
       if (token != null) {
-        ref.read(sseServiceProvider).connect(token);
+        ref.read(sseServiceProvider).connect(null);
       }
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
@@ -323,7 +336,7 @@ final authControllerProvider = Provider<AuthController>((ref) {
 });
 
 /// Registers the FCM device token with the backend. Fire-and-forget.
-void _registerFcmToken(SharedPreferences prefs) async {
+Future<void> _registerFcmToken(SharedPreferences prefs, http.Client client) async {
   try {
     final accessToken = prefs.getString('access_token');
     if (accessToken == null) return;
@@ -339,7 +352,7 @@ void _registerFcmToken(SharedPreferences prefs) async {
     debugPrint('✅ FCM Token alındı: $fcmToken');
 
     final ds = NotificationRemoteDataSource(
-      client: http.Client(),
+      client: client,
       sharedPreferences: prefs,
     );
     await ds.registerFcmToken(fcmToken);
