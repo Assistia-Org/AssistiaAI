@@ -1171,14 +1171,19 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Status + Priority chips row
-        Row(
+        // Status + Priority chips wrap
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
             _statusChip(task.status, color),
-            const SizedBox(width: 8),
             _priorityChip(task.priority),
-            const SizedBox(width: 8),
             _infoChip(task.type, Icons.category_outlined, const Color(0xFF64748B)),
+            _infoChip(
+              task.communityName ?? 'Kişisel',
+              task.communityId != null ? Icons.group_outlined : Icons.person_outline_rounded,
+              task.communityId != null ? const Color(0xFF6366F1) : const Color(0xFF64748B),
+            ),
           ],
         ),
         // Time section
@@ -1246,23 +1251,52 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
         ],
         const SizedBox(height: 32),
         if (task.status != 'completed') ...[
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              onPressed: () => _completeTask(task.id),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 0,
-              ),
-              child: Text(
-                'Görevi Tamamla',
-                style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
+          Builder(builder: (_) {
+            final bool isPastOrStarted = task.startDate == null || DateTime.now().isAfter(task.startDate!);
+            if (isPastOrStarted) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: () => _completeTask(task.id),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    child: Text(
+                      'Görevi Tamamla',
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ),
+              );
+            } else {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  width: double.infinity,
+                  height: 54,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Text(
+                    'Saati Bekleniyor...',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ),
+              );
+            }
+          }),
         ],
         SizedBox(
           width: double.infinity,
@@ -1292,8 +1326,19 @@ class _ProgramPageState extends ConsumerState<ProgramPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Status chip
-        _statusChip(res.status, color),
+        // Status & Community chips wrap
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _statusChip(res.status, color),
+            _infoChip(
+              res.communityName ?? 'Kişisel',
+              res.communityId != null ? Icons.group_outlined : Icons.person_outline_rounded,
+              res.communityId != null ? const Color(0xFF6366F1) : const Color(0xFF64748B),
+            ),
+          ],
+        ),
         // Time range card
         if (res.startDate != null || res.endDate != null) ...[
           const SizedBox(height: 14),
