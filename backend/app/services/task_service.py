@@ -64,14 +64,52 @@ async def sync_task_status(task: Task) -> Task:
     
     return task
 
+def get_task_target_date(task: Task) -> date:
+    """Return the target date of a task based on due_date, start_date, or today."""
+    if task.due_date:
+        return task.due_date.date()
+    elif task.start_date:
+        return task.start_date.date()
+    return date.today()
+
+
+async def move_task_in_daily_programs(task: Task, old_date: date, new_date: date, user_id: str) -> None:
+    """Move a task from an old daily program date to a new daily program date for a user."""
+    if old_date == new_date:
+        return
+
+    # 1. Remove from old daily program
+    old_program = await get_program_by_user_and_date(user_id, old_date)
+    if old_program:
+        original_len = len(old_program.items.tasks)
+        old_program.items.tasks = [t for t in old_program.items.tasks if str(getattr(t, "id", t)) != str(task.id)]
+        if len(old_program.items.tasks) < original_len:
+            old_program.ozet.task_sayisi -= (original_len - len(old_program.items.tasks))
+            if old_program.ozet.task_sayisi < 0:
+                old_program.ozet.task_sayisi = 0
+            await old_program.save()
+
+    # 2. Add to new daily program
+    new_program = await get_program_by_user_and_date(user_id, new_date)
+    if not new_program:
+        program_data = {
+            "tarih": new_date,
+            "kullanici_id": user_id,
+            "ozet": DailyProgramSummary(task_sayisi=0, etkinlik_sayisi=0),
+            "items": DailyProgramItems(tasks=[], etkinlikler=[])
+        }
+        new_program = await create_daily_program(program_data)
+
+    if not any(str(t.id) == str(task.id) for t in new_program.items.tasks):
+        new_program.items.tasks.append(task)
+        new_program.ozet.task_sayisi += 1
+        await new_program.save()
+
+
 async def create_task_service(current_user: User, data: TaskCreate) -> TaskResponse:
     """
     Orchestrate task creation and DailyProgram sync for all assigned users.
-    1. Validate community ownership if community_id is provided.
-    2. Determine target users.
-    3. Save Task.
-    4. Link to DailyProgram for all target users.
-    5. Notify assigned users.
+    Splits the task into a separate document per user to ensure independent statuses.
     """
     creator_id = str(current_user.id)
     # 1. Validate community ownership
@@ -113,17 +151,52 @@ async def create_task_service(current_user: User, data: TaskCreate) -> TaskRespo
     else:
         target_date = date.today()
 
-    # 3. Save Task
+    # 3. Save Task (split into separate documents per target user)
     data.creator_id = creator_id
-    data.assigned_to = list(target_users)
+    target_users_list = list(target_users)
+    if not target_users_list:
+        target_users_list = [creator_id]
+
+    created_tasks = []
     
-    task_dict = data.model_dump()
-    task_dict["status"] = TaskStatus.PENDING
-    
-    task = await create_task(task_dict)
-    
-    # 4. Link to Programs for all target users
-    for user_id in target_users:
+    if len(target_users_list) > 1:
+        # Create first task copy to establish the parent_id
+        first_user = target_users_list[0]
+        data.assigned_to = [first_user]
+        task_dict = data.model_dump()
+        task_dict["status"] = TaskStatus.PENDING
+        
+        first_task = await create_task(task_dict)
+        parent_id = str(first_task.id)
+        
+        first_task.parent_task_id = parent_id
+        await first_task.save()
+        created_tasks.append(first_task)
+        
+        # Create copies for other users
+        for user_id in target_users_list[1:]:
+            data.assigned_to = [user_id]
+            task_dict = data.model_dump()
+            task_dict["status"] = TaskStatus.PENDING
+            task_dict["parent_task_id"] = parent_id
+            
+            task = await create_task(task_dict)
+            created_tasks.append(task)
+    else:
+        # Single user task
+        single_user = target_users_list[0]
+        data.assigned_to = [single_user]
+        task_dict = data.model_dump()
+        task_dict["status"] = TaskStatus.PENDING
+        
+        task = await create_task(task_dict)
+        task.parent_task_id = str(task.id)
+        await task.save()
+        created_tasks.append(task)
+
+    # 4. Link to Programs for each user with their respective task copy
+    for task in created_tasks:
+        user_id = task.assigned_to[0]
         program = await get_program_by_user_and_date(user_id, target_date)
         if not program:
             program_data = {
@@ -144,26 +217,29 @@ async def create_task_service(current_user: User, data: TaskCreate) -> TaskRespo
     from app.services.notification_service import create_notification_service
     from app.models.notification import NotificationType
     
-    for user_id in target_users:
+    for task in created_tasks:
+        user_id = task.assigned_to[0]
         if user_id != creator_id:
             await create_notification_service(
                 user_id=user_id,
-                type=NotificationType.INVITATION, # Using INVITATION type for general community notifications for now or add a new one
+                type=NotificationType.INVITATION,
                 title="Yeni Görev Atandı",
                 body=f"{current_user.display_name} sana bir görev atadı: {task.title}",
                 metadata={"task_id": str(task.id), "community_id": data.community_id},
             )
 
-    response = TaskResponse.model_validate(task)
+    creator_task = next((t for t in created_tasks if t.assigned_to[0] == creator_id), created_tasks[0])
+    response = TaskResponse.model_validate(creator_task)
     response.community_name = community_name
     await logger.info(
         EventType.TASK_CREATE,
-        f"Görev oluşturuldu: {task.title}",
+        f"Görev oluşturuldu: {creator_task.title}",
         user_id=creator_id,
         extra={
-            "task_id": str(task.id),
+            "task_id": str(creator_task.id),
             "community_id": data.community_id,
-            "assigned_to": list(target_users),
+            "assigned_to": target_users_list,
+            "parent_task_id": creator_task.parent_task_id,
         },
     )
     return response
@@ -209,26 +285,10 @@ async def list_all_tasks_service() -> list[TaskResponse]:
     return [TaskResponse.model_validate(t) for t in synced_tasks]
 
 
-async def update_task_service(task_id: str, data: TaskUpdate) -> TaskResponse:
-    """Orchestrate task update."""
-    task = await get_task_by_id(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
-    
-    updated_task = await update_task(task, data.model_dump(exclude_unset=True))
-    await logger.info(
-        EventType.TASK_UPDATE,
-        f"Görev güncellendi: {task_id}",
-        extra={"task_id": task_id, "fields": list(data.model_dump(exclude_unset=True).keys())},
-    )
-    return TaskResponse.model_validate(updated_task)
-
-
-async def delete_task_service(task_id: str, current_user: User) -> None:
+async def update_task_service(task_id: str, data: TaskUpdate, current_user: User) -> TaskResponse:
     """
-    Orchestrate task deletion.
-    - If current_user is the creator: Delete the task globally and remove from ALL users' programs.
-    - If current_user is just assigned: Remove current_user from assigned_to and only from their own program.
+    Orchestrate task update.
+    If the creator is updating general fields (excluding status/assigned_to), propagate changes to all other copies.
     """
     task = await get_task_by_id(task_id)
     if not task:
@@ -237,38 +297,84 @@ async def delete_task_service(task_id: str, current_user: User) -> None:
     user_id = str(current_user.id)
     is_creator = task.creator_id == user_id
 
-    # Determine the target date used when this task was added to DailyPrograms
-    if task.due_date:
-        target_date = task.due_date.date()
-    elif task.start_date:
-        target_date = task.start_date.date()
-    else:
-        target_date = date.today()
+    # Record the old target date before update
+    old_date = get_task_target_date(task)
+    update_dict = data.model_dump(exclude_unset=True)
+
+    # Update current task
+    updated_task = await update_task(task, update_dict)
+    
+    # Sync program date for current task if date changed
+    new_date = get_task_target_date(updated_task)
+    assigned_user_id = updated_task.assigned_to[0] if updated_task.assigned_to else user_id
+    await move_task_in_daily_programs(updated_task, old_date, new_date, assigned_user_id)
+
+    # If creator is updating and task is part of a split group, propagate changes (excluding status/assigned_to)
+    if is_creator and updated_task.parent_task_id:
+        propagate_dict = {k: v for k, v in update_dict.items() if k not in ("status", "assigned_to")}
+        if propagate_dict:
+            other_tasks = await Task.find(Task.parent_task_id == updated_task.parent_task_id, Task.id != updated_task.id).to_list()
+            for other_task in other_tasks:
+                other_old_date = get_task_target_date(other_task)
+                other_updated_task = await update_task(other_task, propagate_dict)
+                other_new_date = get_task_target_date(other_updated_task)
+                other_assigned_user_id = other_updated_task.assigned_to[0] if other_updated_task.assigned_to else other_updated_task.creator_id
+                await move_task_in_daily_programs(other_updated_task, other_old_date, other_new_date, other_assigned_user_id)
+
+    await logger.info(
+        EventType.TASK_UPDATE,
+        f"Görev güncellendi: {task_id}",
+        extra={"task_id": task_id, "fields": list(update_dict.keys())},
+    )
+    return TaskResponse.model_validate(updated_task)
+
+
+async def delete_task_service(task_id: str, current_user: User) -> None:
+    """
+    Orchestrate task deletion.
+    - If current_user is the creator: Delete all copies of the task globally and clean up programs.
+    - If current_user is just assigned: Delete their copy of the task and clean up their program.
+    """
+    task = await get_task_by_id(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
+
+    user_id = str(current_user.id)
+    is_creator = task.creator_id == user_id
+    target_date = get_task_target_date(task)
 
     if is_creator:
-        # 1. Cleanup DailyProgram for ALL assigned users
-        for assigned_user_id in task.assigned_to:
+        # Find all split tasks belonging to this group
+        tasks_to_delete = []
+        if task.parent_task_id:
+            tasks_to_delete = await Task.find(Task.parent_task_id == task.parent_task_id).to_list()
+        else:
+            tasks_to_delete = [task]
+
+        for t in tasks_to_delete:
+            t_id = str(t.id)
+            assigned_user_id = t.assigned_to[0] if t.assigned_to else t.creator_id
+            
             program = await get_program_by_user_and_date(assigned_user_id, target_date)
             if program:
-                # Remove the task link
                 original_len = len(program.items.tasks)
-                program.items.tasks = [t for t in program.items.tasks if str(getattr(t, "id", t)) != task_id]
+                program.items.tasks = [item for item in program.items.tasks if str(getattr(item, "id", item)) != t_id]
                 
                 if len(program.items.tasks) < original_len:
                     program.ozet.task_sayisi -= (original_len - len(program.items.tasks))
                     if program.ozet.task_sayisi < 0:
                         program.ozet.task_sayisi = 0
                     await program.save()
+            
+            await delete_task(t)
 
-        # 2. Delete the task record itself
-        await delete_task(task)
         await logger.warning(
             EventType.TASK_DELETE,
             f"Görev lider tarafından herkes için silindi: {task_id}",
-            extra={"task_id": task_id, "creator_id": user_id},
+            extra={"task_id": task_id, "creator_id": user_id, "parent_task_id": task.parent_task_id},
         )
     else:
-        # 1. Cleanup DailyProgram ONLY for the current user
+        # Cleanup DailyProgram ONLY for the current user
         program = await get_program_by_user_and_date(user_id, target_date)
         if program:
             original_len = len(program.items.tasks)
@@ -280,10 +386,8 @@ async def delete_task_service(task_id: str, current_user: User) -> None:
                     program.ozet.task_sayisi = 0
                 await program.save()
 
-        # 2. Remove the user from the assigned_to list of the task
-        if user_id in task.assigned_to:
-            task.assigned_to.remove(user_id)
-            await task.save()
+        # Delete this user's task document
+        await delete_task(task)
 
         await logger.info(
             EventType.TASK_UPDATE,
