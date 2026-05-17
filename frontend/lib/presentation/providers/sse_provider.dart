@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/sse/sse_client.dart';
 import 'invitation_provider.dart';
@@ -24,9 +25,10 @@ final sseClientProvider = Provider<SSEClient>((ref) {
 class SSEService {
   final Ref ref;
   final SSEClient client;
+  StreamSubscription<Map<String, dynamic>>? _subscription;
 
   SSEService(this.ref, this.client) {
-    client.stream.listen(_handleEvent);
+    _subscription = client.stream.listen(_handleEvent);
   }
 
   void _handleEvent(Map<String, dynamic> event) {
@@ -51,10 +53,13 @@ class SSEService {
 
   void disconnect() {
     client.disconnect();
+    _subscription?.cancel();
   }
 }
 
 final sseServiceProvider = Provider<SSEService>((ref) {
   final client = ref.watch(sseClientProvider);
-  return SSEService(ref, client);
+  final service = SSEService(ref, client);
+  ref.onDispose(() => service.disconnect());
+  return service;
 });
