@@ -563,14 +563,25 @@ class _HomePageState extends ConsumerState<HomePage> {
                         )
                         .toList());
 
-          final regularTasks = tasks
+          final filteredReservations = _selectedTaskCommunityId == null
+              ? reservations
+              : (_selectedTaskCommunityId == 'personal'
+                  ? reservations.where((r) => r.communityId == null).toList()
+                  : reservations
+                        .where(
+                          (res) =>
+                              res.communityId == _selectedTaskCommunityId,
+                        )
+                        .toList());
+
+          final regularTasks = filteredTasks
               .where(
                 (t) =>
                     t.type.toLowerCase() != 'meeting' &&
                     t.type.toLowerCase() != 'toplantı',
               )
               .toList();
-          final meetingTasks = tasks
+          final meetingTasks = filteredTasks
               .where(
                 (t) =>
                     t.type.toLowerCase() == 'meeting' ||
@@ -589,8 +600,8 @@ class _HomePageState extends ConsumerState<HomePage> {
 
           // Reservations are done if manually completed OR if end time has passed
           final bool resDone =
-              reservations.isNotEmpty &&
-              reservations.every((r) {
+              filteredReservations.isNotEmpty &&
+              filteredReservations.every((r) {
                 final bool isManuallyDone = r.status == 'completed';
                 final bool isTimeOver =
                     r.endDate != null && now.isAfter(r.endDate!);
@@ -598,9 +609,9 @@ class _HomePageState extends ConsumerState<HomePage> {
               });
 
           final bool everythingDone =
-              (tasks.isNotEmpty || reservations.isNotEmpty) &&
-              tasks.every((t) => t.status == 'completed') &&
-              reservations.every((r) {
+              (filteredTasks.isNotEmpty || filteredReservations.isNotEmpty) &&
+              filteredTasks.every((t) => t.status == 'completed') &&
+              filteredReservations.every((r) {
                 final bool isManuallyDone = r.status == 'completed';
                 final bool isTimeOver =
                     r.endDate != null && now.isAfter(r.endDate!);
@@ -668,6 +679,28 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   ),
                                 ],
                               ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Community Tabs Filter at the top of the container
+                            communitiesAsync.when(
+                              data: (communities) => _buildCommunityTaskTabs(
+                                communities: communities,
+                                tasks: tasks,
+                                reservations: reservations,
+                              ),
+                              loading: () => const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 25),
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                              error: (err, stack) => const SizedBox.shrink(),
                             ),
 
                             const SizedBox(height: 24),
@@ -754,12 +787,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 icon: Icons.confirmation_num_rounded,
                                 onTap: () => _navigateToListing(
                                   'Rezervasyonlarım',
-                                  reservations: reservations,
+                                  reservations: filteredReservations,
                                 ),
                               ),
                             ),
                             const SizedBox(height: 14),
-                            _buildReservationsList(reservations),
+                            _buildReservationsList(filteredReservations),
 
                             const SizedBox(height: 32),
                             Padding(
@@ -780,24 +813,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       .toList(),
                                 ),
                               ),
-                            ),
-                            const SizedBox(height: 14),
-                            communitiesAsync.when(
-                              data: (communities) => _buildCommunityTaskTabs(
-                                communities: communities,
-                                tasks: tasks,
-                              ),
-                              loading: () => const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 25),
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              ),
-                              error: (err, stack) => const SizedBox.shrink(),
                             ),
                             const SizedBox(height: 14),
                             _buildTasksList(filteredTasks),
@@ -843,16 +858,27 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildCommunityTaskTabs({
     required List<Community> communities,
     required List<TaskModel> tasks,
+    required List<ReservationModel> reservations,
   }) {
     if (communities.isEmpty) return const SizedBox.shrink();
 
-    final communityTaskCounts = <String, int>{};
+    final communityItemCounts = <String, int>{};
     for (final task in tasks) {
       final communityId = task.communityId;
       if (communityId == null) continue;
-      communityTaskCounts[communityId] =
-          (communityTaskCounts[communityId] ?? 0) + 1;
+      communityItemCounts[communityId] =
+          (communityItemCounts[communityId] ?? 0) + 1;
     }
+    for (final res in reservations) {
+      final communityId = res.communityId;
+      if (communityId == null) continue;
+      communityItemCounts[communityId] =
+          (communityItemCounts[communityId] ?? 0) + 1;
+    }
+
+    final totalAll = tasks.length + reservations.length;
+    final totalPersonal = tasks.where((t) => t.communityId == null).length +
+        reservations.where((r) => r.communityId == null).length;
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -864,7 +890,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             _buildCommunityTaskTab(
               label: 'Tümü',
-              count: tasks.length,
+              count: totalAll,
               isSelected: _selectedTaskCommunityId == null,
               onTap: () => setState(() => _selectedTaskCommunityId = null),
             ),
@@ -872,13 +898,13 @@ class _HomePageState extends ConsumerState<HomePage> {
               padding: const EdgeInsets.only(left: 8),
               child: _buildCommunityTaskTab(
                 label: 'Kişisel',
-                count: tasks.where((t) => t.communityId == null).length,
+                count: totalPersonal,
                 isSelected: _selectedTaskCommunityId == 'personal',
                 onTap: () => setState(() => _selectedTaskCommunityId = 'personal'),
               ),
             ),
             ...communities.map((community) {
-              final count = communityTaskCounts[community.id] ?? 0;
+              final count = communityItemCounts[community.id] ?? 0;
               return Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: _buildCommunityTaskTab(

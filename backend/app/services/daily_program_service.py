@@ -17,6 +17,17 @@ from app.schemas.daily_program import (
 from app.core.messages.error_message import PROGRAM_NOT_FOUND
 from app.services.task_service import sync_task_status
 
+async def populate_community_names_for_program(response: DailyProgramResponse) -> DailyProgramResponse:
+    """Populate community_name for all tasks in a DailyProgramResponse."""
+    from app.repositories.community import get_community_by_id
+    for task_res in response.items.tasks:
+        if task_res.community_id and not task_res.community_name:
+            community = await get_community_by_id(task_res.community_id)
+            if community:
+                task_res.community_name = community.name
+    return response
+
+
 async def create_daily_program_service(data: DailyProgramCreate) -> DailyProgramResponse:
     """
     Business logic for creating a daily program.
@@ -29,7 +40,9 @@ async def create_daily_program_service(data: DailyProgramCreate) -> DailyProgram
     program_dict["ozet"]["etkinlik_sayisi"] = len(program_dict["items"]["etkinlikler"])
     
     program = await create_daily_program(program_dict)
-    return DailyProgramResponse.model_validate(program)
+    response = DailyProgramResponse.model_validate(program)
+    return await populate_community_names_for_program(response)
+
 
 async def get_daily_program_service(program_id: str) -> DailyProgramResponse:
     """
@@ -38,7 +51,9 @@ async def get_daily_program_service(program_id: str) -> DailyProgramResponse:
     program = await get_daily_program_by_id(program_id)
     if not program:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=PROGRAM_NOT_FOUND)
-    return DailyProgramResponse.model_validate(program)
+    response = DailyProgramResponse.model_validate(program)
+    return await populate_community_names_for_program(response)
+
 
 async def get_program_by_date_service(user_id: str, search_date: date) -> DailyProgramResponse:
     """
@@ -62,7 +77,9 @@ async def get_program_by_date_service(user_id: str, search_date: date) -> DailyP
     program.items.tasks = fresh_tasks
     program.ozet.task_sayisi = len(fresh_tasks)
         
-    return DailyProgramResponse.model_validate(program)
+    response = DailyProgramResponse.model_validate(program)
+    return await populate_community_names_for_program(response)
+
 
 async def list_user_programs_service(user_id: str) -> List[DailyProgramResponse]:
     """
@@ -70,6 +87,7 @@ async def list_user_programs_service(user_id: str) -> List[DailyProgramResponse]
     """
     from app.repositories.task import get_task_by_id
     programs = await list_programs_by_user(user_id)
+    responses = []
     for p in programs:
         await p.fetch_all_links()
         fresh_tasks = []
@@ -81,7 +99,12 @@ async def list_user_programs_service(user_id: str) -> List[DailyProgramResponse]
         p.items.tasks = fresh_tasks
         p.ozet.task_sayisi = len(fresh_tasks)
             
-    return [DailyProgramResponse.model_validate(p) for p in programs]
+        res = DailyProgramResponse.model_validate(p)
+        res = await populate_community_names_for_program(res)
+        responses.append(res)
+            
+    return responses
+
 
 async def update_daily_program_service(program_id: str, data: DailyProgramUpdate) -> DailyProgramResponse:
     """
@@ -101,7 +124,9 @@ async def update_daily_program_service(program_id: str, data: DailyProgramUpdate
         }
 
     updated_program = await update_daily_program(program, update_dict)
-    return DailyProgramResponse.model_validate(updated_program)
+    response = DailyProgramResponse.model_validate(updated_program)
+    return await populate_community_names_for_program(response)
+
 
 async def delete_daily_program_service(program_id: str) -> None:
     """
