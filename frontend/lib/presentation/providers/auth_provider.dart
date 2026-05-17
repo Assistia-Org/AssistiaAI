@@ -218,6 +218,7 @@ class AuthController {
       ref.read(currentUserProvider.notifier)._clearState();
       ref.read(authPageProvider.notifier).setPage(AuthPageType.login);
       ref.read(sseServiceProvider).disconnect();
+      ref.invalidate(sseClientProvider);
     } finally {
       ref.read(authLoadingProvider.notifier).setLoading(false);
     }
@@ -335,7 +336,7 @@ final authControllerProvider = Provider<AuthController>((ref) {
 });
 
 /// Registers the FCM device token with the backend. Fire-and-forget.
-void _registerFcmToken(SharedPreferences prefs, http.Client client) async {
+Future<void> _registerFcmToken(SharedPreferences prefs, http.Client client) async {
   try {
     final accessToken = prefs.getString('access_token');
     if (accessToken == null) return;

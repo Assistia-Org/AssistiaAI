@@ -15,8 +15,8 @@ final sseClientProvider = Provider<SSEClient>((ref) {
       ref.onDispose(() => client.disconnect());
       return client;
     },
-    loading: () => SSEClient(null as dynamic), // Riskli ama sseService zaten connect'i bekleyecek
-    error: (_, __) => SSEClient(null as dynamic),
+    loading: () => SSEClient(null), // Riskli ama sseService zaten connect'i bekleyecek
+    error: (_, __) => SSEClient(null),
   );
 });
 

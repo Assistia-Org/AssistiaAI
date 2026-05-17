@@ -45,11 +45,11 @@ class AuthClient extends http.BaseClient {
           return await _inner.send(newRequest);
         } else {
           // Refresh failed, logout
-          _handleLogout();
+          await _handleLogout();
         }
       } else {
         // No refresh token, logout
-        _handleLogout();
+        await _handleLogout();
       }
     }
 
@@ -81,9 +81,9 @@ class AuthClient extends http.BaseClient {
     return false;
   }
 
-  void _handleLogout() {
-    _prefs.remove(AppConstants.accessTokenKey);
-    _prefs.remove(AppConstants.refreshTokenKey);
+  Future<void> _handleLogout() async {
+    await _prefs.remove(AppConstants.accessTokenKey);
+    await _prefs.remove(AppConstants.refreshTokenKey);
     if (onLogout != null) {
       onLogout!();
     }
@@ -109,8 +109,8 @@ class AuthClient extends http.BaseClient {
         ..maxRedirects = request.maxRedirects
         ..persistentConnection = request.persistentConnection;
     } else {
-      // Fallback for other request types if any
-      newRequest = request; 
+      // Cannot copy StreamedRequest or other unknown request types
+      throw StateError('Cannot retry request of type ${request.runtimeType}');
     }
     return newRequest;
   }

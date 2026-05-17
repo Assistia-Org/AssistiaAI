@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_constants.dart';
 
 class SSEClient {
-  final SharedPreferences _prefs;
+  final SharedPreferences? _prefs;
   http.Client? _streamClient;
   bool _isConnected = false;
   final StreamController<Map<String, dynamic>> _eventController = StreamController.broadcast();
@@ -24,10 +24,10 @@ class SSEClient {
   }
 
   void _reconnect() async {
-    if (!_isConnected) return;
+    if (!_isConnected || _prefs == null) return;
     
     // Always get the latest token from prefs
-    String? token = _prefs.getString(AppConstants.accessTokenKey);
+    String? token = _prefs!.getString(AppConstants.accessTokenKey);
     if (token == null) {
       _scheduleReconnect();
       return;
@@ -86,7 +86,8 @@ class SSEClient {
   }
 
   Future<bool> _attemptTokenRefresh() async {
-    final refreshToken = _prefs.getString(AppConstants.refreshTokenKey);
+    if (_prefs == null) return false;
+    final refreshToken = _prefs!.getString(AppConstants.refreshTokenKey);
     if (refreshToken == null) return false;
 
     try {
@@ -101,9 +102,9 @@ class SSEClient {
         final newAccessToken = data['access_token'];
         final newRefreshToken = data['refresh_token'];
 
-        await _prefs.setString(AppConstants.accessTokenKey, newAccessToken);
+        await _prefs!.setString(AppConstants.accessTokenKey, newAccessToken);
         if (newRefreshToken != null) {
-          await _prefs.setString(AppConstants.refreshTokenKey, newRefreshToken);
+          await _prefs!.setString(AppConstants.refreshTokenKey, newRefreshToken);
         }
         return true;
       }
@@ -127,5 +128,8 @@ class SSEClient {
     _isConnected = false;
     _streamClient?.close();
     _streamClient = null;
+    if (!_eventController.isClosed) {
+      _eventController.close();
+    }
   }
 }
