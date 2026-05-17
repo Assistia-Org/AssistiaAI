@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import '../../core/config/env.dart';
 
-const _kMapsApiKey = 'AIzaSyBpthuDO-1VN7C8W9WGh8Wu4uVdZuJghz0';
+const _kMapsApiKey = Env.googleMapsApiKey;
 
 class LocationResult {
   final double lat;
