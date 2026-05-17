@@ -63,7 +63,7 @@ class _AccountInfoPageState extends ConsumerState<AccountInfoPage> {
                     await ref.read(userControllerProvider).updateProfile(name: newName);
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(ctx).showSnackBar(
                         const SnackBar(
                           content: Text('Ad Soyad başarıyla güncellendi'),
                           backgroundColor: Colors.green,

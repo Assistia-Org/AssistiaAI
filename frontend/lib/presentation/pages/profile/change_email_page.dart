@@ -46,17 +46,21 @@ class _ChangeEmailPageState extends ConsumerState<ChangeEmailPage> {
   Future<void> _initProcess() async {
     final user = ref.read(currentUserProvider);
     if (user != null && user.email.isNotEmpty) {
-      setState(() {
-        _currentEmail = user.email;
-      });
+      if (mounted) {
+        setState(() {
+          _currentEmail = user.email;
+        });
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mevcut e-posta adresi bulunamadı.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Mevcut e-posta adresi bulunamadı.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        Navigator.pop(context);
+      }
     }
   }
 
