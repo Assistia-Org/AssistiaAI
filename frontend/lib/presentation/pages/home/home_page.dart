@@ -243,6 +243,9 @@ class _HomePageState extends ConsumerState<HomePage> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
@@ -251,10 +254,11 @@ class _HomePageState extends ConsumerState<HomePage> {
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Handle bar
             Center(
               child: Container(
@@ -529,6 +533,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
       ),
+    ),
     );
   }
 
