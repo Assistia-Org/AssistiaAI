@@ -72,16 +72,16 @@ class _AssistantChatPageState extends ConsumerState<AssistantChatPage> {
                         onPressed: () => Navigator.pop(context),
                       ),
                       const SizedBox(width: 8),
-                      Container(
+                      SizedBox(
                         width: 40,
                         height: 40,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF2D3E4E), Color(0xFF1A2A3A)],
+                        child: Transform.scale(
+                          scale: 2,
+                          child: Image.asset(
+                            'assets/images/assistia_ai_bot.png',
+                            fit: BoxFit.contain,
                           ),
                         ),
-                        child: const Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 20),
                       ),
                       const SizedBox(width: 12),
                       Text(
@@ -134,8 +134,11 @@ class _AssistantChatPageState extends ConsumerState<AssistantChatPage> {
 
                 // Giriş alanı
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12).copyWith(
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 12,
+                    bottom: MediaQuery.of(context).padding.bottom + 12,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
