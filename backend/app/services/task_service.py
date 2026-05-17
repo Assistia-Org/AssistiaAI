@@ -220,13 +220,21 @@ async def create_task_service(current_user: User, data: TaskCreate) -> TaskRespo
     for task in created_tasks:
         user_id = task.assigned_to[0]
         if user_id != creator_id:
-            await create_notification_service(
-                user_id=user_id,
-                type=NotificationType.INVITATION,
-                title="Yeni Görev Atandı",
-                body=f"{current_user.display_name} sana bir görev atadı: {task.title}",
-                metadata={"task_id": str(task.id), "community_id": data.community_id},
-            )
+            try:
+                await create_notification_service(
+                    user_id=user_id,
+                    type=NotificationType.INVITATION,
+                    title="Yeni Görev Atandı",
+                    body=f"{current_user.display_name} sana bir görev atadı: {task.title}",
+                    metadata={"task_id": str(task.id), "community_id": data.community_id},
+                )
+            except Exception as e:
+                await logger.error(
+                    EventType.NOTIFICATION_SEND,
+                    f"Görev atama bildirimi gönderilirken hata oluştu: {str(e)}",
+                    user_id=user_id,
+                    extra={"task_id": str(task.id), "error": str(e)},
+                )
 
     creator_task = next((t for t in created_tasks if t.assigned_to[0] == creator_id), created_tasks[0])
     response = TaskResponse.model_validate(creator_task)
@@ -306,6 +314,20 @@ async def update_task_service(task_id: str, data: TaskUpdate, current_user: User
     old_date = get_task_target_date(task)
     old_assigned_user = task.assigned_to[0] if task.assigned_to else user_id
     update_dict = data.model_dump(exclude_unset=True)
+
+    # Validate and normalize assigned_to
+    if "assigned_to" in update_dict:
+        assigned_list = update_dict["assigned_to"]
+        if (
+            isinstance(assigned_list, list)
+            and len(assigned_list) == 1
+            and (assigned_list[0] == task.creator_id or assigned_list[0] == old_assigned_user)
+        ):
+            # Valid single-entry reassignment
+            pass
+        else:
+            # Invalid multi-user or unauthorized reassignment: fallback to old assignee
+            update_dict.pop("assigned_to", None)
 
     # Update current task
     updated_task = await update_task(task, update_dict)
