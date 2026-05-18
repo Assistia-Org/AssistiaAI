@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Any, Optional
 
@@ -13,24 +14,43 @@ _firebase_initialized = False
 
 def init_firebase() -> None:
     """
-    Initialize Firebase Admin SDK using the service account credentials file.
+    Initialize Firebase Admin SDK using service account credentials.
+    Supports either a JSON string (FIREBASE_CREDENTIALS) or a file path (FIREBASE_CREDENTIALS_PATH).
     Safe to call multiple times — skips if already initialized.
     """
     global _firebase_initialized
     if _firebase_initialized:
         return
 
+    # 1. Try to use FIREBASE_CREDENTIALS if provided (aliases to firebase-credentials, etc.)
+    if settings.FIREBASE_CREDENTIALS:
+        try:
+            cert_dict = json.loads(settings.FIREBASE_CREDENTIALS)
+            cred = credentials.Certificate(cert_dict)
+            firebase_admin.initialize_app(cred)
+            _firebase_initialized = True
+            logger.info("Firebase Admin SDK initialized successfully using JSON string.")
+            return
+        except Exception as exc:
+            logger.error("Failed to initialize Firebase Admin SDK using JSON string: %s", exc)
+            # Fall back to file path if JSON string failed to load or initialize
+
+    # 2. Fallback to FIREBASE_CREDENTIALS_PATH
     if not settings.FIREBASE_CREDENTIALS_PATH:
-        logger.warning("FIREBASE_CREDENTIALS_PATH is not set. FCM push notifications are disabled.")
+        logger.warning(
+            "Neither FIREBASE_CREDENTIALS nor FIREBASE_CREDENTIALS_PATH is set. "
+            "FCM push notifications are disabled."
+        )
         return
 
     try:
         cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
         firebase_admin.initialize_app(cred)
         _firebase_initialized = True
-        logger.info("Firebase Admin SDK initialized successfully.")
+        logger.info("Firebase Admin SDK initialized successfully using file path.")
     except Exception as exc:
-        logger.error("Failed to initialize Firebase Admin SDK: %s", exc)
+        logger.error("Failed to initialize Firebase Admin SDK using file path: %s", exc)
+
 
 
 async def send_push_notification(
