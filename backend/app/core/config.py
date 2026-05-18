@@ -1,3 +1,4 @@
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -16,6 +17,15 @@ class Settings(BaseSettings):
     EMAILS_FROM_EMAIL: str = ""
     BACKEND_URL: str = ""
     FIREBASE_CREDENTIALS_PATH: str = ""  # Path to Firebase service account JSON
+    FIREBASE_CREDENTIALS: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "firebase-credentials",
+            "FIREBASE_CREDENTIALS",
+            "firebase_credentials",
+            "FIREBASE_CREDENTIALS_JSON"
+        )
+    )  # Firebase service account JSON string (alternative for Render)
 
     # Kafka / Loglama
     KAFKA_BOOTSTRAP_SERVERS: str = ""       # boş bırakılırsa Kafka devre dışı
